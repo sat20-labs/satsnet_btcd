@@ -86,23 +86,12 @@ func (s *AnchorTxCache) AddAnchorTx(anchorTxInfo *AnchorTxInfo) error {
 		err := fmt.Errorf("locked tx has anchor tx info.")
 		return err
 	}
-
-	// save anchor tx info to db
-	err := s.db.Update(func(dbTx database.Tx) error {
-		err := dbPutAnchorTxInfo(dbTx, anchorTxInfo)
-		return err
-	})
-
-	if err != nil {
-		return err
-	}
 	s.anchorTxInfoMap[anchorTxInfo.LockedTxid] = anchorTxInfo
 
-	return err
+	return nil
 }
 
 // FetchAnchorTx fetch anchor tx with given locked txid from the point of view of the end of the main chain.
-
 // This function is safe for concurrent access however the returned view is NOT.
 func (b *BlockChain) FetchAnchorTx(lockedTxid string) (*AnchorTxInfo, error) {
 	log.Infof("FetchAnchorTx: %s", lockedTxid)
@@ -113,7 +102,6 @@ func (b *BlockChain) FetchAnchorTx(lockedTxid string) (*AnchorTxInfo, error) {
 }
 
 // AddAnchorTx add anchor to anchor tx cache and saved to db from the point of view of the end of the main chain.
-
 // This function is safe for concurrent access however the returned view is NOT.
 func (b *BlockChain) AddAnchorTx(anchorTxInfo *AnchorTxInfo) error {
 	log.Infof("AddAnchorTx: %v", anchorTxInfo)

@@ -38,6 +38,7 @@ import (
 	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/mining"
 	"github.com/btcsuite/btcd/mining/cpuminer"
+	"github.com/btcsuite/btcd/mining/posminer"
 	"github.com/btcsuite/btcd/peer"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -552,6 +553,8 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		mtx.AddTxIn(txIn)
 	}
 
+	satsRanges, err := s.cfg.Chain.FetchTxSatsRanges(mtx)
+
 	// Add all transaction outputs to the transaction after performing
 	// some validity checks.
 	params := s.cfg.ChainParams
@@ -607,7 +610,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 			return nil, internalRPCError(err.Error(), context)
 		}
 
-		txOut := wire.NewTxOut(int64(satoshi), pkScript)
+		txOut := wire.NewTxOut(int64(satoshi), satsRanges, pkScript)
 		mtx.AddTxOut(txOut)
 	}
 
@@ -4822,6 +4825,7 @@ type rpcserverConfig struct {
 	// doing regression or simulation testing.
 	Generator *mining.BlkTmplGenerator
 	CPUMiner  *cpuminer.CPUMiner
+	PosMiner  *posminer.POSMiner
 
 	// These fields define any optional indexes the RPC server can make use
 	// of to provide additional data when queried.

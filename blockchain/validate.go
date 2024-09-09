@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/btcsuite/btcd/anchortx"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -244,6 +245,15 @@ func CheckTransactionSanity(tx *btcutil.Tx) error {
 		return ruleError(ErrNoTxOutputs, "transaction has no outputs")
 	}
 
+	// mapping transactions have no inputs.
+	if IsAnchorTx(msgTx) {
+		// Check anchor input
+		err := anchortx.CheckAnchorTxValid(msgTx)
+		if err != nil {
+			return err
+		}
+	}
+
 	// A transaction must not exceed the maximum allowed block payload when
 	// serialized.
 	serializedTxSize := tx.MsgTx().SerializeSizeStripped()
@@ -463,10 +473,10 @@ func CheckBlockHeaderSanity(header *wire.BlockHeader, powLimit *big.Int,
 	// Ensure the proof of work bits in the block header is in min/max range
 	// and the block hash is less than the target value described by the
 	// bits.
-	err := checkProofOfWork(header, powLimit, flags)
-	if err != nil {
-		return err
-	}
+	// err := checkProofOfWork(header, powLimit, flags)
+	// if err != nil {
+	// 	return err
+	// }
 
 	// A block timestamp must not have a greater precision than one second.
 	// This check is necessary because Go time.Time values support
@@ -947,17 +957,25 @@ func (b *BlockChain) checkBIP0030(node *blockNode, block *btcutil.Block, view *U
 // CheckTransactionSanity function prior to calling this function.
 func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpoint, chainParams *chaincfg.Params) (int64, error) {
 	// Coinbase transactions have no inputs.
-	if IsCoinBaseTx(tx.MsgTx()) {
+	msgTx := tx.MsgTx()
+	if IsCoinBaseTx(msgTx) {
 		return 0, nil
 	}
 
-	// mapping transactions have no inputs.
-	if IsAnchorTx(tx.MsgTx()) {
+	// mapping transactions have anchor inputs.
+	if IsAnchorTx(msgTx) {
+		// Check anchor input
+		err := anchortx.CheckAnchorTxValid(msgTx)
+		if err != nil {
+			str := fmt.Sprintf("invalid anchor tx with %s", tx.Hash())
+			return 0, ruleError(ErrBadTxInput, str)
+
+		}
 		return 0, nil
 	}
 
 	var totalSatoshiIn int64
-	for txInIndex, txIn := range tx.MsgTx().TxIn {
+	for txInIndex, txIn := range msgTx.TxIn {
 		// Ensure the referenced input transaction is available.
 		utxo := utxoView.LookupEntry(txIn.PreviousOutPoint)
 		if utxo == nil || utxo.IsSpent() {

@@ -284,7 +284,12 @@ func checkBlockScripts(block *btcutil.Block, utxoView *UtxoViewpoint,
 
 		for txInIdx, txIn := range tx.MsgTx().TxIn {
 			// Skip coinbases.
-			if txIn.PreviousOutPoint.Index == math.MaxUint32 {
+			if txIn.PreviousOutPoint.Index == wire.MaxPrevOutIndex {
+				// coinbase index
+				continue
+			}
+			if txIn.PreviousOutPoint.Index == wire.AnchorTxOutIndex {
+				// anchor index
 				continue
 			}
 

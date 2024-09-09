@@ -280,6 +280,12 @@ func (view *UtxoViewpoint) connectTransaction(tx *btcutil.Tx, blockHeight int32,
 		return nil
 	}
 
+	if IsAnchorTx(tx.MsgTx()) {
+		// Add the transaction's outputs as available utxos.
+		view.AddTxOuts(tx, blockHeight)
+		return nil
+	}
+
 	// Spend the referenced utxos by marking them spent in the view and,
 	// if a slice was provided for the spent txout details, append an entry
 	// to it.
@@ -656,7 +662,7 @@ func (b *BlockChain) FetchUtxoView(tx *btcutil.Tx) (*UtxoViewpoint, error) {
 	// inputs of the passed transaction and the outputs of the transaction
 	// itself.
 	neededLen := len(tx.MsgTx().TxOut)
-	if !IsCoinBase(tx) {
+	if !IsCoinBase(tx) && !IsAnchorTx(tx.MsgTx()) {
 		neededLen += len(tx.MsgTx().TxIn)
 	}
 	needed := make([]wire.OutPoint, 0, neededLen)
@@ -665,7 +671,7 @@ func (b *BlockChain) FetchUtxoView(tx *btcutil.Tx) (*UtxoViewpoint, error) {
 		prevOut.Index = uint32(txOutIdx)
 		needed = append(needed, prevOut)
 	}
-	if !IsCoinBase(tx) {
+	if !IsCoinBase(tx) && !IsAnchorTx(tx.MsgTx()) {
 		for _, txIn := range tx.MsgTx().TxIn {
 			needed = append(needed, txIn.PreviousOutPoint)
 		}
@@ -700,4 +706,16 @@ func (b *BlockChain) FetchUtxoEntry(outpoint wire.OutPoint) (*UtxoEntry, error) 
 	}
 
 	return entries[0], nil
+}
+
+// FetchUtxoView loads unspent transaction outputs for the inputs referenced by
+// the passed transaction from the point of view of the end of the main chain.
+// It also attempts to fetch the utxos for the outputs of the transaction itself
+// so the returned view can be examined for duplicate transactions.
+//
+// This function is safe for concurrent access however the returned view is NOT.
+func (b *BlockChain) FetchTxSatsRanges(msgTx *wire.MsgTx) ([]wire.SatsRange, error) {
+	satsRanges := make([]wire.SatsRange, 0)
+
+	return satsRanges, nil
 }

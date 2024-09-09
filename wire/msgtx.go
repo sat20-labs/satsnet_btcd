@@ -331,16 +331,16 @@ func (t TxWitness) ToHexStrings() []string {
 	return result
 }
 
-// type SatsRange struct {
-// 	Start int64
-// 	Size  int64
-// }
+type SatsRange struct {
+	Start int64
+	Size  int64
+}
 
 // TxOut defines a bitcoin transaction output.
 type TxOut struct {
-	Value int64
-	//	Range    []SatsRange
-	PkScript []byte
+	Value      int64
+	SatsRanges []SatsRange // sats index range for the output
+	PkScript   []byte
 }
 
 // SerializeSize returns the number of bytes it would take to serialize the
@@ -348,15 +348,22 @@ type TxOut struct {
 func (t *TxOut) SerializeSize() int {
 	// Value 8 bytes + serialized varint size for the length of PkScript +
 	// PkScript bytes.
-	return 8 + VarIntSerializeSize(uint64(len(t.PkScript))) + len(t.PkScript)
+	lenSatsRange := VarIntSerializeSize(uint64(len(t.SatsRanges)))
+	for _, r := range t.SatsRanges {
+		lenSatsRange += VarIntSerializeSize(uint64(r.Start))
+		lenSatsRange += VarIntSerializeSize(uint64(r.Size))
+	}
+	lenpkScript := VarIntSerializeSize(uint64(len(t.PkScript))) + len(t.PkScript)
+	return 8 + lenSatsRange + lenpkScript
 }
 
 // NewTxOut returns a new bitcoin transaction output with the provided
 // transaction value and public key script.
-func NewTxOut(value int64, pkScript []byte) *TxOut {
+func NewTxOut(value int64, satsRange []SatsRange, pkScript []byte) *TxOut {
 	return &TxOut{
-		Value:    value,
-		PkScript: pkScript,
+		Value:      value,
+		SatsRanges: satsRange,
+		PkScript:   pkScript,
 	}
 }
 

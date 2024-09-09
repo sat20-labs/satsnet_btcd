@@ -95,13 +95,17 @@ func AddrToPkScript(addr string, netParams *chaincfg.Params) ([]byte, error) {
 	return txscript.PayToAddrScript(address)
 }
 
-func testAnchorTx() {
+func testAnchorTx(lockedTxid string) {
 	fmt.Printf("testAnchorTx...\n")
-	Txid := "b274b49e885fdd87ea2870930297d2c6ecee7cc62fe8e67b21b452fb348c441e"
+	TxidDefault := "b274b49e885fdd87ea2870930297d2c6ecee7cc62fe8e67b21b452fb348c441e"
 	address := "tb1prm9fflqhtezag25s06t740e7ca4rydm9x5mucrc3lt6dlkxquyqq02k2cf"
 	amount := int64(1000000)
 
-	anchorTx := CreateAnchorTx(Txid, address, amount)
+	if lockedTxid == "" {
+		lockedTxid = TxidDefault
+	}
+
+	anchorTx := CreateAnchorTx(lockedTxid, address, amount)
 
 	fmt.Printf("Anchor tx is %v.\n", anchorTx)
 	raw, err := messageToHex(anchorTx)

@@ -1428,7 +1428,7 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 			return nil, err
 		}
 
-		// Add anchor tx to anchor tx cache and save to db
+		// Add anchor tx to anchor tx cache
 		mp.AddAnchorTx(tx.MsgTx())
 
 		// Don't allow the transaction if it exists in the main chain and is

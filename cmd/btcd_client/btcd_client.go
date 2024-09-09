@@ -93,7 +93,11 @@ func main() {
 		if method == "exit" {
 			return
 		} else if method == "anchortx" {
-			testAnchorTx()
+			lockedTTxid := ""
+			if length > 1 {
+				lockedTTxid = words[1]
+			}
+			testAnchorTx(lockedTTxid)
 			continue
 		}
 
@@ -102,13 +106,15 @@ func main() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unrecognized command '%s'\n", method)
 			fmt.Fprintln(os.Stderr, listCmdMessage)
-			os.Exit(1)
+			//os.Exit(1)
+			continue
 		}
 		if usageFlags&unusableFlags != 0 {
 			fmt.Fprintf(os.Stderr, "The '%s' command can only be used via "+
 				"websockets\n", method)
 			fmt.Fprintln(os.Stderr, listCmdMessage)
-			os.Exit(1)
+			//os.Exit(1)
+			continue
 		}
 
 		// Convert remaining command line words to a slice of interface values

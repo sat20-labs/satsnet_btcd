@@ -280,7 +280,8 @@ func createCoinbaseTx(params *chaincfg.Params, coinbaseScript []byte, nextBlockH
 		Sequence:        wire.MaxTxInSequenceNum,
 	})
 	tx.AddTxOut(&wire.TxOut{
-		Value:    blockchain.CalcBlockSubsidy(nextBlockHeight, params),
+		//		Value:    blockchain.CalcBlockSubsidy(nextBlockHeight, params),
+		Value:    0, // For satoshinet, no award.
 		PkScript: pkScript,
 	})
 	return btcutil.NewTx(tx), nil
@@ -472,6 +473,11 @@ func (g *BlkTmplGenerator) NewBlockTemplate(payToAddress btcutil.Address) (*Bloc
 	// choose the initial sort order for the priority queue based on whether
 	// or not there is an area allocated for high-priority transactions.
 	sourceTxns := g.txSource.MiningDescs()
+	if len(sourceTxns) == 0 {
+		// No any tx in pool
+		err := fmt.Errorf("no any new tx in mempool")
+		return nil, err
+	}
 	sortedByFee := g.policy.BlockPrioritySize == 0
 	priorityQueue := newTxPriorityQueue(len(sourceTxns), sortedByFee) //  �����н��׽�������
 
@@ -511,6 +517,11 @@ mempoolLoop:
 		tx := txDesc.Tx
 		if blockchain.IsCoinBase(tx) {
 			log.Tracef("Skipping coinbase tx %s", tx.Hash())
+			continue
+		}
+		if blockchain.IsAnchorTx(tx.MsgTx()) {
+			log.Tracef("Add anchor tx %s directly", tx.Hash())
+			blockTxns = append(blockTxns, tx)
 			continue
 		}
 		if !blockchain.IsFinalizedTransaction(tx, nextBlockHeight,

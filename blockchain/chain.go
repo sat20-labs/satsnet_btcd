@@ -860,6 +860,10 @@ func countSpentOutputs(block *btcutil.Block) int {
 	// Exclude the coinbase transaction since it can't spend anything.
 	var numSpent int
 	for _, tx := range block.Transactions()[1:] {
+		if IsAnchorTx(tx.MsgTx()) {
+			// No Spent Inputs for Anchor Tx
+			continue
+		}
 		numSpent += len(tx.MsgTx().TxIn)
 	}
 	return numSpent

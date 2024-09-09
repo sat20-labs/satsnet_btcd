@@ -102,7 +102,13 @@ func TestTx(t *testing.T) {
 		0xa6, // 65-byte signature
 		0xac, // OP_CHECKSIG
 	}
-	txOut := NewTxOut(txValue, pkScript)
+	satsRanges := []SatsRange{
+		{
+			Start: 0,
+			Size:  5000000000,
+		},
+	}
+	txOut := NewTxOut(txValue, satsRanges, pkScript)
 	if txOut.Value != txValue {
 		t.Errorf("NewTxOut: wrong pk script - got %v, want %v",
 			txOut.Value, txValue)
