@@ -12,16 +12,16 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/blockchain/indexers"
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/mining"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/sat20-labs/satsnet_btcd/blockchain"
+	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
+	"github.com/sat20-labs/satsnet_btcd/btcjson"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/mining"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (
@@ -548,16 +548,17 @@ func (mp *TxPool) RemoveDoubleSpends(tx *btcutil.Tx) {
 // helper for maybeAcceptTransaction.
 //
 // This function MUST be called with the mempool lock held (for writes).
-func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil.Tx, height int32, fee int64) *TxDesc {
+func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil.Tx, height int32, fee int64, feeRanges []wire.SatsRange) *TxDesc {
 	// Add the transaction to the pool and mark the referenced outpoints
 	// as spent by the pool.
 	txD := &TxDesc{
 		TxDesc: mining.TxDesc{
-			Tx:       tx,
-			Added:    time.Now(),
-			Height:   height,
-			Fee:      fee,
-			FeePerKB: fee * 1000 / GetTxVirtualSize(tx),
+			Tx:        tx,
+			Added:     time.Now(),
+			Height:    height,
+			Fee:       fee,
+			FeeRanges: feeRanges,
+			FeePerKB:  fee * 1000 / GetTxVirtualSize(tx),
 		},
 		StartingPriority: mining.CalcPriority(tx.MsgTx(), utxoView, height),
 	}
@@ -971,7 +972,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit,
 		// this call as they'll be removed eventually.
 		mp.removeTransaction(conflict, false)
 	}
-	txD := mp.addTransaction(r.utxoView, tx, r.bestHeight, int64(r.TxFee))
+	txD := mp.addTransaction(r.utxoView, tx, r.bestHeight, int64(r.TxFee), r.FeeRanges)
 
 	log.Debugf("Accepted transaction %v (pool size: %v)", txHash,
 		len(mp.pool))
@@ -1291,6 +1292,9 @@ type MempoolAcceptResult struct {
 	// TxFee is the fees paid in satoshi.
 	TxFee btcutil.Amount
 
+	// The sats ranges for the fee
+	FeeRanges []wire.SatsRange
+
 	// TxSize is the virtual size(vb) of the tx.
 	TxSize int64
 
@@ -1441,6 +1445,7 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 
 		result := &MempoolAcceptResult{
 			TxFee:      btcutil.Amount(0),
+			FeeRanges:  []wire.SatsRange{},
 			TxSize:     txSize,
 			Conflicts:  conflicts,
 			utxoView:   utxoView,
@@ -1527,7 +1532,7 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 	//
 	// NOTE: this check must be performed before `validateStandardness` to
 	// make sure a nil entry is not returned from `utxoView.LookupEntry`.
-	txFee, err := blockchain.CheckTransactionInputs(
+	txFee, feeRanges, err := blockchain.CheckTransactionInputs(
 		tx, nextBlockHeight, utxoView, mp.cfg.ChainParams,
 	)
 	if err != nil {
@@ -1607,6 +1612,7 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 
 	result := &MempoolAcceptResult{
 		TxFee:      btcutil.Amount(txFee),
+		FeeRanges:  feeRanges,
 		TxSize:     txSize,
 		Conflicts:  conflicts,
 		utxoView:   utxoView,

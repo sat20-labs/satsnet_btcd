@@ -23,8 +23,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 // AddrManager provides a concurrency safe address manager for caching potential
@@ -166,9 +166,9 @@ const (
 func (a *AddrManager) updateAddress(netAddr, srcAddr *wire.NetAddressV2) {
 	// Filter out non-routable addresses. Note that non-routable
 	// also includes invalid and local addresses.
-	if !IsRoutable(netAddr) {
-		return
-	}
+	// if !IsRoutable(netAddr) {
+	// 	return
+	// }
 
 	addr := NetAddressKey(netAddr)
 	ka := a.find(netAddr)

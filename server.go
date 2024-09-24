@@ -22,24 +22,24 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/btcsuite/btcd/addrmgr"
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/blockchain/indexers"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/btcutil/bloom"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/connmgr"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/mempool"
-	"github.com/btcsuite/btcd/mining"
-	"github.com/btcsuite/btcd/mining/cpuminer"
-	"github.com/btcsuite/btcd/mining/posminer"
-	"github.com/btcsuite/btcd/netsync"
-	"github.com/btcsuite/btcd/peer"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/decred/dcrd/lru"
+	"github.com/sat20-labs/satsnet_btcd/addrmgr"
+	"github.com/sat20-labs/satsnet_btcd/blockchain"
+	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/btcutil/bloom"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/connmgr"
+	"github.com/sat20-labs/satsnet_btcd/database"
+	"github.com/sat20-labs/satsnet_btcd/mempool"
+	"github.com/sat20-labs/satsnet_btcd/mining"
+	"github.com/sat20-labs/satsnet_btcd/mining/cpuminer"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer"
+	"github.com/sat20-labs/satsnet_btcd/netsync"
+	"github.com/sat20-labs/satsnet_btcd/peer"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (
@@ -2491,7 +2491,7 @@ func (s *server) Start() {
 
 	// Start the CPU miner if generation is enabled.
 	if cfg.Generate {
-		s.cpuMiner.Start()
+		//s.cpuMiner.Start()
 		s.posMiner.Start()
 	}
 }

@@ -14,7 +14,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/sat20-labs/satsnet_btcd/btcec"
 )
 
 type signatureTest struct {

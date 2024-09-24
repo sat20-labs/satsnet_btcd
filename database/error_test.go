@@ -8,7 +8,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/btcsuite/btcd/database"
+	"github.com/sat20-labs/satsnet_btcd/database"
 )
 
 // TestErrorCodeStringer tests the stringized output for the ErrorCode type.

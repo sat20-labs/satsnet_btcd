@@ -13,10 +13,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/sat20-labs/satsnet_btcd/btcjson"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 )
 
 const (
@@ -24,16 +24,19 @@ const (
 	// able to use.  In particular it doesn't support websockets and
 	// consequently notifications.
 	unusableFlags = btcjson.UFWebsocketOnly | btcjson.UFNotification
+
+	RPC_BTCD = 1
+	RPC_WALLET = 2
 )
 
 var (
-	btcdHomeDir           = btcutil.AppDataDir("btcd", false)
-	btcctlHomeDir         = btcutil.AppDataDir("btcctl", false)
-	btcwalletHomeDir      = btcutil.AppDataDir("btcwallet", false)
-	defaultConfigFile     = filepath.Join(btcctlHomeDir, "btcctl.conf")
-	defaultRPCServer      = "localhost"
-	defaultRPCCertFile    = filepath.Join(btcdHomeDir, "rpc.cert")
-	defaultWalletCertFile = filepath.Join(btcwalletHomeDir, "rpc.cert")
+	btcdHomeDir              = btcutil.AppDataDir("btcd", false)
+	btcctlHomeDir            = btcutil.AppDataDir("btcctl", false)
+	btcwalletHomeDir         = btcutil.AppDataDir("btcwallet", false)
+	defaultConfigFile        = filepath.Join(btcctlHomeDir, "btcctl.conf")
+	defaultRPCServer         = "localhost"
+	defaultRPCBtcdCertFile   = filepath.Join(btcdHomeDir, "rpc.cert")
+	defaultRPCWalletCertFile = filepath.Join(btcwalletHomeDir, "rpc.cert")
 )
 
 // listCommands categorizes and lists all of the usable commands along with
@@ -101,7 +104,8 @@ type config struct {
 	ProxyPass      string `long:"proxypass" default-mask:"-" description:"Password for proxy server"`
 	ProxyUser      string `long:"proxyuser" description:"Username for proxy server"`
 	RegressionTest bool   `long:"regtest" description:"Connect to the regression test network"`
-	RPCCert        string `short:"c" long:"rpccert" description:"RPC server certificate chain for validation"`
+	RPCBtcdCert    string `long:"rpcbtcdcert" description:"RPC btcd server certificate chain for validation"`
+	RPCWalletCert  string `long:"rpcwalletcert" description:"RPC wallet server certificate chain for validation"`
 	RPCPassword    string `short:"P" long:"rpcpass" default-mask:"-" description:"RPC password"`
 	RPCServer      string `short:"s" long:"rpcserver" description:"RPC server to connect to"`
 	RPCUser        string `short:"u" long:"rpcuser" description:"RPC username"`
@@ -220,14 +224,15 @@ func loadConfig() (*config, []string, error) {
 	btcctlHomeDir = filepath.Join(homedir, "btcctl")
 	btcwalletHomeDir = filepath.Join(homedir, "btcwallet")
 	defaultConfigFile = filepath.Join(btcctlHomeDir, "btcctl.conf")
-	defaultRPCCertFile = filepath.Join(btcdHomeDir, "rpc.cert")
-	defaultWalletCertFile = filepath.Join(btcwalletHomeDir, "rpc.cert")
+	defaultRPCBtcdCertFile = filepath.Join(btcdHomeDir, "rpc.cert")
+	defaultRPCWalletCertFile = filepath.Join(btcwalletHomeDir, "rpc.cert")
 
 	// Default config.
 	cfg := config{
-		ConfigFile: defaultConfigFile,
-		RPCServer:  defaultRPCServer,
-		RPCCert:    defaultRPCCertFile,
+		ConfigFile:    defaultConfigFile,
+		RPCServer:     defaultRPCServer,
+		RPCBtcdCert:   defaultRPCBtcdCertFile,
+		RPCWalletCert: defaultRPCWalletCertFile,
 	}
 
 	// Pre-parse the command line options to see if an alternative config
@@ -346,19 +351,20 @@ func loadConfig() (*config, []string, error) {
 
 	// Override the RPC certificate if the --wallet flag was specified and
 	// the user did not specify one.
-	if cfg.Wallet && cfg.RPCCert == defaultRPCCertFile {
-		cfg.RPCCert = defaultWalletCertFile
-	}
+	// if cfg.Wallet && cfg.RPCCert == defaultRPCCertFile {
+	// 	cfg.RPCCert = defaultWalletCertFile
+	// }
 
 	// Handle environment variable expansion in the RPC certificate path.
-	cfg.RPCCert = cleanAndExpandPath(cfg.RPCCert)
+	cfg.RPCBtcdCert = cleanAndExpandPath(cfg.RPCBtcdCert)
+	cfg.RPCWalletCert = cleanAndExpandPath(cfg.RPCWalletCert)
 
 	// Add default port to RPC server based on --testnet and --wallet flags
 	// if needed.
-	cfg.RPCServer, err = normalizeAddress(cfg.RPCServer, network, cfg.Wallet)
-	if err != nil {
-		return nil, nil, err
-	}
+	// cfg.RPCServer, err = normalizeAddress(cfg.RPCServer, network, cfg.Wallet)
+	// if err != nil {
+	// 	return nil, nil, err
+	// }
 
 	return &cfg, remainingArgs, nil
 }

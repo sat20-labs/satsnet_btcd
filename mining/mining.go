@@ -10,12 +10,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/blockchain"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (
@@ -49,6 +49,9 @@ type TxDesc struct {
 	// Fee is the total fee the transaction associated with the entry pays.
 	Fee int64
 
+	// FeeRanges is the fee sats ranges the transaction associated with the entry pays.
+	FeeRanges []wire.SatsRange
+
 	// FeePerKB is the fee the transaction pays in Satoshi per 1000 bytes.
 	FeePerKB int64
 }
@@ -76,10 +79,11 @@ type TxSource interface {
 // transaction to be prioritized and track dependencies on other transactions
 // which have not been mined into a block yet.
 type txPrioItem struct {
-	tx       *btcutil.Tx
-	fee      int64
-	priority float64
-	feePerKB int64
+	tx        *btcutil.Tx
+	fee       int64
+	priority  float64
+	feePerKB  int64
+	feeRanges []wire.SatsRange
 
 	// dependsOn holds a map of transaction hashes which this one depends
 	// on.  It will only be set when the transaction references other
@@ -281,8 +285,9 @@ func createCoinbaseTx(params *chaincfg.Params, coinbaseScript []byte, nextBlockH
 	})
 	tx.AddTxOut(&wire.TxOut{
 		//		Value:    blockchain.CalcBlockSubsidy(nextBlockHeight, params),
-		Value:    0, // For satoshinet, no award.
-		PkScript: pkScript,
+		Value:      0, // For satoshinet, no award.
+		SatsRanges: make([]wire.SatsRange, 0),
+		PkScript:   pkScript,
 	})
 	return btcutil.NewTx(tx), nil
 }
@@ -502,7 +507,7 @@ func (g *BlkTmplGenerator) NewBlockTemplate(payToAddress btcutil.Address) (*Bloc
 	// a transaction as it is selected for inclusion in the final block.
 	// However, since the total fees aren't known yet, use a dummy value for
 	// the coinbase fee which will be updated later.
-	txFees := make([]int64, 0, len(sourceTxns))
+	txFees := make([]int64, 0, len(sourceTxns)) // It need to fee and fee ranges?
 	txSigOpCosts := make([]int64, 0, len(sourceTxns))
 	txFees = append(txFees, -1) // Updated once known
 	txSigOpCosts = append(txSigOpCosts, coinbaseSigOpCost)
@@ -585,6 +590,7 @@ mempoolLoop:
 
 		// Calculate the fee in Satoshi/kB.
 		prioItem.feePerKB = txDesc.FeePerKB
+		prioItem.feeRanges = txDesc.FeeRanges
 		prioItem.fee = txDesc.Fee
 
 		// Add the transaction to the priority queue to mark it ready
@@ -609,6 +615,7 @@ mempoolLoop:
 		blockchain.GetTransactionWeight(coinbaseTx))
 	blockSigOpCost := coinbaseSigOpCost
 	totalFees := int64(0)
+	totalFeeRanges := make([]wire.SatsRange, 0)
 
 	// Query the version bits state to see if segwit has been activated, if
 	// so then this means that we'll include any transactions with witness
@@ -747,7 +754,7 @@ mempoolLoop:
 
 		// Ensure the transaction inputs pass all of the necessary
 		// preconditions before allowing it to be added to the block.
-		_, err = blockchain.CheckTransactionInputs(tx, nextBlockHeight,
+		_, _, err = blockchain.CheckTransactionInputs(tx, nextBlockHeight,
 			blockUtxos, g.chainParams)
 		if err != nil {
 			log.Tracef("Skipping tx %s due to error in "+
@@ -778,6 +785,9 @@ mempoolLoop:
 		blockWeight += txWeight
 		blockSigOpCost += int64(sigOpCost)
 		totalFees += prioItem.fee
+		if len(prioItem.feeRanges) > 0 {
+			totalFeeRanges = append(totalFeeRanges, prioItem.feeRanges...)
+		}
 		txFees = append(txFees, prioItem.fee)
 		txSigOpCosts = append(txSigOpCosts, int64(sigOpCost))
 
@@ -804,6 +814,9 @@ mempoolLoop:
 		(uint32(wire.VarIntSerializeSize(uint64(len(blockTxns)))) *
 			blockchain.WitnessScaleFactor)
 	coinbaseTx.MsgTx().TxOut[0].Value += totalFees
+	if len(totalFeeRanges) > 0 {
+		coinbaseTx.MsgTx().TxOut[0].SatsRanges = append(coinbaseTx.MsgTx().TxOut[0].SatsRanges, totalFeeRanges...)
+	}
 	txFees[0] = -totalFees
 
 	// If segwit is active and we included transactions with witness data,

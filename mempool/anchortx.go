@@ -5,9 +5,9 @@ package mempool
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcd/anchortx"
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/anchortx"
+	"github.com/sat20-labs/satsnet_btcd/blockchain"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (

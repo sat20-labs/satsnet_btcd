@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 )
 
 const (
@@ -476,11 +476,21 @@ func (msg *MsgTx) Copy() *MsgTx {
 			copy(newScript, oldScript[:oldScriptLen])
 		}
 
+		newSatsRanges := make([]SatsRange, 0)
+
+		for _, satsRange := range oldTxOut.SatsRanges {
+			newRange := SatsRange{
+				Start: satsRange.Start,
+				Size:  satsRange.Size,
+			}
+			newSatsRanges = append(newSatsRanges, newRange)
+		}
 		// Create new txOut with the deep copied data and append it to
 		// new Tx.
 		newTxOut := TxOut{
-			Value:    oldTxOut.Value,
-			PkScript: newScript,
+			Value:      oldTxOut.Value,
+			SatsRanges: newSatsRanges,
+			PkScript:   newScript,
 		}
 		newTx.TxOut = append(newTx.TxOut, &newTxOut)
 	}
@@ -551,6 +561,7 @@ func (msg *MsgTx) btcDecode(r io.Reader, pver uint32, enc MessageEncoding,
 		return messageError("MsgTx.BtcDecode", str)
 	}
 
+	// count is count of txins.
 	// Deserialize the inputs.
 	var totalScriptSize uint64
 	txIns := make([]TxIn, count)
@@ -572,6 +583,7 @@ func (msg *MsgTx) btcDecode(r io.Reader, pver uint32, enc MessageEncoding,
 	if err != nil {
 		return err
 	}
+	// count is count of txouts
 
 	// Prevent more output transactions than could possibly fit into a
 	// message.  It would be possible to cause memory exhaustion and panics
@@ -1131,11 +1143,37 @@ func ReadTxOut(r io.Reader, pver uint32, version int32, to *TxOut) error {
 func readTxOutBuf(r io.Reader, pver uint32, version int32, to *TxOut,
 	buf, s []byte) error {
 
+	// 8 bytes for value
 	_, err := io.ReadFull(r, buf)
 	if err != nil {
 		return err
 	}
+
 	to.Value = int64(littleEndian.Uint64(buf))
+
+	// count fr sats range
+	count, err := ReadVarIntBuf(r, pver, buf)
+	if err != nil {
+		return err
+	}
+
+	to.SatsRanges = make([]SatsRange, 0)
+	for i := uint64(0); i < count; i++ {
+		// Get sats start and size
+		start, err := ReadVarIntBuf(r, pver, buf)
+		if err != nil {
+			return err
+		}
+		size, err := ReadVarIntBuf(r, pver, buf)
+		if err != nil {
+			return err
+		}
+		satsRange := SatsRange{
+			Start: int64(start),
+			Size:  int64(size),
+		}
+		to.SatsRanges = append(to.SatsRanges, satsRange)
+	}
 
 	to.PkScript, err = readScriptBuf(
 		r, pver, buf, s, "transaction output public key script",
@@ -1170,6 +1208,28 @@ func WriteTxOutBuf(w io.Writer, pver uint32, version int32, to *TxOut,
 	_, err := w.Write(buf)
 	if err != nil {
 		return err
+	}
+
+	// get count for sats range, and write to w
+	count := uint64(len(to.SatsRanges))
+	err = WriteVarIntBuf(w, pver, count, buf)
+	if err != nil {
+		return err
+	}
+
+	for _, satsRange := range to.SatsRanges {
+		// Write sats start and size
+		start := uint64(satsRange.Start)
+		err = WriteVarIntBuf(w, pver, start, buf)
+		if err != nil {
+			return err
+		}
+
+		size := uint64(satsRange.Size)
+		err = WriteVarIntBuf(w, pver, size, buf)
+		if err != nil {
+			return err
+		}
 	}
 
 	return WriteVarBytesBuf(w, pver, to.PkScript, buf)

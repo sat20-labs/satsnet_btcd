@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/database"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (
@@ -414,7 +414,7 @@ func deserializeUtxoEntryV0(serialized []byte) (map[uint32]*UtxoEntry, error) {
 	// Decode and add all of the utxos.
 	for i, outputIndex := range outputIndexes {
 		// Decode the next utxo.
-		amount, pkScript, bytesRead, err := decodeCompressedTxOut(
+		amount, satsRanges, pkScript, bytesRead, err := decodeCompressedTxOut(
 			serialized[offset:])
 		if err != nil {
 			return nil, errDeserialize(fmt.Sprintf("unable to "+
@@ -425,6 +425,7 @@ func deserializeUtxoEntryV0(serialized []byte) (map[uint32]*UtxoEntry, error) {
 		// Create a new utxo entry with the details deserialized above.
 		entries[outputIndex] = &UtxoEntry{
 			amount:      int64(amount),
+			satsRanges:  satsRanges,
 			pkScript:    pkScript,
 			blockHeight: int32(blockHeight),
 			packedFlags: packedFlags,

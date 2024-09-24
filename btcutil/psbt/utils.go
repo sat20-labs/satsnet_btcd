@@ -12,8 +12,8 @@ import (
 	"io"
 	"sort"
 
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 // WriteTxWitness is a utility function due to non-exported witness
@@ -286,9 +286,103 @@ func readTxOut(txout []byte) (*wire.TxOut, error) {
 	}
 
 	valueSer := binary.LittleEndian.Uint64(txout[:8])
-	scriptPubKey := txout[9:]
+	offset := 8
 
-	return wire.NewTxOut(int64(valueSer), scriptPubKey), nil
+	// count fr sats range
+	count, size, err := readVarIntBuf(txout[offset:])
+	if err != nil {
+		return nil, err
+	}
+	offset += size
+
+	satsRanges := make([]wire.SatsRange, 0)
+	for i := uint64(0); i < count; i++ {
+		// Get sats start and size
+		rangeStart, size, err := readVarIntBuf(txout[offset:])
+		if err != nil {
+			return nil, err
+		}
+		offset += size
+
+		rangeSize, size, err := readVarIntBuf(txout[offset:])
+		if err != nil {
+			return nil, err
+		}
+		offset += size
+
+		satsRange := wire.SatsRange{
+			Start: int64(rangeStart),
+			Size:  int64(rangeSize),
+		}
+		satsRanges = append(satsRanges, satsRange)
+	}
+
+	count, size, err = readVarIntBuf(txout[offset:])
+	if err != nil {
+		return nil, err
+	}
+	offset += size
+
+	scriptPubKey := txout[offset:]
+
+	return wire.NewTxOut(int64(valueSer), satsRanges, scriptPubKey), nil
+}
+
+// ReadVarIntBuf reads a variable length integer from r using a preallocated
+// scratch buffer and returns it as a uint64.
+//
+// NOTE: buf MUST at least an 8-byte slice.
+var errNonCanonicalVarInt = "non-canonical varint %x - discriminant %x must " +
+	"encode a value greater than %x"
+
+func readVarIntBuf(buf []byte) (uint64, int, error) {
+	offset := 0
+	discriminant := buf[offset]
+	offset++
+
+	var rv uint64
+	switch discriminant {
+	case 0xff:
+		rv := binary.LittleEndian.Uint64(buf[offset : offset+8])
+		offset += 8
+
+		// The encoding is not canonical if the value could have been
+		// encoded using fewer bytes.
+		min := uint64(0x100000000)
+		if rv < min {
+			return 0, 0, fmt.Errorf("ReadVarInt", fmt.Sprintf(
+				errNonCanonicalVarInt, rv, discriminant, min))
+		}
+
+	case 0xfe:
+		rv := binary.LittleEndian.Uint64(buf[offset : offset+4])
+		offset += 4
+
+		// The encoding is not canonical if the value could have been
+		// encoded using fewer bytes.
+		min := uint64(0x10000)
+		if rv < min {
+			return 0, 0, fmt.Errorf("ReadVarInt", fmt.Sprintf(
+				errNonCanonicalVarInt, rv, discriminant, min))
+		}
+
+	case 0xfd:
+		rv := binary.LittleEndian.Uint64(buf[offset : offset+2])
+		offset += 2
+
+		// The encoding is not canonical if the value could have been
+		// encoded using fewer bytes.
+		min := uint64(0xfd)
+		if rv < min {
+			return 0, 0, fmt.Errorf("ReadVarInt", fmt.Sprintf(
+				errNonCanonicalVarInt, rv, discriminant, min))
+		}
+
+	default:
+		rv = uint64(discriminant)
+	}
+
+	return rv, offset, nil
 }
 
 // SumUtxoInputValues tries to extract the sum of all inputs specified in the

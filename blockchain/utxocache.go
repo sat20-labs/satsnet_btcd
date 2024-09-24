@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcd/anchortx"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/anchortx"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/database"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 // mapSlice is a slice of maps for utxo entries.  The slice of maps are needed to
@@ -458,18 +458,20 @@ func (s *utxoCache) addTxIns(tx *btcutil.Tx, stxos *[]SpentTxOut, anchorTxInfos 
 
 	// Anchor transactions don't have any inputs to spend.
 	if IsAnchorTx(tx.MsgTx()) {
-		// Add the anchor tx info to anchor tx cache
-		lockedTxInfo, err := anchortx.GetLockedTxInfo(tx.MsgTx())
-		if err != nil {
-			return err
+		if anchorTxInfos != nil {
+			// Add the anchor tx info to anchor tx cache
+			lockedTxInfo, err := anchortx.GetLockedTxInfo(tx.MsgTx())
+			if err != nil {
+				return err
+			}
+			anchorTxInfo := AnchorTxInfo{
+				LockedTxid: lockedTxInfo.TxId,
+				PkScript:   lockedTxInfo.PkScript,
+				Amount:     lockedTxInfo.Amount,
+				AnchorTxid: tx.MsgTx().TxID(),
+			}
+			*anchorTxInfos = append(*anchorTxInfos, anchorTxInfo)
 		}
-		anchorTxInfo := AnchorTxInfo{
-			LockedTxid: lockedTxInfo.TxId,
-			PkScript:   lockedTxInfo.PkScript,
-			Amount:     lockedTxInfo.Amount,
-			AnchorTxid: tx.MsgTx().TxID(),
-		}
-		*anchorTxInfos = append(*anchorTxInfos, anchorTxInfo)
 		// Todo
 		return nil
 	}

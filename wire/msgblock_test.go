@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 )
 
 // TestBlock tests the MsgBlock API.

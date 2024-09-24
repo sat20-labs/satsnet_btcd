@@ -15,11 +15,11 @@ import (
 	"runtime/debug"
 	"runtime/pprof"
 
-	"github.com/btcsuite/btcd/blockchain/indexers"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/limits"
-	"github.com/btcsuite/btcd/ossec"
+	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/database"
+	"github.com/sat20-labs/satsnet_btcd/limits"
+	"github.com/sat20-labs/satsnet_btcd/ossec"
 )
 
 const (
@@ -46,7 +46,7 @@ var winServiceMain func() (bool, error)
 func btcdMain(serverChan chan<- *server) error {
 	// Load configuration and parse command line.  This function also
 	// initializes logging and configures it accordingly.
-	fmt.Printf("Starting btcd command is %v\n", os.Args)
+	fmt.Printf("Starting btcd command is %v\n\r", os.Args)
 	// homeDir := flag.String("homedir", defaultHomeDir, "all data path")
 	// flag.Parse()
 

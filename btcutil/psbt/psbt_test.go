@@ -12,11 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 	"github.com/stretchr/testify/require"
 )
 
@@ -387,8 +387,9 @@ func TestPsbtCreator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error: %v", err)
 	}
-	out1 := wire.NewTxOut(CUTestAmountData["amount1"], spkOut1)
-	out2 := wire.NewTxOut(CUTestAmountData["amount2"], spkOut2)
+	satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
+	out1 := wire.NewTxOut(CUTestAmountData["amount1"], satsRanges, spkOut1)
+	out2 := wire.NewTxOut(CUTestAmountData["amount2"], satsRanges, spkOut2)
 	outputs := []*wire.TxOut{out1, out2}
 	hash1, err := chainhash.NewHashFromStr(CUTestHexData["txid1"])
 	if err != nil {
@@ -1062,7 +1063,9 @@ func TestImportFromCore2(t *testing.T) {
 	}
 	fakevalSerialized := binary.LittleEndian.Uint64(fakeTxOutSerialized[:8])
 	fakeScriptPubKey := fakeTxOutSerialized[9:]
-	txFund2Out := wire.NewTxOut(int64(fakevalSerialized), fakeScriptPubKey)
+	satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
+
+	txFund2Out := wire.NewTxOut(int64(fakevalSerialized), satsRanges, fakeScriptPubKey)
 	psbt2, err := NewFromRawBytes(bytes.NewReader([]byte(expectedPsbtPartialB64)), true)
 	if err != nil {
 		t.Fatalf("Failed to load partial PSBT: %v", err)

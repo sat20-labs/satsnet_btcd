@@ -10,9 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/btcjson"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
 )
 
 const (
@@ -71,6 +72,9 @@ func main() {
 	// 	os.Exit(1)
 	// }
 
+	//btcwallet.InitBTCWallet("BTCWallet", btcctlHomeDir)
+	btcwallet.InitWalletManager(btcctlHomeDir)
+
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("\n\n\nwait for your input>>")
@@ -94,10 +98,31 @@ func main() {
 			return
 		} else if method == "anchortx" {
 			lockedTTxid := ""
-			if length > 1 {
+			address := ""
+			if length >= 2 {
 				lockedTTxid = words[1]
 			}
-			testAnchorTx(lockedTTxid)
+			if length >= 3 {
+				address = words[2]
+			}
+			testAnchorTx(lockedTTxid, address)
+			continue
+		} else if method == "importwallet" {
+			walletName := ""
+			if length > 1 {
+				walletName = words[1]
+			}
+			testImportWallet(walletName)
+			continue
+		} else if method == "createwallet" {
+			walletName := ""
+			if length > 1 {
+				walletName = words[1]
+			}
+			testCreateWallet(walletName)
+			continue
+		} else if method == "showaddress" {
+			testShowAddress()
 			continue
 		}
 
@@ -183,7 +208,11 @@ func main() {
 
 		// Send the JSON-RPC request to the server using the user-specified
 		// connection configuration.
-		result, err := sendPostRequest(marshalledJSON, cfg)
+		connectRPC := RPC_BTCD
+		if cfg.Wallet {
+			connectRPC = RPC_WALLET
+		}
+		result, err := sendPostRequest(marshalledJSON, cfg, connectRPC)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			//os.Exit(1)

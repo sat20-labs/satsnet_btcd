@@ -7,11 +7,11 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/database"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/database"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 // txoFlags is a bitmask defining additional information and state for a
@@ -49,6 +49,7 @@ type UtxoEntry struct {
 	// lot of these in memory, so a few extra bytes of padding adds up.
 
 	amount      int64
+	satsRanges  []wire.SatsRange
 	pkScript    []byte // The public key script for the output.
 	blockHeight int32  // Height of block containing tx.
 
@@ -113,6 +114,10 @@ func (entry *UtxoEntry) Spend() {
 // Amount returns the amount of the output.
 func (entry *UtxoEntry) Amount() int64 {
 	return entry.amount
+}
+
+func (entry *UtxoEntry) SatsRanges() []wire.SatsRange {
+	return entry.satsRanges
 }
 
 // PkScript returns the public key script for the output.

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/btcsuite/btcd/database"
+	"github.com/sat20-labs/satsnet_btcd/database"
 )
 
 // utxoCache is a cached utxo view in the chainstate of a BlockChain.

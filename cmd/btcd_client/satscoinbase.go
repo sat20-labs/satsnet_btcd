@@ -8,12 +8,13 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/btcjson"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 // CreateCoinbaseTx returns a coinbase transaction paying an appropriate
@@ -45,7 +46,7 @@ func CreateCoinbaseTx(blockHeight int32, miningAddr string, feeAmount int64) *wi
 }
 
 // CreateAnchorTx
-func CreateAnchorTx(txid string, addr string, amount int64) *wire.MsgTx {
+func CreateAnchorTx(txid string, addr string, amount int64, satsRanges []wire.SatsRange) *wire.MsgTx {
 	extraNonce := rand.Uint64()
 	pkScript, err := AddrToPkScript(addr, currentNetwork)
 	anchorScript, err := StandardAnchorScript(txid, pkScript, amount, extraNonce)
@@ -62,10 +63,10 @@ func CreateAnchorTx(txid string, addr string, amount int64) *wire.MsgTx {
 		Sequence:        wire.MaxTxInSequenceNum,
 		SignatureScript: anchorScript,
 	})
-
 	tx.AddTxOut(&wire.TxOut{
-		PkScript: anchorScript,
-		Value:    amount,
+		PkScript:   anchorScript,
+		Value:      amount,
+		SatsRanges: satsRanges,
 	})
 	return tx
 }
@@ -95,17 +96,34 @@ func AddrToPkScript(addr string, netParams *chaincfg.Params) ([]byte, error) {
 	return txscript.PayToAddrScript(address)
 }
 
-func testAnchorTx(lockedTxid string) {
+func testAnchorTx(lockedTxid string, address string) {
 	fmt.Printf("testAnchorTx...\n")
 	TxidDefault := "b274b49e885fdd87ea2870930297d2c6ecee7cc62fe8e67b21b452fb348c441e"
-	address := "tb1prm9fflqhtezag25s06t740e7ca4rydm9x5mucrc3lt6dlkxquyqq02k2cf"
+	//address := "tb1prm9fflqhtezag25s06t740e7ca4rydm9x5mucrc3lt6dlkxquyqq02k2cf"
 	amount := int64(1000000)
+	satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
 
+	walletManager := btcwallet.GetWalletInst()
+	if walletManager == nil {
+		fmt.Printf("GetWalletInst failed.\n")
+		return
+	}
+
+	if address == "" {
+		var err error
+		address, err = walletManager.GetDefaultAddress()
+		if err != nil {
+			fmt.Printf("GetDefaultAddress failed: %v.\n", err)
+			return
+		}
+	}
 	if lockedTxid == "" {
 		lockedTxid = TxidDefault
 	}
 
-	anchorTx := CreateAnchorTx(lockedTxid, address, amount)
+	fmt.Printf("Anchor tx address is : %s.\n", address)
+
+	anchorTx := CreateAnchorTx(lockedTxid, address, amount, satsRanges)
 
 	fmt.Printf("Anchor tx is %v.\n", anchorTx)
 	raw, err := messageToHex(anchorTx)
@@ -156,7 +174,7 @@ func SendRawTransaction(raw string) {
 
 	// Send the JSON-RPC request to the server using the user-specified
 	// connection configuration.
-	result, err := sendPostRequest(marshalledJSON, currentCfg)
+	result, err := sendPostRequest(marshalledJSON, currentCfg, RPC_BTCD)
 	if err != nil {
 		fmt.Printf("sendPostRequest failed: error: %s\n",
 			err)
@@ -184,4 +202,59 @@ func SendRawTransaction(raw string) {
 	} else if strResult != "null" {
 		fmt.Println(strResult)
 	}
+}
+
+func testImportWallet(walletName string) {
+	mnemonic := "mnemonic"
+	// walletManager := btcwallet.GetWalletInst()
+	// if walletManager == nil {
+	// 	fmt.Printf("GetWalletInst failed.\n")
+	// 	return
+	// }
+
+	wallet, err := btcwallet.Import(walletName, mnemonic)
+	if err != nil {
+		fmt.Printf("Import wallet failed: error: %s\n",
+			err)
+		return
+	}
+
+	fmt.Printf("wallet: %v\n", wallet)
+
+	//walletManager.AddBTCWallet(wallet)
+}
+
+func testCreateWallet(walletName string) {
+	// walletManager := btcwallet.GetWalletInst()
+	// if walletManager == nil {
+	// 	fmt.Printf("GetWalletInst failed.\n")
+	// 	return
+	// }
+
+	wallet, err := btcwallet.CreateBTCWallet(walletName)
+	if err != nil {
+		fmt.Printf("Create wallet failed: error: %s\n",
+			err)
+		return
+	}
+
+	fmt.Printf("wallet: %v\n", wallet)
+
+	//walletManager.AddBTCWallet(wallet)
+}
+
+func testShowAddress() {
+	walletManager := btcwallet.GetWalletInst()
+	if walletManager == nil {
+		fmt.Printf("GetWalletInst failed.\n")
+		return
+	}
+	address, err := walletManager.GetDefaultAddress()
+
+	if err != nil {
+		fmt.Printf("GetDefaultAddress failed: error: %s\n",
+			err)
+		return
+	}
+	fmt.Printf("address: %v\n", address)
 }

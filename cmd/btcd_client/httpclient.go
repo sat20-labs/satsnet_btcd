@@ -11,13 +11,13 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/go-socks/socks"
+	"github.com/sat20-labs/satsnet_btcd/btcjson"
 )
 
 // newHTTPClient returns a new HTTP client that is configured according to the
 // proxy and TLS settings in the associated connection configuration.
-func newHTTPClient(cfg *config) (*http.Client, error) {
+func newHTTPClient(cfg *config, connectPRC int) (*http.Client, error) {
 	// Configure proxy if needed.
 	var dial func(network, addr string) (net.Conn, error)
 	if cfg.Proxy != "" {
@@ -37,8 +37,14 @@ func newHTTPClient(cfg *config) (*http.Client, error) {
 
 	// Configure TLS if needed.
 	var tlsConfig *tls.Config
-	if !cfg.NoTLS && cfg.RPCCert != "" {
-		pem, err := os.ReadFile(cfg.RPCCert)
+	RPCCert := ""
+	if connectPRC == RPC_BTCD {
+		RPCCert = cfg.RPCBtcdCert
+	} else if connectPRC == RPC_WALLET {
+		RPCCert = cfg.RPCWalletCert
+	}
+	if !cfg.NoTLS && RPCCert != "" {
+		pem, err := os.ReadFile(RPCCert)
 		if err != nil {
 			return nil, err
 		}
@@ -66,13 +72,18 @@ func newHTTPClient(cfg *config) (*http.Client, error) {
 // to the server described in the passed config struct.  It also attempts to
 // unmarshal the response as a JSON-RPC response and returns either the result
 // field or the error field depending on whether or not there is an error.
-func sendPostRequest(marshalledJSON []byte, cfg *config) ([]byte, error) {
+func sendPostRequest(marshalledJSON []byte, cfg *config, connectRPC int) ([]byte, error) {
 	// Generate a request to the configured RPC server.
 	protocol := "http"
 	if !cfg.NoTLS {
 		protocol = "https"
 	}
-	url := protocol + "://" + cfg.RPCServer
+	toWallet := connectRPC == RPC_WALLET
+	RPCServer, err := normalizeAddress(cfg.RPCServer, currentNetwork, toWallet)
+	if err != nil {
+		return nil, err
+	}
+	url := protocol + "://" + RPCServer
 	bodyReader := bytes.NewReader(marshalledJSON)
 	httpRequest, err := http.NewRequest("POST", url, bodyReader)
 	if err != nil {
@@ -86,7 +97,7 @@ func sendPostRequest(marshalledJSON []byte, cfg *config) ([]byte, error) {
 
 	// Create the new HTTP client that is configured according to the user-
 	// specified options and submit the request.
-	httpClient, err := newHTTPClient(cfg)
+	httpClient, err := newHTTPClient(cfg, connectRPC)
 	if err != nil {
 		return nil, err
 	}

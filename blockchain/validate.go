@@ -12,12 +12,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/btcsuite/btcd/anchortx"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/anchortx"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (
@@ -955,11 +955,11 @@ func (b *BlockChain) checkBIP0030(node *blockNode, block *btcutil.Block, view *U
 //
 // NOTE: The transaction MUST have already been sanity checked with the
 // CheckTransactionSanity function prior to calling this function.
-func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpoint, chainParams *chaincfg.Params) (int64, error) {
+func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpoint, chainParams *chaincfg.Params) (int64, []wire.SatsRange, error) {
 	// Coinbase transactions have no inputs.
 	msgTx := tx.MsgTx()
 	if IsCoinBaseTx(msgTx) {
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	// mapping transactions have anchor inputs.
@@ -968,13 +968,14 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		err := anchortx.CheckAnchorTxValid(msgTx)
 		if err != nil {
 			str := fmt.Sprintf("invalid anchor tx with %s", tx.Hash())
-			return 0, ruleError(ErrBadTxInput, str)
+			return 0, nil, ruleError(ErrBadTxInput, str)
 
 		}
-		return 0, nil
+		return 0, nil, nil
 	}
 
 	var totalSatoshiIn int64
+	var totalInSatsRange []wire.SatsRange
 	for txInIndex, txIn := range msgTx.TxIn {
 		// Ensure the referenced input transaction is available.
 		utxo := utxoView.LookupEntry(txIn.PreviousOutPoint)
@@ -983,7 +984,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 				"transaction %s:%d either does not exist or "+
 				"has already been spent", txIn.PreviousOutPoint,
 				tx.Hash(), txInIndex)
-			return 0, ruleError(ErrMissingTxOut, str)
+			return 0, nil, ruleError(ErrMissingTxOut, str)
 		}
 
 		// Ensure the transaction is not spending coins which have not
@@ -999,7 +1000,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 					"of %v blocks", txIn.PreviousOutPoint,
 					originHeight, txHeight,
 					coinbaseMaturity)
-				return 0, ruleError(ErrImmatureSpend, str)
+				return 0, nil, ruleError(ErrImmatureSpend, str)
 			}
 		}
 
@@ -1010,17 +1011,18 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		// bitcoin is a quantity of satoshi as defined by the
 		// SatoshiPerBitcoin constant.
 		originTxSatoshi := utxo.Amount()
+		utxoSatsRanges := utxo.SatsRanges()
 		if originTxSatoshi < 0 {
 			str := fmt.Sprintf("transaction output has negative "+
 				"value of %v", btcutil.Amount(originTxSatoshi))
-			return 0, ruleError(ErrBadTxOutValue, str)
+			return 0, nil, ruleError(ErrBadTxOutValue, str)
 		}
 		if originTxSatoshi > btcutil.MaxSatoshi {
 			str := fmt.Sprintf("transaction output value is "+
 				"higher than max allowed value: %v > %v ",
 				btcutil.Amount(originTxSatoshi),
 				btcutil.MaxSatoshi)
-			return 0, ruleError(ErrBadTxOutValue, str)
+			return 0, nil, ruleError(ErrBadTxOutValue, str)
 		}
 
 		// The total of all outputs must not be more than the max
@@ -1028,13 +1030,14 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		// the accumulator so check for overflow.
 		lastSatoshiIn := totalSatoshiIn
 		totalSatoshiIn += originTxSatoshi
+		totalInSatsRange = append(totalInSatsRange, utxoSatsRanges...)
 		if totalSatoshiIn < lastSatoshiIn ||
 			totalSatoshiIn > btcutil.MaxSatoshi {
 			str := fmt.Sprintf("total value of all transaction "+
 				"inputs is %v which is higher than max "+
 				"allowed value of %v", totalSatoshiIn,
 				btcutil.MaxSatoshi)
-			return 0, ruleError(ErrBadTxOutValue, str)
+			return 0, nil, ruleError(ErrBadTxOutValue, str)
 		}
 	}
 
@@ -1042,8 +1045,10 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	// to ignore overflow and out of range errors here because those error
 	// conditions would have already been caught by checkTransactionSanity.
 	var totalSatoshiOut int64
+	totalOutSatsRange := make([]wire.SatsRange, 0)
 	for _, txOut := range tx.MsgTx().TxOut {
 		totalSatoshiOut += txOut.Value
+		totalInSatsRange = append(totalInSatsRange, txOut.SatsRanges...)
 	}
 
 	// Ensure the transaction does not spend more than its inputs.
@@ -1051,14 +1056,41 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		str := fmt.Sprintf("total value of all transaction inputs for "+
 			"transaction %v is %v which is less than the amount "+
 			"spent of %v", tx.Hash(), totalSatoshiIn, totalSatoshiOut)
-		return 0, ruleError(ErrSpendTooHigh, str)
+		return 0, nil, ruleError(ErrSpendTooHigh, str)
 	}
 
 	// NOTE: bitcoind checks if the transaction fees are < 0 here, but that
 	// is an impossible condition because of the check above that ensures
 	// the inputs are >= the outputs.
 	txFeeInSatoshi := totalSatoshiIn - totalSatoshiOut
-	return txFeeInSatoshi, nil
+	feeRanges := RangesRemind(totalInSatsRange, totalOutSatsRange)
+	rangeSize := RangesSize(feeRanges)
+	if txFeeInSatoshi != rangeSize {
+		str := fmt.Sprintf("total fee is not match with fee ranges "+
+			"transaction %v fee is %v , the fee ranges is %v", tx.Hash(), txFeeInSatoshi, feeRanges)
+		return 0, nil, ruleError(ErrBadFees, str)
+	}
+	return txFeeInSatoshi, feeRanges, nil
+}
+
+func RangesRemind(totalInSatsRange []wire.SatsRange, totalOutSatsRange []wire.SatsRange) []wire.SatsRange {
+	var feeRanges []wire.SatsRange
+	for i := range totalInSatsRange {
+		feeRanges = append(feeRanges, wire.SatsRange{
+			Start: totalInSatsRange[i].Start - totalOutSatsRange[i].Start,
+			Size:  totalInSatsRange[i].Size - totalOutSatsRange[i].Size,
+		})
+	}
+	return feeRanges
+}
+
+func RangesSize(feeRanges []wire.SatsRange) int64 {
+	rangeSize := int64(0)
+	for i := range feeRanges {
+		rangeSize += int64(feeRanges[i].Size)
+	}
+
+	return rangeSize
 }
 
 // checkConnectBlock performs several checks to confirm connecting the passed
@@ -1193,8 +1225,9 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *btcutil.Block, vi
 	// against all the inputs when the signature operations are out of
 	// bounds.
 	var totalFees int64
+	totalFeeRanges := make([]wire.SatsRange, 0)
 	for _, tx := range transactions {
-		txFee, err := CheckTransactionInputs(tx, node.height, view,
+		txFee, feeRanges, err := CheckTransactionInputs(tx, node.height, view,
 			b.chainParams)
 		if err != nil {
 			return err
@@ -1204,6 +1237,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *btcutil.Block, vi
 		// accumulator.
 		lastTotalFees := totalFees
 		totalFees += txFee
+		totalFeeRanges = append(totalFeeRanges, feeRanges...)
 		if totalFees < lastTotalFees {
 			return ruleError(ErrBadFees, "total fees for block "+
 				"overflows accumulator")

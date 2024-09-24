@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/sat20-labs/satsnet_btcd/rpcclient"
 )
 
 func main() {

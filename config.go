@@ -21,18 +21,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/connmgr"
-	"github.com/btcsuite/btcd/database"
-	_ "github.com/btcsuite/btcd/database/ffldb"
-	"github.com/btcsuite/btcd/mempool"
-	"github.com/btcsuite/btcd/peer"
-	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/go-socks/socks"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/sat20-labs/satsnet_btcd/blockchain"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/connmgr"
+	"github.com/sat20-labs/satsnet_btcd/database"
+	_ "github.com/sat20-labs/satsnet_btcd/database/ffldb"
+	"github.com/sat20-labs/satsnet_btcd/mempool"
+	"github.com/sat20-labs/satsnet_btcd/peer"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (
@@ -442,13 +442,43 @@ func loadConfig() (*config, []string, error) {
 	if homeDir == "" {
 		homeDir = defaultHomeDir
 	}
+	fmt.Println("Home directory is ", homeDir)
+	// if !filepath.IsAbs(homeDir) {
+	// 	err := fmt.Errorf("homeDir %s is not an absolute path", homeDir)
+	// 	fmt.Fprintln(os.Stderr, err)
+	// 	return nil, nil, err
+	// }
 
-	homeBtcdDir = filepath.Join(homeDir, "btcd")
+	fmt.Println("***********homeDir*********", homeDir)
+	fmt.Println(homeDir)
+
+	homeDir = "/data/satsnet/satsnet_btcd/btcddata"
+
+	homeBtcdDir := filepath.Join(homeDir, "btcd")
+	fmt.Println("*************homeBtcdDir is **********", homeBtcdDir)
+	//homeBtcdDir = homeBtcdDir1
+	fmt.Println(homeBtcdDir)
+	fmt.Println("****************************")
+	fmt.Println(homeBtcdDir)
+
+	//homeBtcdDir = "/data/satsnet/satsnet_btcd/btcddata/btcd"
+	newHomeBtcdDir := filepath.Clean(homeBtcdDir)
+	fmt.Println("newHomeBtcdDir is ", newHomeBtcdDir)
+
 	configFile = filepath.Join(homeBtcdDir, defaultConfigFilename)
+	fmt.Println("configFile is ", configFile)
+
 	dataDir = filepath.Join(homeBtcdDir, defaultDataDirname)
+	fmt.Println("dataDir is ", dataDir)
+
 	rpcKeyFile = filepath.Join(homeBtcdDir, "rpc.key")
+	fmt.Println("rpcKeyFile is ", rpcKeyFile)
+
 	rpcCertFile = filepath.Join(homeBtcdDir, "rpc.cert")
+	fmt.Println("rpcCertFile is ", rpcCertFile)
+
 	logDir = filepath.Join(homeBtcdDir, defaultLogDirname)
+	fmt.Println("logDir is ", logDir)
 
 	cfg := config{
 		ConfigFile:           configFile,

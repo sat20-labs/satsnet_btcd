@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/btcsuite/btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/txscript"
 )
 
 // TestCheckBlockScripts ensures that validating the all of the scripts in a

@@ -1,6 +1,6 @@
 # Configuration
 
-btcd has a number of [configuration](https://pkg.go.dev/github.com/btcsuite/btcd)
+btcd has a number of [configuration](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd)
 options, which can be viewed by running: `$ btcd --help`.
 
 ## Peer server listen interface

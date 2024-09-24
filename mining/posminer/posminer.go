@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcd/blockchain"
-	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcd/mining"
-	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/blockchain"
+	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/mining"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (
@@ -214,6 +214,7 @@ func (m *POSMiner) submitBlock(block *btcutil.Block) bool {
 func (m *POSMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
 	ticker *time.Ticker, quit chan struct{}) bool {
 
+	log.Debugf("solveBlock ...")
 	// Choose a random extra nonce offset for this block template and
 	// worker.
 	enOffset, err := wire.RandomUint64()
@@ -295,6 +296,7 @@ func (m *POSMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
 	//}
 	//}
 
+	log.Debugf("solveBlock done.")
 	return true
 }
 
@@ -319,7 +321,7 @@ out:
 		case <-quit:
 			break out
 		case <-ticker.C:
-			log.Debugf("Timeup for generate new Block...")
+			log.Debugf("Timeup for generate new Block ......")
 			// Wait until there is a connection to at least one other peer
 			// since there is no way to relay a found block or receive
 			// transactions to work on when there are no connected peers.
@@ -334,10 +336,12 @@ out:
 			// this would otherwise end up building a new block template on
 			// a block that is in the process of becoming stale.
 			m.submitBlockLock.Lock()
+			log.Debugf("Lock block ...")
 			curHeight := m.g.BestSnapshot().Height
 			if curHeight != 0 && !m.cfg.IsCurrent() {
 				m.submitBlockLock.Unlock()
 				time.Sleep(time.Second)
+				log.Debugf("curHeight = %d and not current.", curHeight)
 				continue
 			}
 
@@ -348,6 +352,7 @@ out:
 			// Create a new block template using the available transactions
 			// in the memory pool as a source of transactions to potentially
 			// include in the block.
+			log.Debugf("NewBlockTemplate...")
 			template, err := m.g.NewBlockTemplate(payToAddr)
 			m.submitBlockLock.Unlock()
 			if err != nil {
@@ -357,11 +362,14 @@ out:
 				continue
 			}
 
+			log.Debugf("NewBlockTemplate done.")
+
 			// Attempt to solve the block.  The function will exit early
 			// with false when conditions that trigger a stale block, so
 			// a new block template can be generated.  When the return is
 			// true a solution was found, so submit the solved block.
 			if m.solveBlock(template.Block, curHeight+1, ticker, quit) {
+				log.Debugf("solveBlock ...")
 				block := btcutil.NewBlock(template.Block)
 				m.submitBlock(block)
 			}
