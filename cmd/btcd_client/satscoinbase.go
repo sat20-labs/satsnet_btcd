@@ -1,14 +1,9 @@
 package main
 
 import (
-	"bytes"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/rand"
-	"strings"
 
-	"github.com/sat20-labs/satsnet_btcd/btcjson"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
@@ -64,7 +59,7 @@ func CreateAnchorTx(txid string, addr string, amount int64, satsRanges []wire.Sa
 		SignatureScript: anchorScript,
 	})
 	tx.AddTxOut(&wire.TxOut{
-		PkScript:   anchorScript,
+		PkScript:   pkScript, // output to specified address
 		Value:      amount,
 		SatsRanges: satsRanges,
 	})
@@ -125,6 +120,8 @@ func testAnchorTx(lockedTxid string, address string) {
 
 	anchorTx := CreateAnchorTx(lockedTxid, address, amount, satsRanges)
 
+	btcwallet.LogMsgTx(anchorTx)
+
 	fmt.Printf("Anchor tx is %v.\n", anchorTx)
 	raw, err := messageToHex(anchorTx)
 	if err != nil {
@@ -136,125 +133,4 @@ func testAnchorTx(lockedTxid string, address string) {
 	SendRawTransaction(raw)
 
 	fmt.Printf("testAnchorTx done.\n")
-}
-
-// messageToHex serializes a message to the wire protocol encoding using the
-// latest protocol version and returns a hex-encoded string of the result.
-func messageToHex(msg wire.Message) (string, error) {
-	var buf bytes.Buffer
-	maxProtocolVersion := uint32(70002)
-	if err := msg.BtcEncode(&buf, maxProtocolVersion, wire.WitnessEncoding); err != nil {
-		fmt.Printf("Failed to encode msg of type %T", msg)
-		return "", err
-	}
-
-	return hex.EncodeToString(buf.Bytes()), nil
-}
-
-func SendRawTransaction(raw string) {
-	// Attempt to create the appropriate command using the arguments
-	// provided by the user.
-	cmd, err := btcjson.NewCmd("sendrawtransaction", raw, &btcjson.AllowHighFeesOrMaxFeeRate{
-		Value: btcjson.Bool(false),
-	})
-	if err != nil {
-		fmt.Printf("Create cmd failed: error: %s\n",
-			err)
-		return
-	}
-
-	// Marshal the command into a JSON-RPC byte slice in preparation for
-	// sending it to the RPC server.
-	marshalledJSON, err := btcjson.MarshalCmd(btcjson.RpcVersion1, 1, cmd)
-	if err != nil {
-		fmt.Printf("MarshalCmd failed: error: %s\n",
-			err)
-		return
-	}
-
-	// Send the JSON-RPC request to the server using the user-specified
-	// connection configuration.
-	result, err := sendPostRequest(marshalledJSON, currentCfg, RPC_BTCD)
-	if err != nil {
-		fmt.Printf("sendPostRequest failed: error: %s\n",
-			err)
-		return
-	}
-
-	// Choose how to display the result based on its type.
-	strResult := string(result)
-	if strings.HasPrefix(strResult, "{") || strings.HasPrefix(strResult, "[") {
-		var dst bytes.Buffer
-		if err := json.Indent(&dst, result, "", "  "); err != nil {
-			fmt.Printf("Indent failed: error: %s\n", err)
-			return
-		}
-		fmt.Println(dst.String())
-
-	} else if strings.HasPrefix(strResult, `"`) {
-		var str string
-		if err := json.Unmarshal(result, &str); err != nil {
-			fmt.Printf("Unmarshal result failed: error: %s\n", err)
-			return
-		}
-		fmt.Println(str)
-
-	} else if strResult != "null" {
-		fmt.Println(strResult)
-	}
-}
-
-func testImportWallet(walletName string) {
-	mnemonic := "mnemonic"
-	// walletManager := btcwallet.GetWalletInst()
-	// if walletManager == nil {
-	// 	fmt.Printf("GetWalletInst failed.\n")
-	// 	return
-	// }
-
-	wallet, err := btcwallet.Import(walletName, mnemonic)
-	if err != nil {
-		fmt.Printf("Import wallet failed: error: %s\n",
-			err)
-		return
-	}
-
-	fmt.Printf("wallet: %v\n", wallet)
-
-	//walletManager.AddBTCWallet(wallet)
-}
-
-func testCreateWallet(walletName string) {
-	// walletManager := btcwallet.GetWalletInst()
-	// if walletManager == nil {
-	// 	fmt.Printf("GetWalletInst failed.\n")
-	// 	return
-	// }
-
-	wallet, err := btcwallet.CreateBTCWallet(walletName)
-	if err != nil {
-		fmt.Printf("Create wallet failed: error: %s\n",
-			err)
-		return
-	}
-
-	fmt.Printf("wallet: %v\n", wallet)
-
-	//walletManager.AddBTCWallet(wallet)
-}
-
-func testShowAddress() {
-	walletManager := btcwallet.GetWalletInst()
-	if walletManager == nil {
-		fmt.Printf("GetWalletInst failed.\n")
-		return
-	}
-	address, err := walletManager.GetDefaultAddress()
-
-	if err != nil {
-		fmt.Printf("GetDefaultAddress failed: error: %s\n",
-			err)
-		return
-	}
-	fmt.Printf("address: %v\n", address)
 }

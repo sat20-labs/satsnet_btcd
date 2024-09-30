@@ -547,12 +547,12 @@ func decompressTxOutAmount(amount uint64) uint64 {
 
 // compressedTxOutSize returns the number of bytes the passed transaction output
 // fields would take when encoded with the format described above.
-func compressedTxOutSize(amount uint64, satsRange []wire.SatsRange, pkScript []byte) int {
+func compressedTxOutSize(amount uint64, satsRanges []wire.SatsRange, pkScript []byte) int {
 	amountSize := serializeSizeVLQ(compressTxOutAmount(amount))
-	rangeSize := serializeSizeVLQ(uint64(len(satsRange)))
-	for i := range satsRange {
-		rangeSize += serializeSizeVLQ(uint64(satsRange[i].Start))
-		rangeSize += serializeSizeVLQ(uint64(satsRange[i].Size))
+	rangeSize := serializeSizeVLQ(uint64(len(satsRanges)))
+	for _, satsRange := range satsRanges {
+		rangeSize += serializeSizeVLQ(uint64(satsRange.Start))
+		rangeSize += serializeSizeVLQ(uint64(satsRange.Size))
 	}
 	pkScriptSize := compressedScriptSize(pkScript)
 
@@ -564,12 +564,12 @@ func compressedTxOutSize(amount uint64, satsRange []wire.SatsRange, pkScript []b
 // passed target byte slice with the format described above.  The target byte
 // slice must be at least large enough to handle the number of bytes returned by
 // the compressedTxOutSize function or it will panic.
-func putCompressedTxOut(target []byte, amount uint64, satsRange []wire.SatsRange, pkScript []byte) int {
+func putCompressedTxOut(target []byte, amount uint64, satsRanges []wire.SatsRange, pkScript []byte) int {
 	offset := putVLQ(target, compressTxOutAmount(amount))
-	offset += putVLQ(target[offset:], uint64(len(satsRange)))
-	for i := range satsRange {
-		offset += putVLQ(target[offset:], uint64(satsRange[i].Start))
-		offset += putVLQ(target[offset:], uint64(satsRange[i].Size))
+	offset += putVLQ(target[offset:], uint64(len(satsRanges)))
+	for _, satsRange := range satsRanges {
+		offset += putVLQ(target[offset:], uint64(satsRange.Start))
+		offset += putVLQ(target[offset:], uint64(satsRange.Size))
 	}
 	offset += putCompressedScript(target[offset:], pkScript)
 	return offset

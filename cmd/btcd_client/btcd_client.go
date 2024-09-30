@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/sat20-labs/satsnet_btcd/btcjson"
@@ -74,6 +75,15 @@ func main() {
 
 	//btcwallet.InitBTCWallet("BTCWallet", btcctlHomeDir)
 	btcwallet.InitWalletManager(btcctlHomeDir)
+	connectRPC := RPC_BTCD
+	if cfg.Wallet {
+		connectRPC = RPC_WALLET
+	}
+	if connectRPC == RPC_WALLET {
+		fmt.Println("Default RPC is btcwallet, call \"setrpc btcd\" to change rpc to btcd.")
+	} else {
+		fmt.Println("Default RPC is btcd, call \"setrpc wallet\" to change rpc to btcwallet.")
+	}
 
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -123,6 +133,36 @@ func main() {
 			continue
 		} else if method == "showaddress" {
 			testShowAddress()
+			continue
+		} else if method == "transfer" {
+			if length < 3 {
+				fmt.Printf("transfer need address and amount\n")
+				continue
+			}
+			address := words[1]
+			amount, err := strconv.ParseInt(words[2], 10, 64)
+			if err != nil {
+				fmt.Printf("transfer need address and amount\n")
+				continue
+			}
+			testTransfer(address, amount)
+			continue
+		} else if method == "setrpc" {
+			if length < 2 {
+				fmt.Printf("setrpc need rpc name: btcd or wallet\n")
+				continue
+			}
+			rpcname := words[1]
+			if rpcname == "btcd" {
+				connectRPC = RPC_BTCD
+				fmt.Println("setrpc to btcd success.")
+			} else if rpcname == "wallet" {
+				connectRPC = RPC_WALLET
+				fmt.Println("setrpc to btcwallet success.")
+			} else {
+				fmt.Printf("setrpc need rpc name: btcd or wallet\n")
+				continue
+			}
 			continue
 		}
 
@@ -208,10 +248,6 @@ func main() {
 
 		// Send the JSON-RPC request to the server using the user-specified
 		// connection configuration.
-		connectRPC := RPC_BTCD
-		if cfg.Wallet {
-			connectRPC = RPC_WALLET
-		}
 		result, err := sendPostRequest(marshalledJSON, cfg, connectRPC)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)

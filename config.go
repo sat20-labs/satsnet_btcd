@@ -442,28 +442,28 @@ func loadConfig() (*config, []string, error) {
 	if homeDir == "" {
 		homeDir = defaultHomeDir
 	}
-	fmt.Println("Home directory is ", homeDir)
+	fmt.Println("Satsnet directory is ", homeDir)
 	// if !filepath.IsAbs(homeDir) {
 	// 	err := fmt.Errorf("homeDir %s is not an absolute path", homeDir)
 	// 	fmt.Fprintln(os.Stderr, err)
 	// 	return nil, nil, err
 	// }
 
-	fmt.Println("***********homeDir*********", homeDir)
-	fmt.Println(homeDir)
+	//fmt.Println("***********homeDir*********", homeDir)
+	//fmt.Println(homeDir)
 
-	homeDir = "/data/satsnet/satsnet_btcd/btcddata"
+	//homeDir = "/data/satsnet/satsnet_btcd/btcddata"
 
 	homeBtcdDir := filepath.Join(homeDir, "btcd")
-	fmt.Println("*************homeBtcdDir is **********", homeBtcdDir)
+	fmt.Println("homeBtcdDir is ", homeBtcdDir)
 	//homeBtcdDir = homeBtcdDir1
-	fmt.Println(homeBtcdDir)
-	fmt.Println("****************************")
-	fmt.Println(homeBtcdDir)
+	//fmt.Println(homeBtcdDir)
+	//fmt.Println("****************************")
+	//fmt.Println(homeBtcdDir)
 
 	//homeBtcdDir = "/data/satsnet/satsnet_btcd/btcddata/btcd"
-	newHomeBtcdDir := filepath.Clean(homeBtcdDir)
-	fmt.Println("newHomeBtcdDir is ", newHomeBtcdDir)
+	//newHomeBtcdDir := filepath.Clean(homeBtcdDir)
+	//fmt.Println("newHomeBtcdDir is ", newHomeBtcdDir)
 
 	configFile = filepath.Join(homeBtcdDir, defaultConfigFilename)
 	fmt.Println("configFile is ", configFile)

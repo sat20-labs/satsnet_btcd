@@ -975,7 +975,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	}
 
 	var totalSatoshiIn int64
-	var totalInSatsRange []wire.SatsRange
+	var totalInSatsRange wire.TxRanges
 	for txInIndex, txIn := range msgTx.TxIn {
 		// Ensure the referenced input transaction is available.
 		utxo := utxoView.LookupEntry(txIn.PreviousOutPoint)
@@ -1030,7 +1030,8 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		// the accumulator so check for overflow.
 		lastSatoshiIn := totalSatoshiIn
 		totalSatoshiIn += originTxSatoshi
-		totalInSatsRange = append(totalInSatsRange, utxoSatsRanges...)
+		//totalInSatsRange = append(totalInSatsRange, utxoSatsRanges...)
+		totalInSatsRange = wire.TxRangesAppend(totalInSatsRange, utxoSatsRanges)
 		if totalSatoshiIn < lastSatoshiIn ||
 			totalSatoshiIn > btcutil.MaxSatoshi {
 			str := fmt.Sprintf("total value of all transaction "+
@@ -1045,10 +1046,24 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	// to ignore overflow and out of range errors here because those error
 	// conditions would have already been caught by checkTransactionSanity.
 	var totalSatoshiOut int64
-	totalOutSatsRange := make([]wire.SatsRange, 0)
-	for _, txOut := range tx.MsgTx().TxOut {
+	//totalOutSatsRange := make([]wire.SatsRange, 0)
+	for index, txOut := range tx.MsgTx().TxOut {
+		// Check output sats range
+		currnetOutputSatsRange, err := totalInSatsRange.Pickup(
+			totalSatoshiOut, txOut.Value)
+
+		if err != nil {
+			str := fmt.Sprintf("Pickup fee ranges error: %v", err)
+			return 0, nil, ruleError(ErrBadFees, str)
+		}
+
+		if currnetOutputSatsRange.EqualSatRanges(txOut.SatsRanges) == false {
+			str := fmt.Sprintf("invalid TxOut sats range with index %d", index)
+			return 0, nil, ruleError(ErrBadFees, str)
+		}
+
 		totalSatoshiOut += txOut.Value
-		totalInSatsRange = append(totalInSatsRange, txOut.SatsRanges...)
+		//totalInSatsRange = append(totalInSatsRange, txOut.SatsRanges...)
 	}
 
 	// Ensure the transaction does not spend more than its inputs.
@@ -1063,7 +1078,12 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	// is an impossible condition because of the check above that ensures
 	// the inputs are >= the outputs.
 	txFeeInSatoshi := totalSatoshiIn - totalSatoshiOut
-	feeRanges := RangesRemind(totalInSatsRange, totalOutSatsRange)
+	//feeRanges := RangesRemind(totalInSatsRange, totalOutSatsRange)
+	feeRanges, err := totalInSatsRange.Pickup(totalSatoshiOut, txFeeInSatoshi)
+	if err != nil {
+		str := fmt.Sprintf("Pickup fee ranges error: %v", err)
+		return 0, nil, ruleError(ErrBadFees, str)
+	}
 	rangeSize := RangesSize(feeRanges)
 	if txFeeInSatoshi != rangeSize {
 		str := fmt.Sprintf("total fee is not match with fee ranges "+
@@ -1073,16 +1093,16 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	return txFeeInSatoshi, feeRanges, nil
 }
 
-func RangesRemind(totalInSatsRange []wire.SatsRange, totalOutSatsRange []wire.SatsRange) []wire.SatsRange {
-	var feeRanges []wire.SatsRange
-	for i := range totalInSatsRange {
-		feeRanges = append(feeRanges, wire.SatsRange{
-			Start: totalInSatsRange[i].Start - totalOutSatsRange[i].Start,
-			Size:  totalInSatsRange[i].Size - totalOutSatsRange[i].Size,
-		})
-	}
-	return feeRanges
-}
+// func RangesRemind(totalInSatsRange []wire.SatsRange, totalOutSatsRange []wire.SatsRange) []wire.SatsRange {
+// 	var feeRanges []wire.SatsRange
+// 	for i := range totalInSatsRange {
+// 		feeRanges = append(feeRanges, wire.SatsRange{
+// 			Start: totalInSatsRange[i].Start - totalOutSatsRange[i].Start,
+// 			Size:  totalInSatsRange[i].Size - totalOutSatsRange[i].Size,
+// 		})
+// 	}
+// 	return feeRanges
+// }
 
 func RangesSize(feeRanges []wire.SatsRange) int64 {
 	rangeSize := int64(0)

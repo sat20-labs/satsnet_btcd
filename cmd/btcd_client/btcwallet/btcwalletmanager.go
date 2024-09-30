@@ -361,6 +361,27 @@ func (walletMgr *BTCWalletManager) GetDefaultAddress() (string, error) {
 
 func GetBTCBalance(address string) (*big.Float, *big.Float, error) {
 	fmt.Printf("GetBTCBalance %s ...\n", address)
+
+	//fmt.Println("GetBTCBalance response : %+v", resAddress)
+	//var amount btcutil.Amount
+	amountTotal := btcutil.Amount(1000000)
+	amountSpent := btcutil.Amount(0)
+
+	amountTotal_mempool := btcutil.Amount(0)
+	amountSpent_mempool := btcutil.Amount(0)
+
+	amount := amountTotal - amountSpent
+	amount_mempool := amountTotal_mempool - amountSpent_mempool
+
+	result := big.NewFloat(amount.ToUnit(btcutil.AmountBTC))
+	result_mempool := big.NewFloat(amount_mempool.ToUnit(btcutil.AmountBTC))
+
+	fmt.Printf("Address %s Balance: chain =%s, mempool =%s\n", address, result.String(), result_mempool.String())
+	//result := big.NewFloat(resAddress.ChainStats.Funded_TXO_Sum)
+	return result, result_mempool, nil
+}
+func GetBTCBalance1(address string) (*big.Float, *big.Float, error) {
+	fmt.Printf("GetBTCBalance %s ...\n", address)
 	var host string
 	//if defines.RUNTIME_ENVIRONMENT == defines.ENVIRONMENT_TEST {
 	//	host = HOST_BTCCHAIN_TEST
@@ -403,6 +424,7 @@ func GetBTCBalance(address string) (*big.Float, *big.Float, error) {
 	//result := big.NewFloat(resAddress.ChainStats.Funded_TXO_Sum)
 	return result, result_mempool, nil
 }
+
 func GetBTCUtoxs(address string) ([]*BTCUtxo, error) {
 	utxomap, err := getBTCUtoxs(address)
 	if err != nil {
@@ -424,7 +446,7 @@ func GetBTCUtoxs(address string) ([]*BTCUtxo, error) {
 	return utxoList, nil
 }
 
-func getBTCUtoxs(address string) (map[wire.OutPoint]*utxo, error) {
+func getBTCUtoxs1(address string) (map[wire.OutPoint]*utxo, error) {
 	fmt.Printf("GetBTCUtoxs %s ...\n", address)
 	var host string
 	//if defines.RUNTIME_ENVIRONMENT == defines.ENVIRONMENT_TEST {
@@ -493,6 +515,43 @@ func getBTCUtoxs(address string) (map[wire.OutPoint]*utxo, error) {
 		//fmt.Println("GetBTCUtoxs op: %+v", op)
 		//fmt.Println("GetBTCUtoxs utxo: %+v", utxo)
 	}
+
+	//var amount btcutil.Amount
+	//amount := btcutil.Amount(resAddress.ChainStats.Funded_TXO_Sum)
+
+	//result := big.NewFloat(amount.ToUnit(btcutil.AmountBTC))
+	return utxos, nil
+}
+
+func getBTCUtoxs(address string) (map[wire.OutPoint]*utxo, error) {
+	fmt.Printf("GetBTCUtoxs %s ...\n", address)
+	utxos := make(map[wire.OutPoint]*utxo)
+	a, err := btcutil.DecodeAddress(address, NetParams)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+
+	selfAddrScript, err := txscript.PayToAddrScript(a)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	op := &wire.OutPoint{}
+	Hash, err := chainhash.NewHashFromStr("a462c615740acd8aa3f01b52de3d4df4be5e9565e048e156e1de1e61727a2557")
+	if err != nil {
+		fmt.Printf("GetBTCUtoxs: Read response failed: %v\n", err)
+		return nil, err
+	}
+	op.Hash = *Hash
+	op.Index = 0
+	utxo := &utxo{
+		value:      1000000,
+		keyIndex:   0,
+		pkScript:   selfAddrScript,
+		satsRanges: []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}},
+	}
+	utxos[*op] = utxo
 
 	//var amount btcutil.Amount
 	//amount := btcutil.Amount(resAddress.ChainStats.Funded_TXO_Sum)
@@ -726,6 +785,11 @@ func AddrToPkScript(addr string) ([]byte, error) {
 func PkScriptToAddr(pkScript []byte) (string, error) {
 	_, addrs, _, err := txscript.ExtractPkScriptAddrs(pkScript, NetParams)
 	if err != nil {
+		return "", err
+	}
+
+	if len(addrs) == 0 {
+		err := fmt.Errorf("failed to get addr with pkscript[%v]", pkScript)
 		return "", err
 	}
 

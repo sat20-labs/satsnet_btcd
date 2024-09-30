@@ -1354,9 +1354,10 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 	txHash := tx.Hash()
 
 	// Check for segwit activeness.
-	if err := mp.validateSegWitDeployment(tx); err != nil {
-		return nil, err
-	}
+	// Not Check for segwit, it should be activited by default
+	// if err := mp.validateSegWitDeployment(tx); err != nil {
+	// 	return nil, err
+	// }
 
 	// Don't accept the transaction if it already exists in the pool. This
 	// applies to orphan transactions as well when the reject duplicate

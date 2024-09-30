@@ -349,6 +349,9 @@ func (s *utxoCache) addTxOut(outpoint wire.OutPoint, txOut *wire.TxOut, isCoinBa
 	entry := new(UtxoEntry)
 	entry.amount = txOut.Value
 
+	// Add the sats range to the entry.
+	entry.satsRanges = wire.TxRangesAppend(entry.satsRanges, txOut.SatsRanges)
+
 	// Deep copy the script when the script in the entry differs from the one in
 	// the txout.  This is required since the txout script is a subslice of the
 	// overall contiguous buffer that the msg tx houses for all scripts within
@@ -735,6 +738,7 @@ func (b *BlockChain) InitConsistentState(tip *blockNode, interrupt <-chan struct
 		}
 	}
 	log.Debug("UTXO state reconstruction done")
+	b.ShowAllUtxo()
 
 	// Set the last flush hash as it's the default value of 0s.
 	s.lastFlushHash = tip.hash

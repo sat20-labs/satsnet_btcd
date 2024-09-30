@@ -78,7 +78,13 @@ func sendPostRequest(marshalledJSON []byte, cfg *config, connectRPC int) ([]byte
 	if !cfg.NoTLS {
 		protocol = "https"
 	}
-	toWallet := connectRPC == RPC_WALLET
+	toWallet := false
+	if connectRPC == RPC_WALLET {
+		toWallet = true
+		fmt.Println("Will send command to btcwallet.")
+	} else {
+		fmt.Println("Will send command to btcd.")
+	}
 	RPCServer, err := normalizeAddress(cfg.RPCServer, currentNetwork, toWallet)
 	if err != nil {
 		return nil, err

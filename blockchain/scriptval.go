@@ -74,6 +74,8 @@ out:
 			witness := txIn.Witness
 			pkScript := utxo.PkScript()
 			inputAmount := utxo.Amount()
+			fmt.Printf("txin pkscript: %x \n", pkScript)
+			fmt.Printf("txin amount: %d \n", inputAmount)
 			vm, err := txscript.NewEngine(
 				pkScript, txVI.tx.MsgTx(), txVI.txInIndex,
 				v.flags, v.sigCache, txVI.sigHashes,

@@ -49,7 +49,7 @@ type UtxoEntry struct {
 	// lot of these in memory, so a few extra bytes of padding adds up.
 
 	amount      int64
-	satsRanges  []wire.SatsRange
+	satsRanges  wire.TxRanges
 	pkScript    []byte // The public key script for the output.
 	blockHeight int32  // Height of block containing tx.
 
@@ -116,7 +116,7 @@ func (entry *UtxoEntry) Amount() int64 {
 	return entry.amount
 }
 
-func (entry *UtxoEntry) SatsRanges() []wire.SatsRange {
+func (entry *UtxoEntry) SatsRanges() wire.TxRanges {
 	return entry.satsRanges
 }
 
@@ -136,6 +136,7 @@ func (entry *UtxoEntry) Clone() *UtxoEntry {
 		pkScript:    entry.pkScript,
 		blockHeight: entry.blockHeight,
 		packedFlags: entry.packedFlags,
+		satsRanges:  entry.satsRanges,
 	}
 }
 

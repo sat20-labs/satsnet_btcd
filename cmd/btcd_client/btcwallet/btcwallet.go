@@ -16,6 +16,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/btcec/schnorr"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/btcutil/hdkeychain"
+	"github.com/sat20-labs/satsnet_btcd/btcutil/psbt"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
@@ -1103,7 +1104,8 @@ func (wallet *BTCWallet) Transaction(paymentAddress string, address string, amou
 	}
 
 	// log the tx info
-	fmt.Printf("fund tx: %v\n", fundTx)
+	//fmt.Printf("fund tx: %v\n", fundTx)
+	LogMsgTx(fundTx)
 	jsonData, err := json.Marshal(fundTx)
 	if err != nil {
 		restoreutxos(spentOutputs)
@@ -1121,15 +1123,15 @@ func (wallet *BTCWallet) Transaction(paymentAddress string, address string, amou
 	}
 
 	fmt.Printf("Translation raw tx: %s\n", rawData)
-	txid, err := SendTransaction(rawData)
-	if err != nil {
-		restoreutxos(spentOutputs)
-		fmt.Println(err.Error())
-		return "", err
-	}
+	// txid, err := SendTransaction(rawData)
+	// if err != nil {
+	// 	restoreutxos(spentOutputs)
+	// 	fmt.Println(err.Error())
+	// 	return "", err
+	// }
 
-	fmt.Printf("Translation is successed with txid: %s\n", txid)
-	return txid, nil
+	// fmt.Printf("Translation is successed with txid: %s\n", txid)
+	return rawData, nil
 
 }
 func (wallet *BTCWallet) TransactionOrdx(paymentAddress string, address string, utxo string, fee uint32) (string, error) {
@@ -1270,6 +1272,7 @@ func restoreutxos(spentOutputs []*utxo) {
 type utxo struct {
 	pkScript       []byte
 	value          btcutil.Amount
+	satsRanges     wire.TxRanges // sats index range for the output
 	keyIndex       uint32
 	maturityHeight int32
 	isLocked       bool
@@ -1523,6 +1526,7 @@ func (wallet *BTCWallet) fundTx(paymentAddresses []string, tx *wire.MsgTx, amt b
 		return err
 	}
 	//}
+	InputTxRanges := wire.TxRanges{}
 
 	for outPoint, utxo := range utxos {
 		// Skip any outputs that are still currently immature or are
@@ -1540,6 +1544,10 @@ func (wallet *BTCWallet) fundTx(paymentAddresses []string, tx *wire.MsgTx, amt b
 		// sigScript.
 		tx.AddTxIn(wire.NewTxIn(&outPoint, nil, nil))
 		txSize = tx.SerializeSize() + spendSize*len(tx.TxIn)
+
+		logTxRanges("fundtx txin", utxo.satsRanges)
+
+		InputTxRanges = wire.TxRangesAppend(InputTxRanges, utxo.satsRanges)
 
 		// Calculate the fee required for the txn at this point
 		// observing the specified fee rate. If we don't have enough
@@ -1581,6 +1589,20 @@ func (wallet *BTCWallet) fundTx(paymentAddresses []string, tx *wire.MsgTx, amt b
 			tx.AddTxOut(changeOutput)
 		}
 
+		// Fill output TxRanges
+		logTxRanges("fundtx all txin ranges", InputTxRanges)
+
+		rangeOffset := int64(0)
+		for _, txoutItem := range tx.TxOut {
+			itemRanges, err := InputTxRanges.Pickup(rangeOffset, txoutItem.Value)
+			if err != nil {
+				fmt.Println("Set output sats ranges failed: error: " + err.Error())
+				return err
+			}
+			txoutItem.SatsRanges = itemRanges
+			rangeOffset += int64(txoutItem.Value)
+		}
+
 		return nil
 	}
 
@@ -1592,6 +1614,19 @@ func (wallet *BTCWallet) fundTx(paymentAddresses []string, tx *wire.MsgTx, amt b
 			// All amt is selected and add to output
 			tx.TxOut[0].Value = int64(amtSelected) - int64(reqFee)
 		}
+
+		// Fill output TxRanges
+		rangeOffset := int64(0)
+		for _, txoutItem := range tx.TxOut {
+			itemRanges, err := InputTxRanges.Pickup(rangeOffset, txoutItem.Value)
+			if err != nil {
+				fmt.Println("Set output sats ranges failed: error: " + err.Error())
+				return err
+			}
+			txoutItem.SatsRanges = itemRanges
+			rangeOffset += int64(txoutItem.Value)
+		}
+
 		return nil
 	}
 
@@ -2517,4 +2552,132 @@ func (wallet *BTCWallet) getOrdxAssets(adddress string, utxo string) (*wire.OutP
 
 	err := errors.New("cannot found the specific utxo for ordx")
 	return nil, err
+}
+
+func LogPsbt(pb *psbt.Packet) {
+	logLine("psbt:")
+	logLine("UnsignedTx:")
+	LogMsgTx(pb.UnsignedTx)
+
+	//logLine("Inputs: %v", pb.Inputs)
+	logLine("pb inputs account: %d", len(pb.Inputs))
+	for index, input := range pb.Inputs {
+		logLine("pb inputs index: %d", index)
+		logpbInout(&input)
+	}
+
+	//logLine("Outputs: %v", pb.Outputs)
+	logLine("pb outputs account: %d", len(pb.Outputs))
+	for index, output := range pb.Outputs {
+		logLine("pb outputs index: %d", index)
+		logpbOutout(&output)
+	}
+
+	logLine("Unknowns: %+v", pb.Unknowns)
+
+}
+
+func LogMsgTx(tx *wire.MsgTx) {
+	logLine("tx:%s", tx.TxHash().String())
+	logLine("txin: %d", len(tx.TxIn))
+	for index, txin := range tx.TxIn {
+		logLine("		txin index: %d", index)
+		logLine("		txin utxo txid: %s", txin.PreviousOutPoint.Hash.String())
+		logLine("		txin utxo index: %d", txin.PreviousOutPoint.Index)
+		logLine("		txin utxo Wintness: ")
+		logLine("		{")
+		for _, witness := range txin.Witness {
+			logLine("		%x", witness)
+		}
+		logLine("		}")
+		logLine("		txin SignatureScript: %x", txin.SignatureScript)
+		logLine("		---------------------------------")
+	}
+
+	logLine("txout: %d", len(tx.TxOut))
+	for index, txout := range tx.TxOut {
+		logLine("		txout index: %d", index)
+		logLine("		txout pkscript: %x", txout.PkScript)
+		addr, err := PkScriptToAddr(txout.PkScript)
+		if err != nil {
+			logLine("		txout pkscript is an invalidaddress: %s", err)
+		} else {
+			logLine("		txout address: %s", addr)
+		}
+		logLine("		txout value: %d", txout.Value)
+		logTxRanges("", txout.SatsRanges)
+		logLine("		---------------------------------")
+	}
+}
+
+func logpbInout(pbinput *psbt.PInput) {
+	logLine("pbinput:")
+	if pbinput.NonWitnessUtxo != nil {
+		logLine("pbinput.NonWitnessUtxo:")
+		LogMsgTx(pbinput.NonWitnessUtxo)
+	}
+
+	if pbinput.WitnessUtxo != nil {
+		logLine("pbinput.WitnessUtxo:")
+		logLine("		pkScript: %x", pbinput.WitnessUtxo.PkScript)
+		addr, err := PkScriptToAddr(pbinput.WitnessUtxo.PkScript)
+		if err != nil {
+			logLine("		txout pkscript is an invalidaddress: %s", err)
+		} else {
+			logLine("		txout address: %s", addr)
+		}
+		logLine("		txout value: %d", pbinput.WitnessUtxo.Value)
+	}
+
+	for index, partialSig := range pbinput.PartialSigs {
+		logLine("	index %d partialSig: %x", index, partialSig)
+	}
+
+	logLine("		SighashType: %d", pbinput.SighashType)
+	logLine("		RedeemScript: %x", pbinput.RedeemScript)
+	logLine("		SighashType: %x", pbinput.SighashType)
+	for index, bip32Derivation := range pbinput.Bip32Derivation {
+		logLine("	index %d Bip32Derivation: %x", index, bip32Derivation)
+	}
+
+	logLine("		FinalScriptSig: %x", pbinput.FinalScriptSig)
+	logLine("		FinalScriptWitness: %x", pbinput.FinalScriptWitness)
+	logLine("		TaprootKeySpendSig: %x", pbinput.TaprootKeySpendSig)
+	logLine("		SighashType: %d", pbinput.SighashType)
+
+}
+
+func logpbOutout(pboutput *psbt.POutput) {
+	logLine("pboutput:")
+	logLine("		RedeemScript: %x", pboutput.RedeemScript)
+	logLine("		WitnessScript: %x", pboutput.WitnessScript)
+	for index, bip32Derivation := range pboutput.Bip32Derivation {
+		logLine("	index %d Bip32Derivation: %x", index, bip32Derivation)
+	}
+	logLine("		TaprootInternalKey: %x", pboutput.TaprootInternalKey)
+	logLine("		TaprootTapTree: %x", pboutput.TaprootTapTree)
+
+	for index, bip32Derivation := range pboutput.TaprootBip32Derivation {
+		logLine("	index %d TaprootBip32Derivation: %x", index, bip32Derivation)
+	}
+
+}
+
+func logTxRanges(desc string, tr wire.TxRanges) {
+	if desc != "" {
+		logLine("       	SatsRangs desc: %s", desc)
+	}
+	logLine("       	SatsRangs count: %d", len(tr))
+	for index, satsRange := range tr {
+		logLine("		---------------------------------")
+		logLine("			satsRange index: %d", index)
+		logLine("			satsRange Start: %d", satsRange.Start)
+		logLine("			satsRange Size: %d", satsRange.Size)
+	}
+
+}
+
+func logLine(format string, a ...any) {
+	logStr := fmt.Sprintf(format, a...)
+	fmt.Println(logStr)
 }

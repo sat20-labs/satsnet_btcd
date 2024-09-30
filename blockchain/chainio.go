@@ -764,6 +764,13 @@ func dbFetchUtxoEntry(dbTx database.Tx, utxoBucket database.Bucket,
 	// transaction output.  Return now when there is no entry.
 	key := outpointKey(outpoint)
 	serializedUtxo := utxoBucket.Get(*key)
+
+	log.Debug("***********************************************")
+	log.Debugf("outpoint Hash: %s", outpoint.Hash.String())
+	log.Debugf("outpoint Index: %d", outpoint.Index)
+	log.Debugf("utxoBucket Get: %x, %x", key, serializedUtxo)
+	log.Debug("***********************************************")
+
 	recycleOutpointKey(key)
 	if serializedUtxo == nil {
 		return nil, nil
@@ -833,6 +840,11 @@ func dbPutUtxoView(dbTx database.Tx, view *UtxoViewpoint) error {
 // entry from the database.
 func dbDeleteUtxoEntry(utxoBucket database.Bucket, outpoint wire.OutPoint) error {
 	key := outpointKey(outpoint)
+	log.Debug("***********************************************")
+	log.Debugf("outpoint Hash: %s", outpoint.Hash.String())
+	log.Debugf("outpoint Index: %d", outpoint.Index)
+	log.Debugf("utxoBucket Delete: %x", key)
+	log.Debug("***********************************************")
 	err := utxoBucket.Delete(*key)
 	recycleOutpointKey(key)
 	return err
@@ -853,6 +865,11 @@ func dbPutUtxoEntry(utxoBucket database.Bucket, outpoint wire.OutPoint,
 		return err
 	}
 	key := outpointKey(outpoint)
+	log.Debug("***********************************************")
+	log.Debugf("outpoint Hash: %s", outpoint.Hash.String())
+	log.Debugf("outpoint Index: %d", outpoint.Index)
+	log.Debugf("utxoBucket Put: %x, %x", key, serialized)
+	log.Debug("***********************************************")
 	err = utxoBucket.Put(*key, serialized)
 	if err != nil {
 		return err
@@ -1273,6 +1290,8 @@ func (b *BlockChain) initChainState() error {
 			node.status = status
 			b.index.addNode(node)
 
+			b.logBlockNode(node)
+
 			lastNode = node
 			i++
 		}
@@ -1332,6 +1351,14 @@ func (b *BlockChain) initChainState() error {
 	// attempt to flush the index to the DB. This will only result in a
 	// write if the elements are dirty, so it'll usually be a noop.
 	return b.index.flushToDB()
+}
+
+func (b *BlockChain) logBlockNode(node *blockNode) {
+	blockHash := node.hash
+	blockHeight := node.height
+	blockTime := time.Unix(node.timestamp, 0).Format(time.DateTime)
+
+	log.Debugf("block %d: Hash[%s],  Time[%s]", blockHeight, blockHash, blockTime)
 }
 
 // deserializeBlockRow parses a value in the block index bucket into a block

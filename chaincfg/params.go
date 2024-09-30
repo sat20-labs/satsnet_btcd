@@ -1174,8 +1174,8 @@ var SatsTestNetParams = Params{
 	//
 	// The miner confirmation window is defined as:
 	//   target proof of work timespan / target proof of work spacing
-	RuleChangeActivationThreshold: 1512, // 75% of MinerConfirmationWindow
-	MinerConfirmationWindow:       2016,
+	RuleChangeActivationThreshold: 0, // 75% of MinerConfirmationWindow
+	MinerConfirmationWindow:       5,
 	Deployments: [DefinedDeployments]ConsensusDeployment{
 		DeploymentTestDummy: {
 			BitNumber: 28,
@@ -1188,7 +1188,7 @@ var SatsTestNetParams = Params{
 		},
 		DeploymentTestDummyMinActivation: {
 			BitNumber:                 22,
-			CustomActivationThreshold: 1815,    // Only needs 90% hash rate.
+			CustomActivationThreshold: 4,       // Only needs 90% hash rate.
 			MinActivationHeight:       10_0000, // Can only activate after height 10k.
 			DeploymentStarter: NewMedianTimeDeploymentStarter(
 				time.Time{}, // Always available for vote
@@ -1223,7 +1223,7 @@ var SatsTestNetParams = Params{
 			DeploymentEnder: NewMedianTimeDeploymentEnder(
 				time.Unix(1628640000, 0), // August 11th, 2021 UTC
 			),
-			CustomActivationThreshold: 1512, // 75%
+			CustomActivationThreshold: 4, // 75%
 		},
 	},
 
@@ -1409,8 +1409,11 @@ func newHashFromStr(hexStr string) *chainhash.Hash {
 
 func init() {
 	// Register all default networks when the package is initialized.
-	mustRegister(&MainNetParams)
-	mustRegister(&TestNet3Params)
-	mustRegister(&RegressionNetParams)
-	mustRegister(&SimNetParams)
+	// mustRegister(&MainNetParams)
+	// mustRegister(&TestNet3Params)
+	// mustRegister(&TestNet4Params)
+	// mustRegister(&RegressionNetParams)
+	// mustRegister(&SimNetParams)
+	mustRegister(&SatsMainNetParams)
+	mustRegister(&SatsTestNetParams)
 }

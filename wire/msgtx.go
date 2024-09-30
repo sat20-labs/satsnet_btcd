@@ -331,15 +331,10 @@ func (t TxWitness) ToHexStrings() []string {
 	return result
 }
 
-type SatsRange struct {
-	Start int64
-	Size  int64
-}
-
 // TxOut defines a bitcoin transaction output.
 type TxOut struct {
 	Value      int64
-	SatsRanges []SatsRange // sats index range for the output
+	SatsRanges TxRanges // sats index range for the output
 	PkScript   []byte
 }
 

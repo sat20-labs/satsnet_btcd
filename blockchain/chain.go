@@ -2268,6 +2268,8 @@ func New(config *Config) (*BlockChain, error) {
 		bestNode.height, bestNode.hash, b.stateSnapshot.TotalTxns,
 		bestNode.workSum)
 
+	b.ShowAllUtxo()
+
 	return &b, nil
 }
 
@@ -2277,4 +2279,24 @@ func (b *BlockChain) CachedStateSize() uint64 {
 	b.chainLock.Lock()
 	defer b.chainLock.Unlock()
 	return b.utxoCache.totalMemoryUsage()
+}
+
+func (b *BlockChain) ShowAllUtxo() {
+	log.Debugf("**************************************")
+	log.Debugf("ShowAllUtxo")
+	log.Debugf("Last Flush Time: %s", b.utxoCache.lastFlushTime.Format(time.DateTime))
+	for index, entrymap := range b.utxoCache.cachedEntries.maps {
+		log.Debugf("Map index: %d", index)
+		for outpoint, entry := range entrymap {
+			hash := outpoint.Hash.String()
+			log.Debugf("Utxo: %s:%d", hash, outpoint.Index)
+			log.Debugf("Amount: %d", entry.amount)
+			for _, satsRange := range entry.satsRanges {
+				log.Debugf("Sats Range: [%d-%d]", satsRange.Start, satsRange.Start+satsRange.Size-1)
+			}
+			log.Debugf("pkScript: %x", entry.pkScript)
+			log.Debugf("blockHeight: %x", entry.blockHeight)
+		}
+
+	}
 }
