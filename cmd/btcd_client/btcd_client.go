@@ -147,6 +147,19 @@ func main() {
 			}
 			testTransfer(address, amount)
 			continue
+		} else if method == "unanchor" {
+			if length < 3 {
+				fmt.Printf("transfer need address and amount\n")
+				continue
+			}
+			address := words[1]
+			amount, err := strconv.ParseInt(words[2], 10, 64)
+			if err != nil {
+				fmt.Printf("transfer need address and amount\n")
+				continue
+			}
+			testUnanchorTransfer(address, amount)
+			continue
 		} else if method == "setrpc" {
 			if length < 2 {
 				fmt.Printf("setrpc need rpc name: btcd or wallet\n")

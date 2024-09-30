@@ -616,13 +616,13 @@ func decodeCompressedTxOut(serialized []byte) (uint64, []wire.SatsRange, []byte,
 	// Decode the compressed script size and ensure there are enough bytes
 	// left in the slice for it.
 	scriptSize := decodeCompressedScriptSize(serialized[offset:])
-	if len(serialized[bytesRead:]) < scriptSize {
-		return 0, nil, nil, bytesRead, errDeserialize("unexpected end of " +
+	if len(serialized[offset:]) < scriptSize {
+		return 0, nil, nil, offset, errDeserialize("unexpected end of " +
 			"data after script size")
 	}
 
 	// Decompress and return the amount and script.
 	amount := decompressTxOutAmount(compressedAmount)
-	script := decompressScript(serialized[bytesRead : bytesRead+scriptSize])
+	script := decompressScript(serialized[offset : offset+scriptSize])
 	return amount, satsRanges, script, offset + scriptSize, nil
 }

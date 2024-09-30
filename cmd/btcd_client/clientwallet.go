@@ -167,3 +167,47 @@ func testTransfer(address string, amount int64) {
 
 	//fmt.Printf("Transfer txid: %v\n", txid)
 }
+
+func testUnanchorTransfer(address string, amount int64) {
+	fmt.Printf("Will unanchor %d sats to address %s\n", amount, address)
+	walletManager := btcwallet.GetWalletInst()
+	wallet, err := walletManager.GetDefaultWallet()
+	if err != nil {
+		fmt.Printf("GetDefaultWallet failed: error: %s\n",
+			err)
+		return
+	}
+
+	addr, err := wallet.GetDefaultAddress()
+	if err != nil {
+		fmt.Printf("GetDefaultAddress failed: error: %s\n",
+			err)
+		return
+	}
+
+	fmt.Printf("Transfer addr: %v\n", addr)
+
+	btcAmount := btcutil.Amount(amount)
+	amountTx := big.NewFloat(btcAmount.ToBTC())
+
+	unanchorTargetScript, err := btcwallet.AddrToPkScript(address)
+	if err != nil {
+		fmt.Printf("Invalid address failed: error: %s\n", err)
+		return
+	}
+
+	unanchorScript, err := StandardUnanchorScript(unanchorTargetScript, amount)
+	if err != nil {
+		fmt.Printf("Generate unanchor script failed: error: %s\n", err)
+		return
+	}
+	raw, err := wallet.UnanchorTransaction(addr, unanchorScript, amountTx, 5)
+	if err != nil {
+		fmt.Printf("GetDefaultAddress failed: error: %s\n",
+			err)
+		return
+	}
+	SendRawTransaction(raw)
+
+	//fmt.Printf("Transfer txid: %v\n", txid)
+}

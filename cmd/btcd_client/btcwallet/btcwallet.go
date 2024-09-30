@@ -1106,13 +1106,13 @@ func (wallet *BTCWallet) Transaction(paymentAddress string, address string, amou
 	// log the tx info
 	//fmt.Printf("fund tx: %v\n", fundTx)
 	LogMsgTx(fundTx)
-	jsonData, err := json.Marshal(fundTx)
-	if err != nil {
-		restoreutxos(spentOutputs)
-		fmt.Println(err.Error())
-		return "", err
-	}
-	fmt.Printf("fund tx json: %s\n", string(jsonData))
+	// jsonData, err := json.Marshal(fundTx)
+	// if err != nil {
+	// 	restoreutxos(spentOutputs)
+	// 	fmt.Println(err.Error())
+	// 	return "", err
+	// }
+	// fmt.Printf("fund tx json: %s\n", string(jsonData))
 
 	// Get raw transaction for deploy to node
 	rawData, err := GetRawTransaction(fundTx, true)
@@ -1134,6 +1134,62 @@ func (wallet *BTCWallet) Transaction(paymentAddress string, address string, amou
 	return rawData, nil
 
 }
+
+func (wallet *BTCWallet) UnanchorTransaction(paymentAddress string, unanchorScript []byte, amount *big.Float, fee uint32) (string, error) {
+	fmt.Printf("Will UnanchorTransaction %s \n", amount.String())
+
+	// Create TxOut
+
+	valueBTC, _ := amount.Float64()
+	value, err := btcutil.NewAmount(valueBTC)
+	if err != nil {
+		fmt.Println(err.Error())
+		return "", err
+	}
+	output := &wire.TxOut{PkScript: unanchorScript, Value: int64(value)}
+	fmt.Printf("unanchor :  %d satoshi\n", value)
+
+	paymentAddresses := wallet.getPaymentAddresses(paymentAddress, "")
+
+	feeRate := btcutil.Amount(fee) // No fee for unanchor tx ??
+	fundTx, spentOutputs, err := wallet.CreateTransaction(paymentAddresses, []*wire.TxOut{output}, feeRate, true, "")
+	if err != nil {
+		fmt.Println(err.Error())
+		return "", err
+	}
+
+	// log the tx info
+	//fmt.Printf("fund tx: %v\n", fundTx)
+	LogMsgTx(fundTx)
+	// jsonData, err := json.Marshal(fundTx)
+	// if err != nil {
+	// 	restoreutxos(spentOutputs)
+	// 	fmt.Println(err.Error())
+	// 	return "", err
+	// }
+	// fmt.Printf("fund tx json: %s\n", string(jsonData))
+
+	// Get raw transaction for deploy to node
+	rawData, err := GetRawTransaction(fundTx, true)
+	if err != nil {
+		restoreutxos(spentOutputs)
+		fmt.Println(err.Error())
+		return "", err
+	}
+
+	fmt.Printf("Transaction raw tx: %s\n", rawData)
+	// txid, err := SendTransaction(rawData)
+	// if err != nil {
+	// 	restoreutxos(spentOutputs)
+	// 	fmt.Println(err.Error())
+	// 	return "", err
+	// }
+
+	// fmt.Printf("Translation is successed with txid: %s\n", txid)
+	return rawData, nil
+
+}
+
 func (wallet *BTCWallet) TransactionOrdx(paymentAddress string, address string, utxo string, fee uint32) (string, error) {
 	fmt.Printf("Will transaction %s to  %s \n", utxo, address)
 
@@ -2116,6 +2172,10 @@ func spendNestedWitnessPubKeyHash(txIn *wire.TxIn, pkScript []byte,
 // }
 
 func checkValidPayToAddress(paymentAddress string, receivingAddress string) bool {
+	if receivingAddress == "" {
+		// No receiving address, all address is valid
+		return true
+	}
 	paymentAddressType, err := getAddressType(paymentAddress)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -2598,11 +2658,16 @@ func LogMsgTx(tx *wire.MsgTx) {
 	for index, txout := range tx.TxOut {
 		logLine("		txout index: %d", index)
 		logLine("		txout pkscript: %x", txout.PkScript)
-		addr, err := PkScriptToAddr(txout.PkScript)
-		if err != nil {
-			logLine("		txout pkscript is an invalidaddress: %s", err)
+
+		if txscript.IsNullData(txout.PkScript) {
+			logLine("		txout pkscript is an OP_RETURN script")
 		} else {
-			logLine("		txout address: %s", addr)
+			addr, err := PkScriptToAddr(txout.PkScript)
+			if err != nil {
+				logLine("		txout pkscript is an invalidaddress: %s", err)
+			} else {
+				logLine("		txout address: %s", addr)
+			}
 		}
 		logLine("		txout value: %d", txout.Value)
 		logTxRanges("", txout.SatsRanges)

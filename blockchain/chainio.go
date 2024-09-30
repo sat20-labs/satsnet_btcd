@@ -869,6 +869,9 @@ func dbPutUtxoEntry(utxoBucket database.Bucket, outpoint wire.OutPoint,
 	log.Debugf("outpoint Hash: %s", outpoint.Hash.String())
 	log.Debugf("outpoint Index: %d", outpoint.Index)
 	log.Debugf("utxoBucket Put: %x, %x", key, serialized)
+	log.Debugf("utxoBucket pkScript: %x", entry.pkScript)
+	log.Debugf("utxoBucket Amount: %d", entry.amount)
+	log.Debugf("utxoBucket RangesSize: %d", entry.satsRanges.GetSize())
 	log.Debug("***********************************************")
 	err = utxoBucket.Put(*key, serialized)
 	if err != nil {

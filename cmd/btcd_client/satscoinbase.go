@@ -42,9 +42,8 @@ func CreateCoinbaseTx(blockHeight int32, miningAddr string, feeAmount int64) *wi
 
 // CreateAnchorTx
 func CreateAnchorTx(txid string, addr string, amount int64, satsRanges []wire.SatsRange) *wire.MsgTx {
-	extraNonce := rand.Uint64()
 	pkScript, err := AddrToPkScript(addr, currentNetwork)
-	anchorScript, err := StandardAnchorScript(txid, pkScript, amount, extraNonce)
+	anchorScript, err := StandardAnchorScript(txid, pkScript, amount)
 	if err != nil {
 		panic(err)
 	}
@@ -66,6 +65,33 @@ func CreateAnchorTx(txid string, addr string, amount int64, satsRanges []wire.Sa
 	return tx
 }
 
+// // CreateAnchorTx
+// // utxo : 需要
+// func CreateUnanchorTx(utxo []string, addr string, amount int64, satsRanges []wire.SatsRange) *wire.MsgTx {
+// 	extraNonce := rand.Uint64()
+// 	pkScript, err := AddrToPkScript(addr, currentNetwork)
+// 	unanchorScript, err := StandardUnanchorScript(txid, pkScript, amount, extraNonce)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+
+// 	tx := wire.NewMsgTx(1)
+// 	tx.AddTxIn(&wire.TxIn{
+// 		// Anchor transactions have no inputs, so previous outpoint is
+// 		// zero hash and anchor tx index.
+// 		PreviousOutPoint: *wire.NewOutPoint(&chainhash.Hash{},
+// 			wire.AnchorTxOutIndex),
+// 		Sequence:        wire.MaxTxInSequenceNum,
+// 		SignatureScript: anchorScript,
+// 	})
+// 	tx.AddTxOut(&wire.TxOut{
+// 		PkScript:   pkScript, // output to specified address
+// 		Value:      amount,
+// 		SatsRanges: satsRanges,
+// 	})
+// 	return tx
+// }
+
 // StandardCoinbaseScript returns a standard script suitable for use as the
 // signature script of the coinbase transaction of a new block.  In particular,
 // it starts with the block height that is required by version 2 blocks.
@@ -74,11 +100,21 @@ func StandardCoinbaseScript(blockHeight int32, extraNonce uint64) ([]byte, error
 		AddInt64(int64(extraNonce)).Script()
 }
 
-// StandardCoinbaseScript returns a standard script suitable for use as the
+// StandardAnchorScript returns a standard script suitable for use as the
 // signature script of the coinbase transaction of a new block.  In particular,
 // it starts with the block height that is required by version 2 blocks.
-func StandardAnchorScript(txid string, pkScript []byte, amount int64, extraNonce uint64) ([]byte, error) {
+func StandardAnchorScript(txid string, pkScript []byte, amount int64) ([]byte, error) {
+	extraNonce := rand.Uint64()
 	return txscript.NewScriptBuilder().AddData([]byte(txid)).AddData(pkScript).
+		AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
+}
+
+// StandardUnnchorScript returns a standard script suitable for use as the
+// signature script of the coinbase transaction of a new block.  In particular,
+// it starts with the block height that is required by version 2 blocks.
+func StandardUnanchorScript(pkScript []byte, amount int64) ([]byte, error) {
+	extraNonce := rand.Uint64()
+	return txscript.NewScriptBuilder().AddOp(txscript.OP_RETURN).AddData(pkScript).
 		AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
 }
 

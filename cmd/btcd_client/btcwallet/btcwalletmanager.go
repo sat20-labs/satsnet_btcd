@@ -538,7 +538,7 @@ func getBTCUtoxs(address string) (map[wire.OutPoint]*utxo, error) {
 		return nil, err
 	}
 	op := &wire.OutPoint{}
-	Hash, err := chainhash.NewHashFromStr("a462c615740acd8aa3f01b52de3d4df4be5e9565e048e156e1de1e61727a2557")
+	Hash, err := chainhash.NewHashFromStr("3ccd36c9213e7b41babb6b05c3ccaa3a6977d39210adf042b8bdaddb1777dd37")
 	if err != nil {
 		fmt.Printf("GetBTCUtoxs: Read response failed: %v\n", err)
 		return nil, err
@@ -783,6 +783,12 @@ func AddrToPkScript(addr string) ([]byte, error) {
 }
 
 func PkScriptToAddr(pkScript []byte) (string, error) {
+
+	if len(pkScript) > 0 && pkScript[0] == txscript.OP_RETURN {
+		err := fmt.Errorf("pkscript is OP_RETURN Script")
+		return "", err
+	}
+
 	_, addrs, _, err := txscript.ExtractPkScriptAddrs(pkScript, NetParams)
 	if err != nil {
 		return "", err
