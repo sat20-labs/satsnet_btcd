@@ -1,1 +1,1 @@
-.\satsnet_btcd.exe --homedir d:\data\satsnet_btcd
+.\satsnet_btcd.exe --homedir d:\data\satsnet_btcd  --txindex

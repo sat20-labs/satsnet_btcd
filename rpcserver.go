@@ -188,6 +188,8 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"version":                handleVersion,
 	"testmempoolaccept":      handleTestMempoolAccept,
 	"gettxspendingprevout":   handleGetTxSpendingPrevOut,
+	"getmempoolentry":        handleGetMempoolEntry,
+	"getblockstats":          handleGetBlockStats,
 }
 
 // list of commands that we recognize, but for which btcd has no support because
@@ -241,10 +243,10 @@ var rpcAskWallet = map[string]struct{}{
 // Commands that are currently unimplemented, but should ultimately be.
 var rpcUnimplemented = map[string]struct{}{
 	"estimatepriority": {},
-	"getmempoolentry":  {},
-	"getnetworkinfo":   {},
-	"getwork":          {},
-	"preciousblock":    {},
+	//"getmempoolentry":  {},
+	"getnetworkinfo": {},
+	"getwork":        {},
+	"preciousblock":  {},
 }
 
 // Commands that are available to a limited user
@@ -2383,6 +2385,74 @@ func handleGetMempoolInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct
 	ret := &btcjson.GetMempoolInfoResult{
 		Size:  int64(len(mempoolTxns)),
 		Bytes: numBytes,
+	}
+
+	return ret, nil
+}
+
+// handleGetMempoolInfo implements the getmempoolinfo command.
+func handleGetMempoolEntry(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	// mempoolTxns := s.cfg.TxMemPool.TxDescs()
+
+	// var numBytes int64
+	// for _, txD := range mempoolTxns {
+	// 	numBytes += int64(txD.Tx.MsgTx().SerializeSize())
+	// }
+
+	ret := &btcjson.GetMempoolEntryResult{
+		VSize:           0,
+		Size:            0,
+		Weight:          0,
+		Fee:             0,
+		ModifiedFee:     0,
+		Time:            0,
+		Height:          0,
+		DescendantCount: 0,
+		DescendantSize:  0,
+		DescendantFees:  0,
+		AncestorCount:   0,
+		AncestorSize:    0,
+		AncestorFees:    0,
+		WTxId:           "",
+		Fees:            btcjson.MempoolFees{},
+		Depends:         []string{},
+	}
+
+	return ret, nil
+}
+
+// handleGetBlockStats implements the getblockstats command.
+func handleGetBlockStats(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+
+	ret := &btcjson.GetBlockStatsResult{
+		AverageFee:         1,
+		AverageFeeRate:     1,
+		AverageTxSize:      1,
+		FeeratePercentiles: []int64{},
+		Hash:               "0000000000000000000000000000000000000000000000000000000",
+		Height:             0,
+		Ins:                0,
+		MaxFee:             0,
+		MaxFeeRate:         0,
+		MaxTxSize:          0,
+		MedianFee:          0,
+		MedianTime:         0,
+		MedianTxSize:       0,
+		MinFee:             0,
+		MinFeeRate:         0,
+		MinTxSize:          0,
+		Outs:               0,
+		SegWitTotalSize:    0,
+		SegWitTotalWeight:  0,
+		SegWitTxs:          0,
+		Subsidy:            0,
+		Time:               0,
+		TotalOut:           0,
+		TotalSize:          0,
+		TotalWeight:        0,
+		Txs:                0,
+		UTXOIncrease:       0,
+		UTXOSizeIncrease:   0,
 	}
 
 	return ret, nil

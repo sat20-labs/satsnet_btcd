@@ -11,10 +11,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/btcjson"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
+	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
 )
 
 const (
@@ -26,6 +28,26 @@ var (
 	defaultHomeDir = btcutil.AppDataDir("satsnet_btcd", false)
 	currentNetwork = &chaincfg.SatsMainNetParams
 	currentCfg     = &config{}
+)
+
+//var log btclog.Logger
+
+// logWriter implements an io.Writer that outputs to both standard output and
+// the write-end pipe of an initialized log rotator.
+type logWriter struct{}
+
+func (logWriter) Write(p []byte) (n int, err error) {
+	os.Stdout.Write(p)
+	return len(p), nil
+}
+
+var (
+	// backendLog is the logging backend used to create all subsystem loggers.
+	// The backend must not be used before the log rotator has been initialized,
+	// or data races and/or nil pointer dereferences will occur.
+	backendLog = btclog.NewBackend(logWriter{})
+
+	log = backendLog.Logger("CMD")
 )
 
 // commandUsage display the usage for a specific command.
@@ -65,13 +87,23 @@ func main() {
 		os.Exit(1)
 	}
 
+	log.SetLevel(btclog.LevelDebug)
 	currentCfg = cfg
 
+	startDaemon()
+
+	log.Debugf("**** satsnet homeDir is %v\n", cfg.HomeDir)
 	fmt.Printf("args is %v\n", args)
 	// if len(args) < 1 {
 	// 	usage("No command specified")
 	// 	os.Exit(1)
 	// }
+
+	rpchost := "127.0.0.1"
+	rpcPost := 14827
+	rpcuser := "q17AIoqBJSEhW7djqjn0nTsZcz4="
+	rpcpass := "nnlkAZn58bqsyYwVtHIajZ16cj8="
+	satsnet_rpc.InitSatsNetClient(rpchost, rpcPost, rpcuser, rpcpass)
 
 	//btcwallet.InitBTCWallet("BTCWallet", btcctlHomeDir)
 	btcwallet.InitWalletManager(btcctlHomeDir)
@@ -116,6 +148,17 @@ func main() {
 				address = words[2]
 			}
 			testAnchorTx(lockedTTxid, address)
+			continue
+		} else if method == "rpcanchortx" {
+			lockedTTxid := ""
+			address := ""
+			if length >= 2 {
+				lockedTTxid = words[1]
+			}
+			if length >= 3 {
+				address = words[2]
+			}
+			testrpcAnchorTx(lockedTTxid, address)
 			continue
 		} else if method == "importwallet" {
 			walletName := ""
@@ -176,6 +219,41 @@ func main() {
 				fmt.Printf("setrpc need rpc name: btcd or wallet\n")
 				continue
 			}
+			continue
+		} else if method == "getblockstats" {
+			if length < 3 {
+				fmt.Printf("getblockstats need height and stats\n")
+				continue
+			}
+			height, err := strconv.ParseInt(words[1], 10, 64)
+			if err != nil {
+				fmt.Printf("parse height error, need int\n")
+			}
+			stats := make([]string, 0)
+
+			for i := 2; i < length; i++ {
+				stats = append(stats, words[i])
+			}
+
+			testGetBlockStats(int(height), stats)
+			continue
+		} else if method == "getmempoolentry" {
+			if length < 2 {
+				fmt.Printf("getmempoolentry need txid\n")
+				continue
+			}
+			txid := words[1]
+
+			testGetMempoolEntry(txid)
+			continue
+		} else if method == "getrawtransaction" {
+			if length < 2 {
+				fmt.Printf("getrawtransaction need txid\n")
+				continue
+			}
+			txid := words[1]
+
+			testGetRawTransaction(txid)
 			continue
 		}
 

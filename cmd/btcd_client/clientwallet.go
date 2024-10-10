@@ -16,11 +16,19 @@ import (
 
 // messageToHex serializes a message to the wire protocol encoding using the
 // latest protocol version and returns a hex-encoded string of the result.
-func messageToHex(msg wire.Message) (string, error) {
+func messageToHex(msg *wire.MsgTx) (string, error) {
+	// var buf bytes.Buffer
+	// maxProtocolVersion := uint32(70002)
+	// if err := msg.BtcEncode(&buf, maxProtocolVersion, wire.WitnessEncoding); err != nil {
+	// 	fmt.Printf("Failed to encode msg of type %T", msg)
+	// 	return "", err
+	// }
+
 	var buf bytes.Buffer
-	maxProtocolVersion := uint32(70002)
-	if err := msg.BtcEncode(&buf, maxProtocolVersion, wire.WitnessEncoding); err != nil {
-		fmt.Printf("Failed to encode msg of type %T", msg)
+
+	// Serialize the MsgTx into a byte buffer
+	err := msg.Serialize(&buf)
+	if err != nil {
 		return "", err
 	}
 

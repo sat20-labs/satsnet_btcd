@@ -8,6 +8,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
+	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -167,6 +168,56 @@ func testAnchorTx(lockedTxid string, address string) {
 	}
 
 	SendRawTransaction(raw)
+
+	fmt.Printf("testAnchorTx done.\n")
+}
+
+func testrpcAnchorTx(lockedTxid string, address string) {
+	fmt.Printf("testrpcAnchorTx...\n")
+	TxidDefault := "b274b49e885fdd87ea2870930297d2c6ecee7cc62fe8e67b21b452fb348c441e"
+	//address := "tb1prm9fflqhtezag25s06t740e7ca4rydm9x5mucrc3lt6dlkxquyqq02k2cf"
+	amount := int64(1000000)
+	satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
+
+	walletManager := btcwallet.GetWalletInst()
+	if walletManager == nil {
+		fmt.Printf("GetWalletInst failed.\n")
+		return
+	}
+
+	if address == "" {
+		var err error
+		address, err = walletManager.GetDefaultAddress()
+		if err != nil {
+			fmt.Printf("GetDefaultAddress failed: %v.\n", err)
+			return
+		}
+	}
+	if lockedTxid == "" {
+		lockedTxid = TxidDefault
+	}
+
+	fmt.Printf("Anchor tx address is : %s.\n", address)
+
+	anchorTx := CreateAnchorTx(lockedTxid, address, amount, satsRanges)
+
+	btcwallet.LogMsgTx(anchorTx)
+
+	fmt.Printf("Anchor tx is %v.\n", anchorTx)
+	raw, err := messageToHex(anchorTx)
+	if err != nil {
+		fmt.Printf("Error message tx: %v, error: %s\n",
+			anchorTx, err)
+		return
+	}
+
+	// SendRawTransaction(raw)
+	hash, err := satsnet_rpc.SendRawTransaction(raw, false)
+	if err != nil {
+		fmt.Printf("SendRawTransaction error: %s\n", err)
+		return
+	}
+	fmt.Printf("SendRawTransaction success,txid: %s\n", hash.String())
 
 	fmt.Printf("testAnchorTx done.\n")
 }
