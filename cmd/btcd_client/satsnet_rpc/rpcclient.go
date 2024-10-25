@@ -13,7 +13,7 @@ import (
 
 var client *rpcclient.Client
 
-func InitSatsNetClient(host string, port int, user, passwd string) error {
+func InitSatsNetClient(host string, port int, user, passwd string, homedir string) error {
 	ntfnHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txns []*btcutil.Tx) {
 			fmt.Printf("Block connected: %v (%d) %v",
@@ -27,7 +27,8 @@ func InitSatsNetClient(host string, port int, user, passwd string) error {
 
 	// Connect to local btcd RPC server using websockets.
 	//btcdHomeDir := btcutil.AppDataDir("btcd", false)
-	btcdHomeDir := "D:\\data\\satsnet_btcd\\btcd" // TODO
+	//btcdHomeDir := "D:\\data\\satsnet_btcd\\btcd" // TODO
+	btcdHomeDir := filepath.Join(homedir, "btcd")
 	certs, err := os.ReadFile(filepath.Join(btcdHomeDir, "rpc.cert"))
 	if err != nil {
 		// try to read in current dir

@@ -90,7 +90,7 @@ func main() {
 	log.SetLevel(btclog.LevelDebug)
 	currentCfg = cfg
 
-	startDaemon()
+	//startDaemon()
 
 	log.Debugf("**** satsnet homeDir is %v\n", cfg.HomeDir)
 	fmt.Printf("args is %v\n", args)
@@ -101,9 +101,13 @@ func main() {
 
 	rpchost := "127.0.0.1"
 	rpcPost := 14827
-	rpcuser := "q17AIoqBJSEhW7djqjn0nTsZcz4="
-	rpcpass := "nnlkAZn58bqsyYwVtHIajZ16cj8="
-	satsnet_rpc.InitSatsNetClient(rpchost, rpcPost, rpcuser, rpcpass)
+	//rpcuser := "q17AIoqBJSEhW7djqjn0nTsZcz4="
+	//rpcpass := "nnlkAZn58bqsyYwVtHIajZ16cj8="
+	err = satsnet_rpc.InitSatsNetClient(rpchost, rpcPost, cfg.RPCUser, cfg.RPCPassword, cfg.HomeDir)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	//btcwallet.InitBTCWallet("BTCWallet", btcctlHomeDir)
 	btcwallet.InitWalletManager(btcctlHomeDir)
@@ -254,6 +258,38 @@ func main() {
 			txid := words[1]
 
 			testGetRawTransaction(txid)
+			continue
+		} else if method == "sendrawtransaction" {
+
+			testSendRawTransaction()
+			continue
+		} else if method == "sendtxsample" {
+
+			testSampleTx()
+			continue
+		} else if method == "showblocks" {
+			start := int64(0)
+			end := int64(-1)
+			if length >= 2 {
+				number, err := strconv.ParseInt(words[1], 10, 64)
+
+				if err != nil {
+					fmt.Printf("parse height error, need int\n")
+				}
+
+				start = number
+			}
+			if length >= 3 {
+				number, err := strconv.ParseInt(words[2], 10, 64)
+
+				if err != nil {
+					fmt.Printf("parse height error, need int\n")
+				}
+
+				end = number
+			}
+
+			ShowBlocks(start, end)
 			continue
 		}
 

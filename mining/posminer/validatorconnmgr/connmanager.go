@@ -2,7 +2,7 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package connmgr
+package validatorconnmgr
 
 import (
 	"errors"
@@ -96,7 +96,7 @@ func (c *ConnReq) String() string {
 }
 
 // Config holds the configuration options related to the connection manager.
-type Config struct {
+type ConnConfig struct {
 	// Listeners defines a slice of listeners for which the connection
 	// manager will take ownership of and accept connections.  When a
 	// connection is accepted, the OnAccept handler will be invoked with the
@@ -171,14 +171,14 @@ type handleFailed struct {
 	err error
 }
 
-// ConnManager provides a manager to handle network connections.
-type ConnManager struct {
+// ValidatorPeerConn provides a manager to handle network connections.
+type ValidatorPeerConn struct {
 	// The following variables must only be used atomically.
 	connReqCount uint64
 	start        int32
 	stop         int32
 
-	cfg            Config
+	cfg            ConnConfig
 	wg             sync.WaitGroup
 	failedAttempts uint64
 	requests       chan interface{}
@@ -190,7 +190,7 @@ type ConnManager struct {
 // retry duration. Otherwise, if required, it makes a new connection request.
 // After maxFailedConnectionAttempts new connections will be retried after the
 // configured retry duration.
-func (cm *ConnManager) handleFailedConn(c *ConnReq) {
+func (cm *ValidatorPeerConn) handleFailedConn(c *ConnReq) {
 	if atomic.LoadInt32(&cm.stop) != 0 {
 		return
 	}
@@ -230,7 +230,7 @@ func (cm *ConnManager) handleFailedConn(c *ConnReq) {
 // The connection handler makes sure that we maintain a pool of active outbound
 // connections so that we remain connected to the network.  Connection requests
 // are processed and mapped by their assigned ids.
-func (cm *ConnManager) connHandler() {
+func (cm *ValidatorPeerConn) connHandler() {
 
 	var (
 		// pending holds all registered conn requests that have yet to
@@ -365,7 +365,7 @@ out:
 
 // NewConnReq creates a new connection request and connects to the
 // corresponding address.
-func (cm *ConnManager) NewConnReq() {
+func (cm *ValidatorPeerConn) NewConnReq() {
 	if atomic.LoadInt32(&cm.stop) != 0 {
 		return
 	}
@@ -417,7 +417,7 @@ func (cm *ConnManager) NewConnReq() {
 
 // Connect assigns an id and dials a connection to the address of the
 // connection request.
-func (cm *ConnManager) Connect(c *ConnReq) {
+func (cm *ValidatorPeerConn) Connect(c *ConnReq) {
 	if atomic.LoadInt32(&cm.stop) != 0 {
 		return
 	}
@@ -472,7 +472,7 @@ func (cm *ConnManager) Connect(c *ConnReq) {
 // Disconnect disconnects the connection corresponding to the given connection
 // id. If permanent, the connection will be retried with an increasing backoff
 // duration.
-func (cm *ConnManager) Disconnect(id uint64) {
+func (cm *ValidatorPeerConn) Disconnect(id uint64) {
 	if atomic.LoadInt32(&cm.stop) != 0 {
 		return
 	}
@@ -488,7 +488,7 @@ func (cm *ConnManager) Disconnect(id uint64) {
 //
 // NOTE: This method can also be used to cancel a lingering connection attempt
 // that hasn't yet succeeded.
-func (cm *ConnManager) Remove(id uint64) {
+func (cm *ValidatorPeerConn) Remove(id uint64) {
 	if atomic.LoadInt32(&cm.stop) != 0 {
 		return
 	}
@@ -501,7 +501,7 @@ func (cm *ConnManager) Remove(id uint64) {
 
 // listenHandler accepts incoming connections on a given listener.  It must be
 // run as a goroutine.
-func (cm *ConnManager) listenHandler(listener net.Listener) {
+func (cm *ValidatorPeerConn) listenHandler(listener net.Listener) {
 	log.Infof("Server listening on %s", listener.Addr())
 	for atomic.LoadInt32(&cm.stop) == 0 {
 		conn, err := listener.Accept()
@@ -512,7 +512,6 @@ func (cm *ConnManager) listenHandler(listener net.Listener) {
 			}
 			continue
 		}
-		log.Infof("Accepted listening on %s", listener.Addr())
 		go cm.cfg.OnAccept(conn)
 	}
 
@@ -521,7 +520,7 @@ func (cm *ConnManager) listenHandler(listener net.Listener) {
 }
 
 // Start launches the connection manager and begins connecting to the network.
-func (cm *ConnManager) Start() {
+func (cm *ValidatorPeerConn) Start() {
 	// Already started?
 	if atomic.AddInt32(&cm.start, 1) != 1 {
 		return
@@ -546,12 +545,12 @@ func (cm *ConnManager) Start() {
 }
 
 // Wait blocks until the connection manager halts gracefully.
-func (cm *ConnManager) Wait() {
+func (cm *ValidatorPeerConn) Wait() {
 	cm.wg.Wait()
 }
 
 // Stop gracefully shuts down the connection manager.
-func (cm *ConnManager) Stop() {
+func (cm *ValidatorPeerConn) Stop() {
 	if atomic.AddInt32(&cm.stop, 1) != 1 {
 		log.Warnf("Connection manager already stopped")
 		return
@@ -571,7 +570,7 @@ func (cm *ConnManager) Stop() {
 
 // New returns a new connection manager.
 // Use Start to start connecting to the network.
-func New(cfg *Config) (*ConnManager, error) {
+func NewValidatorPeerConn(cfg *ConnConfig) (*ValidatorPeerConn, error) {
 	if cfg.Dial == nil {
 		return nil, ErrDialNil
 	}
@@ -582,7 +581,7 @@ func New(cfg *Config) (*ConnManager, error) {
 	if cfg.TargetOutbound == 0 {
 		cfg.TargetOutbound = defaultTargetOutbound
 	}
-	cm := ConnManager{
+	cm := ValidatorPeerConn{
 		cfg:      *cfg, // Copy so caller can't mutate
 		requests: make(chan interface{}),
 		quit:     make(chan struct{}),

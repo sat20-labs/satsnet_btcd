@@ -1537,6 +1537,20 @@ func (b *BlockChain) BlockHeightByHash(hash *chainhash.Hash) (int32, error) {
 	return node.height, nil
 }
 
+// BlockHeightByHash returns the height of the block with the given hash in the
+// main chain.
+//
+// This function is safe for concurrent access.
+func (b *BlockChain) BlockHeightByHash_AllBlock(hash *chainhash.Hash) (int32, error) {
+	node := b.index.LookupNode(hash)
+	if node == nil {
+		err := fmt.Errorf("block %s is not found", hash)
+		return 0, err
+	}
+
+	return node.height, nil
+}
+
 // BlockHashByHeight returns the hash of the block at the given height in the
 // main chain.
 //
@@ -1700,6 +1714,7 @@ func (b *BlockChain) IntervalBlockHashes(endHash *chainhash.Hash, interval int,
 func (b *BlockChain) locateInventory(locator BlockLocator, hashStop *chainhash.Hash, maxEntries uint32) (*blockNode, uint32) {
 	// There are no block locators so a specific block is being requested
 	// as identified by the stop hash.
+	log.Debugf("locateInventory")
 	stopNode := b.index.LookupNode(hashStop)
 	if len(locator) == 0 {
 		if stopNode == nil {
@@ -1716,17 +1731,21 @@ func (b *BlockChain) locateInventory(locator BlockLocator, hashStop *chainhash.H
 	startNode := b.bestChain.Genesis()
 	for _, hash := range locator {
 		node := b.index.LookupNode(hash)
+		log.Debugf("Locate node: %s, Height:%d", node.hash.String(), node.height)
 		if node != nil && b.bestChain.Contains(node) {
 			startNode = node
 			break
 		}
 	}
 
+	log.Debugf("Initial startNode: %s, Height: %d", startNode.hash.String(), startNode.height)
+
 	// Start at the block after the most recently known block.  When there
 	// is no next block it means the most recently known block is the tip of
 	// the best chain, so there is nothing more to do.
 	startNode = b.bestChain.Next(startNode)
 	if startNode == nil {
+		log.Debugf("startNode next is nil")
 		return nil, 0
 	}
 
@@ -1740,6 +1759,9 @@ func (b *BlockChain) locateInventory(locator BlockLocator, hashStop *chainhash.H
 	if total > maxEntries {
 		total = maxEntries
 	}
+
+	log.Debugf("Will sync block from : %s, Height: %d", startNode.hash.String(), startNode.height)
+	log.Debugf("Will sync block counr: %d", total)
 
 	return startNode, total
 }
@@ -1763,6 +1785,7 @@ func (b *BlockChain) locateBlocks(locator BlockLocator, hashStop *chainhash.Hash
 	// Populate and return the found hashes.
 	hashes := make([]chainhash.Hash, 0, total)
 	for i := uint32(0); i < total; i++ {
+		log.Debugf("Locate Block Hash: %s, Height: %d", node.hash.String(), node.height)
 		hashes = append(hashes, node.hash)
 		node = b.bestChain.Next(node)
 	}

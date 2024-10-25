@@ -10,6 +10,7 @@ import (
 
 	"github.com/sat20-labs/satsnet_btcd/btcjson"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -218,4 +219,70 @@ func testUnanchorTransfer(address string, amount int64) {
 	SendRawTransaction(raw)
 
 	//fmt.Printf("Transfer txid: %v\n", txid)
+}
+
+func testSampleTx() {
+	fmt.Printf("testSampleTx\n")
+	tx := wire.NewMsgTx(1)
+
+	txid := "445f6422d72e64a2e0b808c3dadcc9131403bc1e43d47e2e515cd6db90aa6f38"
+	index := uint32(0)
+	//hashCode, _ := hex.DecodeString("445f6422d72e64a2e0b808c3dadcc9131403bc1e43d47e2e515cd6db90aa6f38")
+	//hash := chainhash.Hash(hashCode)
+
+	hashTx, _ := chainhash.NewHashFromStr(txid)
+
+	Witness := wire.TxWitness{}
+	code, _ := hex.DecodeString("304402202d0f3635b4d9efd8b17d63b6337600332802d0f21204c302344c882b090635bc022063e2f28707c5372312371acf5031bf05fe0b53c3302ad7a6dbe9e40cfbe8d0a501")
+	Witness = append(Witness, code)
+
+	code, _ = hex.DecodeString("304402204070bb47d42e5ca5ce2cc25baf65abb06f5d7cc874ac1d2111c6a3021be7547f0220552cd860c53be5fd20ab7950485cb50bf80192bda7fd71152df3d3ee7d1a716001")
+	Witness = append(Witness, code)
+
+	code, _ = hex.DecodeString("52210304374824804565034f8a7ffb680f05a20db8ef6888d5621d8577f6f412596f9e21036fa703396bdcbf4b3466c62079df08366b080e9832f28fd246c0eeea90be40d052ae")
+	Witness = append(Witness, code)
+
+	// []byte("304402202d0f3635b4d9efd8b17d63b6337600332802d0f21204c302344c882b090635bc022063e2f28707c5372312371acf5031bf05fe0b53c3302ad7a6dbe9e40cfbe8d0a501"),
+	// []byte("304402204070bb47d42e5ca5ce2cc25baf65abb06f5d7cc874ac1d2111c6a3021be7547f0220552cd860c53be5fd20ab7950485cb50bf80192bda7fd71152df3d3ee7d1a716001"),
+	// []byte("52210304374824804565034f8a7ffb680f05a20db8ef6888d5621d8577f6f412596f9e21036fa703396bdcbf4b3466c62079df08366b080e9832f28fd246c0eeea90be40d052ae")}
+
+	tx.AddTxIn(&wire.TxIn{
+		// Anchor transactions have no inputs, so previous outpoint is
+		// zero hash and anchor tx index.
+		PreviousOutPoint: *wire.NewOutPoint(hashTx,
+			index),
+		Sequence: 0,
+		//SignatureScript: anchorScript,
+		Witness: Witness,
+	})
+
+	satsRanges0 := wire.TxRanges{
+		{Start: 133474737439951, Size: 18797},
+		{Start: 133474737458768, Size: 1183},
+	}
+	pkScript1, _ := hex.DecodeString("0020650c7b012cd5aa9201251bb1bedefc62aa84548a73bb259595959029e2011616")
+	tx.AddTxOut(&wire.TxOut{
+		PkScript:   pkScript1, // output to specified address
+		Value:      19980,
+		SatsRanges: satsRanges0,
+	})
+	satsRanges1 := wire.TxRanges{
+		{Start: 133474737458748, Size: 10},
+	}
+	pkScript2, _ := hex.DecodeString("51208be89118321c458463a3f3404d626559dc4adeccb4017846e920b32d32e374d9")
+	tx.AddTxOut(&wire.TxOut{
+		PkScript:   pkScript2, // output to specified address
+		Value:      10,
+		SatsRanges: satsRanges1,
+	})
+
+	fmt.Printf("Sample tx is %v.\n", tx)
+	raw, err := messageToHex(tx)
+	if err != nil {
+		fmt.Printf("Error message tx: %v, error: %s\n",
+			tx, err)
+		return
+	}
+
+	SendRawTransaction(raw)
 }

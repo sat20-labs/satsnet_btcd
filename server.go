@@ -53,7 +53,8 @@ const (
 	defaultRequiredServices = wire.SFNodeNetwork
 
 	// defaultTargetOutbound is the default number of outbound peers to target.
-	defaultTargetOutbound = 8
+	//	defaultTargetOutbound = 8
+	defaultTargetOutbound = 1 // just for testing purposes
 
 	// connectionRetryInterval is the base amount of time to wait in between
 	// retries when connecting to persistent peers.  It is adjusted by the
@@ -64,7 +65,7 @@ const (
 var (
 	// userAgentName is the user agent name and is used to help identify
 	// ourselves to other bitcoin peers.
-	userAgentName = "btcd"
+	userAgentName = "satsnet_btcd"
 
 	// userAgentVersion is the user agent version and is used to help
 	// identify ourselves to other bitcoin peers.
@@ -596,6 +597,8 @@ func (sp *serverPeer) OnTx(_ *peer.Peer, msg *wire.MsgTx) {
 		return
 	}
 
+	LogMsgTx("Synced TX by server peer:", msg)
+
 	// Add the transaction to the known inventory for the peer.
 	// Convert the raw MsgTx to a btcutil.Tx which provides some convenience
 	// methods and things such as hash caching.
@@ -776,9 +779,21 @@ func (sp *serverPeer) OnGetBlocks(_ *peer.Peer, msg *wire.MsgGetBlocks) {
 	// over with the genesis block if unknown block locators are provided.
 	//
 	// This mirrors the behavior in the reference implementation.
+	rpcsLog.Debugf("OnGetBlocks")
+
+	rpcsLog.Debugf("Message get blocks: %d", len(msg.BlockLocatorHashes))
+	for i := range msg.BlockLocatorHashes {
+		rpcsLog.Debugf("%s", msg.BlockLocatorHashes[i].String())
+	}
+
 	chain := sp.server.chain
 	hashList := chain.LocateBlocks(msg.BlockLocatorHashes, &msg.HashStop,
 		wire.MaxBlocksPerMsg)
+
+	rpcsLog.Debugf("Will get blocks: %d", len(hashList))
+	for i := range hashList {
+		rpcsLog.Debugf("%s", hashList[i].String())
+	}
 
 	// Generate inventory message.
 	invMsg := wire.NewMsgInv()
@@ -805,6 +820,7 @@ func (sp *serverPeer) OnGetBlocks(_ *peer.Peer, msg *wire.MsgGetBlocks) {
 // OnGetHeaders is invoked when a peer receives a getheaders bitcoin
 // message.
 func (sp *serverPeer) OnGetHeaders(_ *peer.Peer, msg *wire.MsgGetHeaders) {
+	rpcsLog.Debugf("OnGetHeaders")
 	// Ignore getheaders requests if not in sync.
 	if !sp.server.syncManager.IsCurrent() {
 		return
@@ -823,6 +839,10 @@ func (sp *serverPeer) OnGetHeaders(_ *peer.Peer, msg *wire.MsgGetHeaders) {
 	chain := sp.server.chain
 	headers := chain.LocateHeaders(msg.BlockLocatorHashes, &msg.HashStop)
 
+	rpcsLog.Debugf("Will get blocksHeader: %d", len(headers))
+	for _, header := range headers {
+		rpcsLog.Debugf("%s", header.BlockHash().String())
+	}
 	// Send found headers to the requesting peer.
 	blockHeaders := make([]*wire.BlockHeader, len(headers))
 	for i := range headers {
@@ -2492,7 +2512,7 @@ func (s *server) Start() {
 	// Start the CPU miner if generation is enabled.
 	if cfg.Generate {
 		//s.cpuMiner.Start()
-		s.posMiner.Start()
+		s.posMiner.Start(cfg.TimerGenerate)
 	}
 }
 
@@ -2508,7 +2528,7 @@ func (s *server) Stop() error {
 	srvrLog.Warnf("Server shutting down")
 
 	// Stop the CPU miner if needed
-	s.cpuMiner.Stop()
+	//s.cpuMiner.Stop()
 	s.posMiner.Stop()
 
 	// Shutdown the RPC server if it's not disabled.
@@ -2950,6 +2970,8 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 
 	s.posMiner = posminer.New(&posminer.Config{
 		ChainParams:            chainParams,
+		Dial:                   btcdDial,
+		Lookup:                 cfg.lookup,
 		BlockTemplateGenerator: blockTemplateGenerator,
 		MiningAddrs:            cfg.miningAddrs,
 		ProcessBlock:           s.syncManager.ProcessBlock,

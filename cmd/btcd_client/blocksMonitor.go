@@ -36,14 +36,15 @@ func startDaemon() {
 	//syncBlock(31997)
 }
 
-func syncBlock(height int64) error {
-	log.Debugf("syncBlock: %d", height)
+func parseBlock(height int64) error {
+	log.Debugf("Block: %d", height)
 	hash, err := satsnet_rpc.GetBlockHash(height)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
+	log.Debugf("Block Hash: %s", hash.String())
 	block, err := satsnet_rpc.GetRawBlock(hash)
 	if err != nil {
 		log.Error(err)
@@ -93,7 +94,7 @@ func syncBlock(height int64) error {
 		}
 	}
 
-	log.Debugf("syncBlock done.")
+	log.Debugf("Parse Block done.")
 	return nil
 }
 
@@ -142,7 +143,7 @@ func BlockMoniterThread() {
 					break
 				}
 				syncingBlock := syncedBlock + 1
-				err = syncBlock(syncingBlock)
+				err = parseBlock(syncingBlock)
 				if err != nil {
 					log.Errorf("UtxoMoniterThread->syncBlock failed: %s", err)
 					break
@@ -171,5 +172,39 @@ func NewUtxo(pkScript []byte, assets UtxoAssets) {
 	}
 	log.Debugf("address: %s", address)
 	log.Debugf("utxo:%s, Value:%d", assets.Utxo, assets.Value)
+	for _, satsRange := range assets.SatsRanges {
+		log.Debugf("    Sats Range: [%d-%d]", satsRange.Start, satsRange.Start+satsRange.Size-1)
+	}
 	log.Debugf("----------------------------------")
+}
+
+func ShowBlocks(start, end int64) {
+	currentHeight, err := satsnet_rpc.GetBlockCount()
+	if err != nil {
+		return
+	}
+
+	if start < 0 {
+		start = 0
+	}
+
+	if end == -1 {
+		end = currentHeight
+	}
+
+	for block := start; block <= end; block++ {
+		// Check the block height of btc is changed
+		log.Debugf("current Block: %d, Shows Block: %d", currentHeight, block)
+		if block > currentHeight {
+			// no more block
+			break
+		}
+		err = parseBlock(block)
+		if err != nil {
+			log.Errorf("parseBlock failed: %s", err)
+			break
+		}
+		log.Debugf("Show Block: %d completed.", block)
+		log.Debugf(" -----------------------------------------------------------------")
+	}
 }

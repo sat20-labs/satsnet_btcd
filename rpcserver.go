@@ -1114,7 +1114,7 @@ func handleGetBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 	}
 
 	// Get the block height from chain.
-	blockHeight, err := s.cfg.Chain.BlockHeightByHash(hash)
+	blockHeight, err := s.cfg.Chain.BlockHeightByHash_AllBlock(hash)
 	if err != nil {
 		context := "Failed to obtain block height"
 		return nil, internalRPCError(err.Error(), context)
@@ -3506,6 +3506,7 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 	if len(hexStr)%2 != 0 {
 		hexStr = "0" + hexStr
 	}
+
 	serializedTx, err := hex.DecodeString(hexStr)
 	if err != nil {
 		return nil, rpcDecodeHexError(hexStr)
@@ -3518,6 +3519,8 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 			Message: "TX decode failed: " + err.Error(),
 		}
 	}
+
+	LogMsgTx("Received a transaction raw:", &msgTx)
 
 	// Use 0 for the tag to represent local node.
 	tx := btcutil.NewTx(&msgTx)
@@ -4167,12 +4170,15 @@ func (s *rpcServer) RequestedProcessShutdown() <-chan struct{} {
 // poll clients of the passed transactions.  This function should be called
 // whenever new transactions are added to the mempool.
 func (s *rpcServer) NotifyNewTransactions(txns []*mempool.TxDesc) {
+
 	for _, txD := range txns {
 		// Notify websocket clients about mempool transactions.
+		rpcsLog.Debugf("................Notify websocket clients NewTransactions...")
 		s.ntfnMgr.NotifyMempoolTx(txD.Tx, true)
 
 		// Potentially notify any getblocktemplate long poll clients
 		// about stale block templates due to the new transaction.
+		rpcsLog.Debugf("................Notify gbtWorkState NewTransactions...")
 		s.gbtWorkState.NotifyMempoolTx(s.cfg.TxMemPool.LastUpdated())
 	}
 }

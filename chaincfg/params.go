@@ -1076,8 +1076,8 @@ var SatsMainNetParams = Params{
 		},
 		DeploymentTestDummyMinActivation: {
 			BitNumber:                 22,
-			CustomActivationThreshold: 1815,    // Only needs 90% hash rate.
-			MinActivationHeight:       10_0000, // Can only activate after height 10k.
+			CustomActivationThreshold: 1815, // Only needs 90% hash rate.
+			MinActivationHeight:       5,    // Can only activate after height 5.
 			DeploymentStarter: NewMedianTimeDeploymentStarter(
 				time.Time{}, // Always available for vote
 			),
@@ -1111,8 +1111,8 @@ var SatsMainNetParams = Params{
 			DeploymentEnder: NewMedianTimeDeploymentEnder(
 				time.Unix(1628640000, 0), // August 11th, 2021 UTC.
 			),
-			CustomActivationThreshold: 1815, // 90%
-			MinActivationHeight:       709_632,
+			CustomActivationThreshold: 5, // 90%
+			MinActivationHeight:       5,
 		},
 	},
 
@@ -1145,9 +1145,10 @@ var SatsTestNetParams = Params{
 	Net:         wire.SatsTestNet,
 	DefaultPort: "14826",
 	DNSSeeds: []DNSSeed{
-		//	{"39.108.147.241", true},
+		{"39.108.147.241", true},
 		{"192.168.10.20", true},
 		{"192.168.10.104", true},
+		{"192.168.10.103", true},
 	},
 
 	// Chain parameters
@@ -1175,7 +1176,7 @@ var SatsTestNetParams = Params{
 	// The miner confirmation window is defined as:
 	//   target proof of work timespan / target proof of work spacing
 	RuleChangeActivationThreshold: 0, // 75% of MinerConfirmationWindow
-	MinerConfirmationWindow:       5,
+	MinerConfirmationWindow:       10,
 	Deployments: [DefinedDeployments]ConsensusDeployment{
 		DeploymentTestDummy: {
 			BitNumber: 28,
@@ -1188,8 +1189,8 @@ var SatsTestNetParams = Params{
 		},
 		DeploymentTestDummyMinActivation: {
 			BitNumber:                 22,
-			CustomActivationThreshold: 4,       // Only needs 90% hash rate.
-			MinActivationHeight:       10_0000, // Can only activate after height 10k.
+			CustomActivationThreshold: 0, // Only needs 90% hash rate.
+			MinActivationHeight:       5, // Can only activate after height 10k.
 			DeploymentStarter: NewMedianTimeDeploymentStarter(
 				time.Time{}, // Always available for vote
 			),
@@ -1207,7 +1208,9 @@ var SatsTestNetParams = Params{
 			),
 		},
 		DeploymentSegwit: {
-			BitNumber: 1,
+			BitNumber:                 1,
+			CustomActivationThreshold: 0, // Only needs 90% hash rate.
+			MinActivationHeight:       5, // Can only activate after height 10k.
 			DeploymentStarter: NewMedianTimeDeploymentStarter(
 				time.Unix(1462060800, 0), // May 1, 2016 UTC
 			),
@@ -1223,7 +1226,7 @@ var SatsTestNetParams = Params{
 			DeploymentEnder: NewMedianTimeDeploymentEnder(
 				time.Unix(1628640000, 0), // August 11th, 2021 UTC
 			),
-			CustomActivationThreshold: 4, // 75%
+			CustomActivationThreshold: 5, // 75%
 		},
 	},
 

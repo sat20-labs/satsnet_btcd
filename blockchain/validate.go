@@ -1031,7 +1031,8 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		lastSatoshiIn := totalSatoshiIn
 		totalSatoshiIn += originTxSatoshi
 		//totalInSatsRange = append(totalInSatsRange, utxoSatsRanges...)
-		totalInSatsRange = wire.TxRangesAppend(totalInSatsRange, utxoSatsRanges)
+		//totalInSatsRange = wire.TxRangesAppend(totalInSatsRange, utxoSatsRanges)
+		totalInSatsRange = totalInSatsRange.Merge(utxoSatsRanges)
 		if totalSatoshiIn < lastSatoshiIn ||
 			totalSatoshiIn > btcutil.MaxSatoshi {
 			str := fmt.Sprintf("total value of all transaction "+
@@ -1046,21 +1047,30 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	// to ignore overflow and out of range errors here because those error
 	// conditions would have already been caught by checkTransactionSanity.
 	var totalSatoshiOut int64
+	var err error
+
+	//logTxRanges("totalInSatsRange", totalInSatsRange)
+
 	//totalOutSatsRange := make([]wire.SatsRange, 0)
 	for index, txOut := range tx.MsgTx().TxOut {
 		// Check output sats range
-		currnetOutputSatsRange, err := totalInSatsRange.Pickup(
-			totalSatoshiOut, txOut.Value)
+		//currnetOutputSatsRange, err := totalInSatsRange.Pickup(
+		//	totalSatoshiOut, txOut.Value)
+		//logTxRanges("txOut.SatsRanges", txOut.SatsRanges)
+
+		totalInSatsRange, err = totalInSatsRange.Subtract(txOut.SatsRanges)
 
 		if err != nil {
-			str := fmt.Sprintf("Pickup fee ranges error: %v", err)
+			str := fmt.Sprintf("invalid TxOut sats range with index %d, (%s)", index, err.Error())
 			return 0, nil, ruleError(ErrBadFees, str)
 		}
 
-		if currnetOutputSatsRange.EqualSatRanges(txOut.SatsRanges) == false {
-			str := fmt.Sprintf("invalid TxOut sats range with index %d", index)
-			return 0, nil, ruleError(ErrBadFees, str)
-		}
+		//logTxRanges("Subtract success: New totalInSatsRange", totalInSatsRange)
+
+		// if currnetOutputSatsRange.EqualSatRanges(txOut.SatsRanges) == false {
+		// 	str := fmt.Sprintf("invalid TxOut sats range with index %d", index)
+		// 	return 0, nil, ruleError(ErrBadFees, str)
+		// }
 
 		totalSatoshiOut += txOut.Value
 		//totalInSatsRange = append(totalInSatsRange, txOut.SatsRanges...)
@@ -1079,11 +1089,13 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	// the inputs are >= the outputs.
 	txFeeInSatoshi := totalSatoshiIn - totalSatoshiOut
 	//feeRanges := RangesRemind(totalInSatsRange, totalOutSatsRange)
-	feeRanges, err := totalInSatsRange.Pickup(totalSatoshiOut, txFeeInSatoshi)
-	if err != nil {
-		str := fmt.Sprintf("Pickup fee ranges error: %v", err)
-		return 0, nil, ruleError(ErrBadFees, str)
-	}
+	// feeRanges, err := totalInSatsRange.Pickup(totalSatoshiOut, txFeeInSatoshi)
+	// if err != nil {
+	// 	str := fmt.Sprintf("Pickup fee ranges error: %v", err)
+	// 	re
+
+	// feeRanges 是totalInSatsRange减去所有的out后剩余的sats范围
+	feeRanges := totalInSatsRange
 	rangeSize := RangesSize(feeRanges)
 	if txFeeInSatoshi != rangeSize {
 		str := fmt.Sprintf("total fee is not match with fee ranges "+
@@ -1091,6 +1103,19 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		return 0, nil, ruleError(ErrBadFees, str)
 	}
 	return txFeeInSatoshi, feeRanges, nil
+}
+
+func logTxRanges(desc string, tr wire.TxRanges) {
+	if desc != "" {
+		log.Debugf("       	SatsRangs desc: %s", desc)
+	}
+	log.Debugf("       	SatsRangs count: %d", len(tr))
+	for index, satsRange := range tr {
+		log.Debugf("		---------------------------------")
+		log.Debugf("			satsRange index: %d", index)
+		log.Debugf("			satsRange Start: %d", satsRange.Start)
+		log.Debugf("			satsRange Size: %d", satsRange.Size)
+	}
 }
 
 // func RangesRemind(totalInSatsRange []wire.SatsRange, totalOutSatsRange []wire.SatsRange) []wire.SatsRange {

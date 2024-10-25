@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatormanager"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
@@ -59,6 +61,13 @@ type Config struct {
 	// ChainParams identifies which chain parameters the cpu miner is
 	// associated with.
 	ChainParams *chaincfg.Params
+
+	// Dial connects to the address on the named network. It cannot be nil.
+	Dial func(net.Addr) (net.Conn, error)
+
+	// Lookup returns the DNS host lookup function to use when
+	// connecting to servers.
+	Lookup func(string) ([]net.IP, error)
 
 	// BlockTemplateGenerator identifies the instance to use in order to
 	// generate block templates that the miner will attempt to solve.
@@ -111,6 +120,8 @@ type POSMiner struct {
 	updateHashes      chan uint64
 	speedMonitorQuit  chan struct{}
 	quit              chan struct{}
+
+	ValidatorMgr *validatormanager.ValidatorManager
 }
 
 // speedMonitor handles tracking the number of hashes per second the mining
@@ -455,7 +466,7 @@ out:
 // already been started will have no effect.
 //
 // This function is safe for concurrent access.
-func (m *POSMiner) Start() {
+func (m *POSMiner) Start(timerGenerate bool) {
 	m.Lock()
 	defer m.Unlock()
 
@@ -466,10 +477,18 @@ func (m *POSMiner) Start() {
 	}
 
 	m.quit = make(chan struct{})
-	//m.speedMonitorQuit = make(chan struct{})
-	m.wg.Add(1)
-	//go m.speedMonitor()
-	go m.miningWorkerController()
+	if timerGenerate {
+		log.Infof("POS miner started with timerGenerate")
+		m.wg.Add(1)
+		go m.miningWorkerController()
+	}
+
+	// Start ValidatorManager
+	m.ValidatorMgr = validatormanager.New(m.cfg.ChainParams, m.cfg.Dial, m.cfg.Lookup)
+
+	if m.ValidatorMgr != nil {
+		m.ValidatorMgr.Start()
+	}
 
 	m.started = true
 	log.Infof("POS miner started")

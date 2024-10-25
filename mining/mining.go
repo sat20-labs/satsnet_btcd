@@ -315,7 +315,7 @@ func logSkippedDeps(tx *btcutil.Tx, deps map[chainhash.Hash]*txPrioItem) {
 	}
 
 	for _, item := range deps {
-		log.Tracef("Skipping tx %s since it depends on %s\n",
+		log.Debugf("Skipping tx %s since it depends on %s\n",
 			item.tx.Hash(), tx.Hash())
 	}
 }
@@ -521,18 +521,18 @@ mempoolLoop:
 		// non-finalized transactions.
 		tx := txDesc.Tx
 		if blockchain.IsCoinBase(tx) {
-			log.Tracef("Skipping coinbase tx %s", tx.Hash())
+			log.Debugf("Skipping coinbase tx %s", tx.Hash())
 			continue
 		}
 		if blockchain.IsAnchorTx(tx.MsgTx()) {
-			log.Tracef("Add anchor tx %s directly", tx.Hash())
+			log.Debugf("Add anchor tx %s directly", tx.Hash())
 			blockTxns = append(blockTxns, tx)
 			continue
 		}
 		if !blockchain.IsFinalizedTransaction(tx, nextBlockHeight,
 			g.timeSource.AdjustedTime()) {
 
-			log.Tracef("Skipping non-finalized tx %s", tx.Hash())
+			log.Debugf("Skipping non-finalized tx %s", tx.Hash())
 			continue
 		}
 
@@ -557,7 +557,7 @@ mempoolLoop:
 			entry := utxos.LookupEntry(txIn.PreviousOutPoint)
 			if entry == nil || entry.IsSpent() {
 				if !g.txSource.HaveTransaction(originHash) {
-					log.Tracef("Skipping tx %s because it "+
+					log.Debugf("Skipping tx %s because it "+
 						"references unspent output %s "+
 						"which is not available",
 						tx.Hash(), txIn.PreviousOutPoint)
@@ -605,7 +605,7 @@ mempoolLoop:
 		mergeUtxoView(blockUtxos, utxos)
 	}
 
-	log.Tracef("Priority queue len %d, dependers len %d",
+	log.Debugf("Priority queue len %d, dependers len %d",
 		priorityQueue.Len(), len(dependers))
 
 	// The starting block size is the size of the block header plus the max
@@ -640,6 +640,8 @@ mempoolLoop:
 		// If segregated witness has not been activated yet, then we
 		// shouldn't include any witness transactions in the block.
 		case !segwitActive && tx.HasWitness():
+			log.Debugf("Skipping tx %s because it segwitActive "+
+				"is not activated, but the tx has witness", tx.Hash())
 			continue
 
 		// Otherwise, Keep track of if we've included a transaction
@@ -684,7 +686,7 @@ mempoolLoop:
 		if blockPlusTxWeight < blockWeight ||
 			blockPlusTxWeight >= g.policy.BlockMaxWeight {
 
-			log.Tracef("Skipping tx %s because it would exceed "+
+			log.Debugf("Skipping tx %s because it would exceed "+
 				"the max block weight", tx.Hash())
 			logSkippedDeps(tx, deps)
 			continue
@@ -695,14 +697,14 @@ mempoolLoop:
 		sigOpCost, err := blockchain.GetSigOpCost(tx, false,
 			blockUtxos, true, segwitActive)
 		if err != nil {
-			log.Tracef("Skipping tx %s due to error in "+
+			log.Debugf("Skipping tx %s due to error in "+
 				"GetSigOpCost: %v", tx.Hash(), err)
 			logSkippedDeps(tx, deps)
 			continue
 		}
 		if blockSigOpCost+int64(sigOpCost) < blockSigOpCost ||
 			blockSigOpCost+int64(sigOpCost) > blockchain.MaxBlockSigOpsCost {
-			log.Tracef("Skipping tx %s because it would "+
+			log.Debugf("Skipping tx %s because it would "+
 				"exceed the maximum sigops per block", tx.Hash())
 			logSkippedDeps(tx, deps)
 			continue
@@ -714,7 +716,7 @@ mempoolLoop:
 			prioItem.feePerKB < int64(g.policy.TxMinFreeFee) &&
 			blockPlusTxWeight >= g.policy.BlockMinWeight {
 
-			log.Tracef("Skipping tx %s with feePerKB %d "+
+			log.Debugf("Skipping tx %s with feePerKB %d "+
 				"< TxMinFreeFee %d and block weight %d >= "+
 				"minBlockWeight %d", tx.Hash(), prioItem.feePerKB,
 				g.policy.TxMinFreeFee, blockPlusTxWeight,
@@ -729,7 +731,7 @@ mempoolLoop:
 		if !sortedByFee && (blockPlusTxWeight >= g.policy.BlockPrioritySize ||
 			prioItem.priority <= MinHighPriority) {
 
-			log.Tracef("Switching to sort by fees per "+
+			log.Debugf("Switching to sort by fees per "+
 				"kilobyte blockSize %d >= BlockPrioritySize "+
 				"%d || priority %.2f <= minHighPriority %.2f",
 				blockPlusTxWeight, g.policy.BlockPrioritySize,
@@ -748,6 +750,7 @@ mempoolLoop:
 				prioItem.priority < MinHighPriority {
 
 				heap.Push(priorityQueue, prioItem)
+				log.Debugf("Skipping tx %s because priority is too low ", tx.Hash())
 				continue
 			}
 		}
@@ -757,7 +760,7 @@ mempoolLoop:
 		_, _, err = blockchain.CheckTransactionInputs(tx, nextBlockHeight,
 			blockUtxos, g.chainParams)
 		if err != nil {
-			log.Tracef("Skipping tx %s due to error in "+
+			log.Debugf("Skipping tx %s due to error in "+
 				"CheckTransactionInputs: %v", tx.Hash(), err)
 			logSkippedDeps(tx, deps)
 			continue
@@ -766,7 +769,7 @@ mempoolLoop:
 			txscript.StandardVerifyFlags, g.sigCache,
 			g.hashCache)
 		if err != nil {
-			log.Tracef("Skipping tx %s due to error in "+
+			log.Debugf("Skipping tx %s due to error in "+
 				"ValidateTransactionScripts: %v", tx.Hash(), err)
 			logSkippedDeps(tx, deps)
 			continue
@@ -791,7 +794,7 @@ mempoolLoop:
 		txFees = append(txFees, prioItem.fee)
 		txSigOpCosts = append(txSigOpCosts, int64(sigOpCost))
 
-		log.Tracef("Adding tx %s (priority %.2f, feePerKB %.2f)",
+		log.Debugf("Adding tx %s (priority %.2f, feePerKB %.2f)",
 			prioItem.tx.Hash(), prioItem.priority, prioItem.feePerKB)
 
 		// Add transactions which depend on this one (and also do not
@@ -805,6 +808,12 @@ mempoolLoop:
 				heap.Push(priorityQueue, item)
 			}
 		}
+	}
+
+	if len(blockTxns) <= 1 {
+		// No transactions fit
+		err := fmt.Errorf("no any new tx need to be mining")
+		return nil, err
 	}
 
 	// Now that the actual transactions have been selected, update the

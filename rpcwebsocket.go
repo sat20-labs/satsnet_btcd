@@ -533,6 +533,9 @@ out:
 				}
 
 			case *notificationTxAcceptedByMempool:
+				rpcsLog.Debugf("................will send notificationTxAcceptedByMempool...")
+				rpcsLog.Debugf("................txNotifications size = %d...", len(txNotifications))
+
 				if n.isNew && len(txNotifications) != 0 {
 					m.notifyForNewTx(txNotifications, n.tx)
 				}

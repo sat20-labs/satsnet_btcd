@@ -2,7 +2,7 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package netsync
+package validatorconnmgr
 
 import (
 	"container/list"
@@ -145,7 +145,7 @@ type headerNode struct {
 	hash   *chainhash.Hash
 }
 
-// peerSyncState stores additional information that the SyncManager tracks
+// peerSyncState stores additional information that the ValidatorConnManager tracks
 // about a peer.
 type peerSyncState struct {
 	syncCandidate   bool
@@ -173,12 +173,12 @@ func limitAdd(m map[chainhash.Hash]struct{}, hash chainhash.Hash, limit int) {
 	m[hash] = struct{}{}
 }
 
-// SyncManager is used to communicate block related messages with peers. The
-// SyncManager is started as by executing Start() in a goroutine. Once started,
+// ValidatorConnManager is used to communicate block related messages with peers. The
+// ValidatorConnManager is started as by executing Start() in a goroutine. Once started,
 // it selects peers to sync from and starts the initial block download. Once the
-// chain is in sync, the SyncManager handles incoming block and header
+// chain is in sync, the ValidatorConnManager handles incoming block and header
 // notifications and relays announcements of new blocks to peers.
-type SyncManager struct {
+type ValidatorConnManager struct {
 	peerNotifier   PeerNotifier
 	started        int32
 	shutdown       int32
@@ -210,7 +210,7 @@ type SyncManager struct {
 
 // resetHeaderState sets the headers-first mode state to values appropriate for
 // syncing from a new peer.
-func (sm *SyncManager) resetHeaderState(newestHash *chainhash.Hash, newestHeight int32) {
+func (sm *ValidatorConnManager) resetHeaderState(newestHash *chainhash.Hash, newestHeight int32) {
 	sm.headersFirstMode = false
 	sm.headerList.Init()
 	sm.startHeader = nil
@@ -228,7 +228,7 @@ func (sm *SyncManager) resetHeaderState(newestHash *chainhash.Hash, newestHeight
 // It returns nil when there is not one either because the height is already
 // later than the final checkpoint or some other reason such as disabled
 // checkpoints.
-func (sm *SyncManager) findNextHeaderCheckpoint(height int32) *chaincfg.Checkpoint {
+func (sm *ValidatorConnManager) findNextHeaderCheckpoint(height int32) *chaincfg.Checkpoint {
 	checkpoints := sm.chain.Checkpoints()
 	if len(checkpoints) == 0 {
 		return nil
@@ -256,7 +256,7 @@ func (sm *SyncManager) findNextHeaderCheckpoint(height int32) *chaincfg.Checkpoi
 // download/sync the blockchain from.  When syncing is already running, it
 // simply returns.  It also examines the candidates for any which are no longer
 // candidates and removes them as needed.
-func (sm *SyncManager) startSync() {
+func (sm *ValidatorConnManager) startSync() {
 	// Return now if we're already syncing.
 	if sm.syncPeer != nil {
 		return
@@ -386,7 +386,7 @@ func (sm *SyncManager) startSync() {
 
 // isSyncCandidate returns whether or not the peer is a candidate to consider
 // syncing from.
-func (sm *SyncManager) isSyncCandidate(peer *peerpkg.Peer) bool {
+func (sm *ValidatorConnManager) isSyncCandidate(peer *peerpkg.Peer) bool {
 	// Typically a peer is not a candidate for sync if it's not a full node,
 	// however regression test is special in that the regression tool is
 	// not a full node and still needs to be considered a sync candidate.
@@ -459,7 +459,7 @@ func (sm *SyncManager) isSyncCandidate(peer *peerpkg.Peer) bool {
 // handleNewPeerMsg deals with new peers that have signalled they may
 // be considered as a sync peer (they have already successfully negotiated).  It
 // also starts syncing if needed.  It is invoked from the syncHandler goroutine.
-func (sm *SyncManager) handleNewPeerMsg(peer *peerpkg.Peer) {
+func (sm *ValidatorConnManager) handleNewPeerMsg(peer *peerpkg.Peer) {
 
 	log.Infof("handleNewPeerMsg: %s", peer)
 
@@ -492,7 +492,7 @@ func (sm *SyncManager) handleNewPeerMsg(peer *peerpkg.Peer) {
 // stalled. This is detected when by comparing the last progress timestamp with
 // the current time, and disconnecting the peer if we stalled before reaching
 // their highest advertised block.
-func (sm *SyncManager) handleStallSample() {
+func (sm *ValidatorConnManager) handleStallSample() {
 	if atomic.LoadInt32(&sm.shutdown) != 0 {
 		return
 	}
@@ -523,7 +523,7 @@ func (sm *SyncManager) handleStallSample() {
 // stalled sync peer. If the peer has stalled and its reported height is greater
 // than our own best height, we will disconnect it. Otherwise, we will keep the
 // peer connected in case we are already at tip.
-func (sm *SyncManager) shouldDCStalledSyncPeer() bool {
+func (sm *ValidatorConnManager) shouldDCStalledSyncPeer() bool {
 	lastBlock := sm.syncPeer.LastBlock()
 	startHeight := sm.syncPeer.StartingHeight()
 
@@ -545,7 +545,7 @@ func (sm *SyncManager) shouldDCStalledSyncPeer() bool {
 // removes the peer as a candidate for syncing and in the case where it was
 // the current sync peer, attempts to select a new best peer to sync from.  It
 // is invoked from the syncHandler goroutine.
-func (sm *SyncManager) handleDonePeerMsg(peer *peerpkg.Peer) {
+func (sm *ValidatorConnManager) handleDonePeerMsg(peer *peerpkg.Peer) {
 	state, exists := sm.peerStates[peer]
 	if !exists {
 		log.Warnf("Received done peer message for unknown peer %s", peer)
@@ -570,7 +570,7 @@ func (sm *SyncManager) handleDonePeerMsg(peer *peerpkg.Peer) {
 // clearRequestedState wipes all expected transactions and blocks from the sync
 // manager's requested maps that were requested under a peer's sync state, This
 // allows them to be rerequested by a subsequent sync peer.
-func (sm *SyncManager) clearRequestedState(state *peerSyncState) {
+func (sm *ValidatorConnManager) clearRequestedState(state *peerSyncState) {
 	// Remove requested transactions from the global map so that they will
 	// be fetched from elsewhere next time we get an inv.
 	for txHash := range state.requestedTxns {
@@ -590,7 +590,7 @@ func (sm *SyncManager) clearRequestedState(state *peerSyncState) {
 // dcSyncPeer is true, this method will also disconnect the current sync peer.
 // If we are in header first mode, any header state related to prefetching is
 // also reset in preparation for the next sync peer.
-func (sm *SyncManager) updateSyncPeer(dcSyncPeer bool) {
+func (sm *ValidatorConnManager) updateSyncPeer(dcSyncPeer bool) {
 	log.Debugf("Updating sync peer, no progress for: %v",
 		time.Since(sm.lastProgressTime))
 
@@ -613,7 +613,7 @@ func (sm *SyncManager) updateSyncPeer(dcSyncPeer bool) {
 }
 
 // handleTxMsg handles transaction messages from all peers.
-func (sm *SyncManager) handleTxMsg(tmsg *txMsg) {
+func (sm *ValidatorConnManager) handleTxMsg(tmsg *txMsg) {
 	peer := tmsg.peer
 	log.Warnf("handleTxMsg from peer %s", peer)
 
@@ -683,7 +683,7 @@ func (sm *SyncManager) handleTxMsg(tmsg *txMsg) {
 
 // current returns true if we believe we are synced with our peers, false if we
 // still have blocks to check
-func (sm *SyncManager) current() bool {
+func (sm *ValidatorConnManager) current() bool {
 	if !sm.chain.IsCurrent() {
 		return false
 	}
@@ -703,7 +703,7 @@ func (sm *SyncManager) current() bool {
 }
 
 // handleBlockMsg handles block messages from all peers.
-func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
+func (sm *ValidatorConnManager) handleBlockMsg(bmsg *blockMsg) {
 	peer := bmsg.peer
 
 	log.Warnf("handleBlockMsg from peer %s", peer)
@@ -919,7 +919,7 @@ func (sm *SyncManager) handleBlockMsg(bmsg *blockMsg) {
 
 // fetchHeaderBlocks creates and sends a request to the syncPeer for the next
 // list of blocks to be downloaded based on the current list of headers.
-func (sm *SyncManager) fetchHeaderBlocks() {
+func (sm *ValidatorConnManager) fetchHeaderBlocks() {
 	// Nothing to do if there is no start header.
 	if sm.startHeader == nil {
 		log.Warnf("fetchHeaderBlocks called with no start header")
@@ -973,7 +973,7 @@ func (sm *SyncManager) fetchHeaderBlocks() {
 
 // handleHeadersMsg handles block header messages from all peers.  Headers are
 // requested when performing a headers-first sync.
-func (sm *SyncManager) handleHeadersMsg(hmsg *headersMsg) {
+func (sm *ValidatorConnManager) handleHeadersMsg(hmsg *headersMsg) {
 	peer := hmsg.peer
 	log.Warnf("handleHeadersMsg from peer %s", peer)
 
@@ -1082,7 +1082,7 @@ func (sm *SyncManager) handleHeadersMsg(hmsg *headersMsg) {
 }
 
 // handleNotFoundMsg handles notfound messages from all peers.
-func (sm *SyncManager) handleNotFoundMsg(nfmsg *notFoundMsg) {
+func (sm *ValidatorConnManager) handleNotFoundMsg(nfmsg *notFoundMsg) {
 	peer := nfmsg.peer
 
 	log.Warnf("handleNotFoundMsg from peer %s", peer)
@@ -1120,7 +1120,7 @@ func (sm *SyncManager) handleNotFoundMsg(nfmsg *notFoundMsg) {
 // inventory can be when it is in different states such as blocks that are part
 // of the main chain, on a side chain, in the orphan pool, and transactions that
 // are in the memory pool (either the main pool or orphan pool).
-func (sm *SyncManager) haveInventory(invVect *wire.InvVect) (bool, error) {
+func (sm *ValidatorConnManager) haveInventory(invVect *wire.InvVect) (bool, error) {
 	switch invVect.Type {
 	case wire.InvTypeWitnessBlock:
 		fallthrough
@@ -1168,7 +1168,7 @@ func (sm *SyncManager) haveInventory(invVect *wire.InvVect) (bool, error) {
 
 // handleInvMsg handles inv messages from all peers.
 // We examine the inventory advertised by the remote peer and act accordingly.
-func (sm *SyncManager) handleInvMsg(imsg *invMsg) {
+func (sm *ValidatorConnManager) handleInvMsg(imsg *invMsg) {
 	peer := imsg.peer
 
 	log.Warnf("handleInvMsg from peer %s", peer)
@@ -1377,7 +1377,7 @@ func (sm *SyncManager) handleInvMsg(imsg *invMsg) {
 // single thread without needing to lock memory data structures.  This is
 // important because the sync manager controls which blocks are needed and how
 // the fetching should proceed.
-func (sm *SyncManager) blockHandler() {
+func (sm *ValidatorConnManager) blockHandler() {
 	stallTicker := time.NewTicker(stallSampleInterval)
 	defer stallTicker.Stop()
 
@@ -1463,7 +1463,7 @@ out:
 // handleBlockchainNotification handles notifications from blockchain.  It does
 // things such as request orphan block parents and relay accepted blocks to
 // connected peers.
-func (sm *SyncManager) handleBlockchainNotification(notification *blockchain.Notification) {
+func (sm *ValidatorConnManager) handleBlockchainNotification(notification *blockchain.Notification) {
 	switch notification.Type {
 	// A block has been accepted into the block chain.  Relay it to other
 	// peers.
@@ -1558,7 +1558,7 @@ func (sm *SyncManager) handleBlockchainNotification(notification *blockchain.Not
 }
 
 // NewPeer informs the sync manager of a newly active peer.
-func (sm *SyncManager) NewPeer(peer *peerpkg.Peer) {
+func (sm *ValidatorConnManager) NewPeer(peer *peerpkg.Peer) {
 	// Ignore if we are shutting down.
 	if atomic.LoadInt32(&sm.shutdown) != 0 {
 		return
@@ -1569,7 +1569,7 @@ func (sm *SyncManager) NewPeer(peer *peerpkg.Peer) {
 // QueueTx adds the passed transaction message and peer to the block handling
 // queue. Responds to the done channel argument after the tx message is
 // processed.
-func (sm *SyncManager) QueueTx(tx *btcutil.Tx, peer *peerpkg.Peer, done chan struct{}) {
+func (sm *ValidatorConnManager) QueueTx(tx *btcutil.Tx, peer *peerpkg.Peer, done chan struct{}) {
 	// Don't accept more transactions if we're shutting down.
 	if atomic.LoadInt32(&sm.shutdown) != 0 {
 		done <- struct{}{}
@@ -1582,7 +1582,7 @@ func (sm *SyncManager) QueueTx(tx *btcutil.Tx, peer *peerpkg.Peer, done chan str
 // QueueBlock adds the passed block message and peer to the block handling
 // queue. Responds to the done channel argument after the block message is
 // processed.
-func (sm *SyncManager) QueueBlock(block *btcutil.Block, peer *peerpkg.Peer, done chan struct{}) {
+func (sm *ValidatorConnManager) QueueBlock(block *btcutil.Block, peer *peerpkg.Peer, done chan struct{}) {
 	// Don't accept more blocks if we're shutting down.
 	if atomic.LoadInt32(&sm.shutdown) != 0 {
 		done <- struct{}{}
@@ -1593,7 +1593,7 @@ func (sm *SyncManager) QueueBlock(block *btcutil.Block, peer *peerpkg.Peer, done
 }
 
 // QueueInv adds the passed inv message and peer to the block handling queue.
-func (sm *SyncManager) QueueInv(inv *wire.MsgInv, peer *peerpkg.Peer) {
+func (sm *ValidatorConnManager) QueueInv(inv *wire.MsgInv, peer *peerpkg.Peer) {
 	// No channel handling here because peers do not need to block on inv
 	// messages.
 	if atomic.LoadInt32(&sm.shutdown) != 0 {
@@ -1605,7 +1605,7 @@ func (sm *SyncManager) QueueInv(inv *wire.MsgInv, peer *peerpkg.Peer) {
 
 // QueueHeaders adds the passed headers message and peer to the block handling
 // queue.
-func (sm *SyncManager) QueueHeaders(headers *wire.MsgHeaders, peer *peerpkg.Peer) {
+func (sm *ValidatorConnManager) QueueHeaders(headers *wire.MsgHeaders, peer *peerpkg.Peer) {
 	// No channel handling here because peers do not need to block on
 	// headers messages.
 	if atomic.LoadInt32(&sm.shutdown) != 0 {
@@ -1617,7 +1617,7 @@ func (sm *SyncManager) QueueHeaders(headers *wire.MsgHeaders, peer *peerpkg.Peer
 
 // QueueNotFound adds the passed notfound message and peer to the block handling
 // queue.
-func (sm *SyncManager) QueueNotFound(notFound *wire.MsgNotFound, peer *peerpkg.Peer) {
+func (sm *ValidatorConnManager) QueueNotFound(notFound *wire.MsgNotFound, peer *peerpkg.Peer) {
 	// No channel handling here because peers do not need to block on
 	// reject messages.
 	if atomic.LoadInt32(&sm.shutdown) != 0 {
@@ -1628,7 +1628,7 @@ func (sm *SyncManager) QueueNotFound(notFound *wire.MsgNotFound, peer *peerpkg.P
 }
 
 // DonePeer informs the blockmanager that a peer has disconnected.
-func (sm *SyncManager) DonePeer(peer *peerpkg.Peer) {
+func (sm *ValidatorConnManager) DonePeer(peer *peerpkg.Peer) {
 	// Ignore if we are shutting down.
 	if atomic.LoadInt32(&sm.shutdown) != 0 {
 		return
@@ -1638,7 +1638,7 @@ func (sm *SyncManager) DonePeer(peer *peerpkg.Peer) {
 }
 
 // Start begins the core block handler which processes block and inv messages.
-func (sm *SyncManager) Start() {
+func (sm *ValidatorConnManager) Start() {
 	// Already started?
 	if atomic.AddInt32(&sm.started, 1) != 1 {
 		return
@@ -1651,7 +1651,7 @@ func (sm *SyncManager) Start() {
 
 // Stop gracefully shuts down the sync manager by stopping all asynchronous
 // handlers and waiting for them to finish.
-func (sm *SyncManager) Stop() error {
+func (sm *ValidatorConnManager) Stop() error {
 	if atomic.AddInt32(&sm.shutdown, 1) != 1 {
 		log.Warnf("Sync manager is already in the process of " +
 			"shutting down")
@@ -1665,7 +1665,7 @@ func (sm *SyncManager) Stop() error {
 }
 
 // SyncPeerID returns the ID of the current sync peer, or 0 if there is none.
-func (sm *SyncManager) SyncPeerID() int32 {
+func (sm *ValidatorConnManager) SyncPeerID() int32 {
 	reply := make(chan int32)
 	sm.msgChan <- getSyncPeerMsg{reply: reply}
 	return <-reply
@@ -1673,7 +1673,7 @@ func (sm *SyncManager) SyncPeerID() int32 {
 
 // ProcessBlock makes use of ProcessBlock on an internal instance of a block
 // chain.
-func (sm *SyncManager) ProcessBlock(block *btcutil.Block, flags blockchain.BehaviorFlags) (bool, error) {
+func (sm *ValidatorConnManager) ProcessBlock(block *btcutil.Block, flags blockchain.BehaviorFlags) (bool, error) {
 	reply := make(chan processBlockResponse, 1)
 	sm.msgChan <- processBlockMsg{block: block, flags: flags, reply: reply}
 	response := <-reply
@@ -1682,7 +1682,7 @@ func (sm *SyncManager) ProcessBlock(block *btcutil.Block, flags blockchain.Behav
 
 // IsCurrent returns whether or not the sync manager believes it is synced with
 // the connected peers.
-func (sm *SyncManager) IsCurrent() bool {
+func (sm *ValidatorConnManager) IsCurrent() bool {
 	reply := make(chan bool)
 	sm.msgChan <- isCurrentMsg{reply: reply}
 	return <-reply
@@ -1692,16 +1692,16 @@ func (sm *SyncManager) IsCurrent() bool {
 //
 // Note that while paused, all peer and block processing is halted.  The
 // message sender should avoid pausing the sync manager for long durations.
-func (sm *SyncManager) Pause() chan<- struct{} {
+func (sm *ValidatorConnManager) Pause() chan<- struct{} {
 	c := make(chan struct{})
 	sm.msgChan <- pauseMsg{c}
 	return c
 }
 
-// New constructs a new SyncManager. Use Start to begin processing asynchronous
+// New constructs a new ValidatorConnManager. Use Start to begin processing asynchronous
 // block, tx, and inv updates.
-func New(config *Config) (*SyncManager, error) {
-	sm := SyncManager{
+func New(config *Config) (*ValidatorConnManager, error) {
+	sm := ValidatorConnManager{
 		peerNotifier:    config.PeerNotifier,
 		chain:           config.Chain,
 		txMemPool:       config.TxMemPool,
