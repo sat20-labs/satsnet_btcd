@@ -14,6 +14,8 @@ func TestTxRangesAppend(t *testing.T) {
 	ranges2 := TxRanges{SatsRange{2000000, 10000}, SatsRange{3000000, 10000}}
 	ranges3 := TxRanges{SatsRange{4000000, 10000}}
 	ranges4 := TxRanges{SatsRange{5000000, 10000}, SatsRange{6000000, 10000}, SatsRange{7000000, 10000}}
+	ranges5 := TxRanges{SatsRange{Start: 133474737219955, Size: 18797}}
+	ranges6 := TxRanges{SatsRange{Start: 133474737238752, Size: 20}}
 
 	appendRanges := TxRanges{}
 	appendRanges = TxRangesAppend(appendRanges, ranges1)
@@ -34,6 +36,12 @@ func TestTxRangesAppend(t *testing.T) {
 	appendRanges = TxRangesAppend(appendRanges, ranges4)
 	size = appendRanges.GetSize()
 	if size != 80000 {
+		t.Errorf("Append: wrong size - got %d, want %d", size, 80000)
+	}
+
+	appendRanges = TxRangesAppend(ranges5, ranges6)
+	size = appendRanges.GetSize()
+	if size != 18817 {
 		t.Errorf("Append: wrong size - got %d, want %d", size, 80000)
 	}
 

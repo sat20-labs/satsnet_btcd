@@ -34,7 +34,7 @@ func TxRangesAppend(t TxRanges, ranges TxRanges) TxRanges {
 		r2 = ranges[0]
 		if r1.Start+r1.Size == r2.Start {
 			// Two ranges is continues
-			r1.Size += r2.Size
+			t[len1-1].Size += r2.Size
 			t = append(t, ranges[1:]...)
 		} else {
 			t = append(t, ranges...)
