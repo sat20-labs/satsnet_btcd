@@ -55,7 +55,7 @@ func BenchmarkCalcSigHash(b *testing.B) {
 // BenchmarkCalcWitnessSigHash benchmarks how long it takes to calculate the
 // witness signature hashes for all inputs of a transaction with many inputs.
 func BenchmarkCalcWitnessSigHash(b *testing.B) {
-	prevOutFetcher := NewCannedPrevOutputFetcher(prevOutScript, 5)
+	prevOutFetcher := NewCannedPrevOutputFetcher(prevOutScript, 5, wire.TxRanges{{Start: 100000000, Size: 5}})
 	sigHashes := NewTxSigHashes(&manyInputsBenchTx, prevOutFetcher)
 
 	b.ResetTimer()

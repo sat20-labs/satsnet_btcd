@@ -1717,7 +1717,7 @@ func TestRawTxInTaprootSignature(t *testing.T) {
 		},
 	})
 	txOut := &wire.TxOut{
-		Value: 1e8, PkScript: pkScript,
+		Value: 1e8, SatsRanges: wire.TxRanges{{Start: 100000000, Size: 100000000}}, PkScript: pkScript,
 	}
 	testTx.AddTxOut(txOut)
 
@@ -1750,12 +1750,12 @@ func TestRawTxInTaprootSignature(t *testing.T) {
 		name := fmt.Sprintf("sighash=%v", test.sigHashType)
 		t.Run(name, func(t *testing.T) {
 			prevFetcher := NewCannedPrevOutputFetcher(
-				txOut.PkScript, txOut.Value,
+				txOut.PkScript, txOut.Value, txOut.SatsRanges,
 			)
 			sigHashes := NewTxSigHashes(testTx, prevFetcher)
 
 			sig, err := RawTxInTaprootSignature(
-				testTx, sigHashes, 0, txOut.Value, txOut.PkScript,
+				testTx, sigHashes, 0, txOut.Value, txOut.SatsRanges, txOut.PkScript,
 				nil, test.sigHashType, privKey,
 			)
 			require.NoError(t, err)
@@ -1824,7 +1824,7 @@ func TestRawTxInTapscriptSignature(t *testing.T) {
 		},
 	})
 	txOut := &wire.TxOut{
-		Value: 1e8, PkScript: p2trScript,
+		Value: 1e8, SatsRanges: wire.TxRanges{{Start: 100000000, Size: 100000000}}, PkScript: p2trScript,
 	}
 	testTx.AddTxOut(txOut)
 
@@ -1857,12 +1857,12 @@ func TestRawTxInTapscriptSignature(t *testing.T) {
 		name := fmt.Sprintf("sighash=%v", test.sigHashType)
 		t.Run(name, func(t *testing.T) {
 			prevFetcher := NewCannedPrevOutputFetcher(
-				txOut.PkScript, txOut.Value,
+				txOut.PkScript, txOut.Value, txOut.SatsRanges,
 			)
 			sigHashes := NewTxSigHashes(testTx, prevFetcher)
 
 			sig, err := RawTxInTapscriptSignature(
-				testTx, sigHashes, 0, txOut.Value,
+				testTx, sigHashes, 0, txOut.Value, txOut.SatsRanges,
 				txOut.PkScript, tapLeaf, test.sigHashType,
 				privKey,
 			)

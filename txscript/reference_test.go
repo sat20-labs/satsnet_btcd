@@ -457,7 +457,7 @@ func testScripts(t *testing.T, tests [][]interface{}, useSigCache bool) {
 		tx := createSpendingTx(
 			witness, scriptSig, scriptPubKey, int64(inputAmt),
 		)
-		prevOuts := NewCannedPrevOutputFetcher(scriptPubKey, int64(inputAmt))
+		prevOuts := NewCannedPrevOutputFetcher(scriptPubKey, int64(inputAmt), wire.TxRanges{{Start: 1000000, Size: 10}})
 		vm, err := NewEngine(
 			scriptPubKey, tx, 0, flags, sigCache, nil,
 			int64(inputAmt), prevOuts,

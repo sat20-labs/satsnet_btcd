@@ -200,8 +200,9 @@ func (view *UtxoViewpoint) FetchPrevOutput(op wire.OutPoint) *wire.TxOut {
 	}
 
 	return &wire.TxOut{
-		Value:    prevOut.amount,
-		PkScript: prevOut.PkScript(),
+		Value:      prevOut.amount,
+		SatsRanges: prevOut.satsRanges,
+		PkScript:   prevOut.PkScript(),
 	}
 }
 

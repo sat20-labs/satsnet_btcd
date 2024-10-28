@@ -14,6 +14,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -426,7 +427,8 @@ func GetBTCBalance1(address string) (*big.Float, *big.Float, error) {
 }
 
 func GetBTCUtoxs(address string) ([]*BTCUtxo, error) {
-	utxomap, err := getBTCUtoxs(address)
+	//	utxomap, err := getBTCUtoxs(address)
+	utxomap, err := getBTCUtoxsWithBlock(address)
 	if err != nil {
 		return nil, err
 	}
@@ -511,9 +513,9 @@ func getBTCUtoxs1(address string) (map[wire.OutPoint]*utxo, error) {
 		}
 		utxos[*op] = utxo
 
-		//fmt.Println("GetBTCUtoxs txid: %s", utxores.TXID)
-		//fmt.Println("GetBTCUtoxs op: %+v", op)
-		//fmt.Println("GetBTCUtoxs utxo: %+v", utxo)
+		fmt.Println("GetBTCUtoxs txid: ", utxores.TXID)
+		fmt.Println("GetBTCUtoxs op: ", op)
+		fmt.Println("GetBTCUtoxs utxo: ", utxo)
 	}
 
 	//var amount btcutil.Amount
@@ -558,6 +560,127 @@ func getBTCUtoxs(address string) (map[wire.OutPoint]*utxo, error) {
 
 	//result := big.NewFloat(amount.ToUnit(btcutil.AmountBTC))
 	return utxos, nil
+}
+
+func getBTCUtoxsWithBlock(address string) (map[wire.OutPoint]*utxo, error) {
+	fmt.Printf("getBTCUtoxsWithBlock %s ...\n", address)
+	utxos := make(map[wire.OutPoint]*utxo)
+	a, err := btcutil.DecodeAddress(address, NetParams)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+
+	selfAddrScript, err := txscript.PayToAddrScript(a)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+
+	/*
+		op := &wire.OutPoint{}
+		Hash, err := chainhash.NewHashFromStr("3ccd36c9213e7b41babb6b05c3ccaa3a6977d39210adf042b8bdaddb1777dd37")
+		if err != nil {
+			fmt.Printf("GetBTCUtoxs: Read response failed: %v\n", err)
+			return nil, err
+		}
+		op.Hash = *Hash
+		op.Index = 0
+		utxo := &utxo{
+			value:      1000000,
+			keyIndex:   0,
+			pkScript:   selfAddrScript,
+			satsRanges: []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}},
+		}
+	*/
+	heightBlock, err := getBlockBest()
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	for height := heightBlock; height > 0; height-- {
+		utxosBlock, err := getUtxosFromBlock(selfAddrScript, height)
+		if err != nil {
+			fmt.Println(err.Error())
+			return nil, err
+		}
+		//utxos[*op] = utxo
+
+		for op, utxo := range utxosBlock {
+			utxos[op] = utxo
+		}
+
+		if len(utxos) > 0 {
+			// Just leave last utxo to avoid the utxo is spent
+			break
+		}
+	}
+
+	return utxos, nil
+}
+
+func getUtxosFromBlock(pkScxript []byte, height uint32) (map[wire.OutPoint]*utxo, error) {
+	//fmt.Println("Block: ", height)
+	hash, err := satsnet_rpc.GetBlockHash(int64(height))
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+
+	//fmt.Println("Block Hash: ", hash.String())
+	block, err := satsnet_rpc.GetRawBlock(hash)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	// blockData, err := hex.DecodeString(rawBlock)
+	// if err != nil {
+	// 	log.Errorf("syncBlock-> Failed to decode block: %v", err)
+	// 	return err
+	// }
+
+	// Deserialize the bytes into a btcutil.Block.
+	// block, err := btcutil.NewBlockFromBytes(blockData)
+	// if err != nil {
+	// 	//log.Panicf("syncBlock-> Failed to parse block: %v", err)
+	// 	log.Error(err)
+	// 	return err
+	// }
+
+	utxos := make(map[wire.OutPoint]*utxo)
+	transactions := block.Transactions
+	for _, tx := range transactions {
+		for index, out := range tx.TxOut {
+			if bytes.Equal(pkScxript, out.PkScript) {
+				// The output is for the wallet, so create a txin from it
+				op := &wire.OutPoint{}
+				op.Hash = tx.TxHash()
+				op.Index = uint32(index)
+				utxo := &utxo{
+					value:          btcutil.Amount(out.Value),
+					keyIndex:       uint32(index),
+					pkScript:       out.PkScript,
+					satsRanges:     out.SatsRanges,
+					maturityHeight: int32(height),
+				}
+				utxos[*op] = utxo
+			}
+		}
+	}
+
+	//fmt.Println("Parse Block done.")
+	return utxos, nil
+}
+func getBlockBest() (uint32, error) {
+	fmt.Println("getBlockBest: ")
+	height, err := satsnet_rpc.GetBlockCount()
+	if err != nil {
+		fmt.Println(err.Error())
+		return 0, err
+	}
+
+	fmt.Println("Block eight: ", height)
+	return uint32(height), nil
 }
 
 func SendTransaction(raw string) (string, error) {

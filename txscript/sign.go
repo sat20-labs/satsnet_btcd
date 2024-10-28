@@ -68,13 +68,13 @@ func WitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int, amt int64
 // specified, then the returned signature is 64-byte in length, as it omits the
 // additional byte to denote the sighash type.
 func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
-	amt int64, pkScript []byte, tapScriptRootHash []byte, hashType SigHashType,
+	amt int64, satsRanges wire.TxRanges, pkScript []byte, tapScriptRootHash []byte, hashType SigHashType,
 	key *btcec.PrivateKey) ([]byte, error) {
 
 	// First, we'll start by compute the top-level taproot sighash.
 	sigHash, err := calcTaprootSignatureHashRaw(
 		sigHashes, hashType, tx, idx,
-		NewCannedPrevOutputFetcher(pkScript, amt),
+		NewCannedPrevOutputFetcher(pkScript, amt, satsRanges),
 	)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 //
 // TODO(roasbeef): add support for annex even tho it's non-standard?
 func TaprootWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
-	amt int64, pkScript []byte, hashType SigHashType,
+	amt int64, satsRanges wire.TxRanges, pkScript []byte, hashType SigHashType,
 	key *btcec.PrivateKey) (wire.TxWitness, error) {
 
 	// As we're assuming this was a BIP 86 key, we use an empty root hash
@@ -120,7 +120,7 @@ func TaprootWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	fakeTapscriptRootHash := []byte{}
 
 	sig, err := RawTxInTaprootSignature(
-		tx, sigHashes, idx, amt, pkScript, fakeTapscriptRootHash,
+		tx, sigHashes, idx, amt, satsRanges, pkScript, fakeTapscriptRootHash,
 		hashType, key,
 	)
 	if err != nil {
@@ -141,14 +141,14 @@ func TaprootWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 // TODO(roasbeef): actually add code-sep to interface? not really used
 // anywhere....
 func RawTxInTapscriptSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
-	amt int64, pkScript []byte, tapLeaf TapLeaf, hashType SigHashType,
+	amt int64, satsRanges wire.TxRanges, pkScript []byte, tapLeaf TapLeaf, hashType SigHashType,
 	privKey *btcec.PrivateKey) ([]byte, error) {
 
 	// First, we'll start by compute the top-level taproot sighash.
 	tapLeafHash := tapLeaf.TapHash()
 	sigHash, err := calcTaprootSignatureHashRaw(
 		sigHashes, hashType, tx, idx,
-		NewCannedPrevOutputFetcher(pkScript, amt),
+		NewCannedPrevOutputFetcher(pkScript, amt, satsRanges),
 		WithBaseTapscriptVersion(blankCodeSepValue, tapLeafHash[:]),
 	)
 	if err != nil {

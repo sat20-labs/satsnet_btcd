@@ -81,16 +81,18 @@ type PrevOutputFetcher interface {
 // CannedPrevOutputFetcher is an implementation of PrevOutputFetcher that only
 // is able to return information for a single previous output.
 type CannedPrevOutputFetcher struct {
-	pkScript []byte
-	amt      int64
+	pkScript   []byte
+	amt        int64
+	SatsRanges wire.TxRanges
 }
 
 // NewCannedPrevOutputFetcher returns an instance of a CannedPrevOutputFetcher
 // that can only return the TxOut defined by the passed script and amount.
-func NewCannedPrevOutputFetcher(script []byte, amt int64) *CannedPrevOutputFetcher {
+func NewCannedPrevOutputFetcher(script []byte, amt int64, satsRanges wire.TxRanges) *CannedPrevOutputFetcher {
 	return &CannedPrevOutputFetcher{
-		pkScript: script,
-		amt:      amt,
+		pkScript:   script,
+		amt:        amt,
+		SatsRanges: satsRanges,
 	}
 }
 
@@ -100,8 +102,9 @@ func NewCannedPrevOutputFetcher(script []byte, amt int64) *CannedPrevOutputFetch
 // NOTE: This is a part of the PrevOutputFetcher interface.
 func (c *CannedPrevOutputFetcher) FetchPrevOutput(wire.OutPoint) *wire.TxOut {
 	return &wire.TxOut{
-		PkScript: c.pkScript,
-		Value:    c.amt,
+		PkScript:   c.pkScript,
+		Value:      c.amt,
+		SatsRanges: c.SatsRanges,
 	}
 }
 
@@ -160,6 +163,18 @@ func calcHashInputAmounts(tx *wire.MsgTx, inputFetcher PrevOutputFetcher) chainh
 		prevOut := inputFetcher.FetchPrevOutput(txIn.PreviousOutPoint)
 
 		_ = binary.Write(&b, binary.LittleEndian, prevOut.Value)
+
+		// Write the sats ranges
+		lenSatsRange := len(prevOut.SatsRanges)
+
+		// Write the number of sats ranges
+		_ = binary.Write(&b, binary.LittleEndian, lenSatsRange)
+
+		// Write the sats ranges
+		for _, r := range prevOut.SatsRanges {
+			_ = binary.Write(&b, binary.LittleEndian, r.Start)
+			_ = binary.Write(&b, binary.LittleEndian, r.Size)
+		}
 	}
 
 	return chainhash.HashH(b.Bytes())

@@ -461,7 +461,8 @@ func (wallet *BTCWallet) refreshBTCAddressDetails(details *BTCAddressDetails) er
 		return err
 	}
 
-	utxos, err := getBTCUtoxs(details.address)
+	//	utxos, err := getBTCUtoxs(details.address)
+	utxos, err := getBTCUtoxsWithBlock(details.address)
 	if err != nil {
 		// wallet account is not created
 		fmt.Println(err.Error())
@@ -477,8 +478,29 @@ func (wallet *BTCWallet) refreshBTCAddressDetails(details *BTCAddressDetails) er
 	// }
 	// save the locked utxo
 
+	actualAmount := btcutil.Amount(0)
+	for _, utxo := range utxos {
+		actualAmount += utxo.value
+	}
+
+	details.chainAmount = big.NewFloat(actualAmount.ToUnit(btcutil.AmountBTC))
 	details.utxos = utxos
 	//details.ordxAssets = ordxAssets
+
+	fmt.Println("   Address: ", details.address)
+	fmt.Println("   Total Amount: ", details.chainAmount)
+	fmt.Println("    ----------------------------------------------------------: ")
+	// log address utxo
+	for op, utxo := range utxos {
+		fmt.Println("    utxo: ", op.String())
+		fmt.Println("    Value: ", utxo.value)
+		fmt.Println("    SatsRanges: ")
+		for _, satsRange := range utxo.satsRanges {
+			fmt.Println("          Start: ", satsRange.Start, " Size: ", satsRange.Size)
+		}
+		fmt.Println("    ----------------------------------------------------------: ")
+	}
+
 	return nil
 }
 
@@ -1410,7 +1432,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 			return nil, nil, err
 		}
 		prevOutFetcher.AddPrevOut(
-			outPoint, &wire.TxOut{Value: int64(utxo.value), PkScript: utxo.pkScript},
+			outPoint, &wire.TxOut{Value: int64(utxo.value), SatsRanges: utxo.satsRanges, PkScript: utxo.pkScript},
 		)
 	}
 
@@ -1487,7 +1509,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 		case txscript.IsPayToTaproot(pkScript):
 			fmt.Println("The pkScript IsTaprootKeyHash: Taproot")
 			err := spendTaprootKey(
-				txIn, pkScript, int64(utxo.value),
+				txIn, pkScript, int64(utxo.value), utxo.satsRanges,
 				NetParams, privateKey, tx, hashCache, i,
 				prevOutFetcher)
 			if err != nil {
@@ -2009,7 +2031,7 @@ func spendWitnessScriptHash(txIn *wire.TxIn, pkScript []byte,
 // will fail since the new sighash digest algorithm defined in BIP0341 includes
 // the input value in the sighash.
 func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
-	inputValue int64, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
+	inputValue int64, satsRanges wire.TxRanges, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
 	tx *wire.MsgTx, hashCache *txscript.TxSigHashes, idx int,
 	inputFetcher txscript.PrevOutputFetcher) error {
 
@@ -2050,7 +2072,7 @@ func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
 	// We can now generate a valid witness which will allow us to spend this
 	// output.
 	witnessScript, err := txscript.TaprootWitnessSignature(
-		tx, hashCache, idx, inputValue, witnessProgram,
+		tx, hashCache, idx, inputValue, satsRanges, witnessProgram,
 		txscript.SigHashAll, privateKey,
 	)
 	if err != nil {

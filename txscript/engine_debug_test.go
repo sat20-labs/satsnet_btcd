@@ -58,17 +58,17 @@ func TestDebugEngine(t *testing.T) {
 		},
 	})
 	txOut := &wire.TxOut{
-		Value: 1e8, PkScript: p2trScript,
+		Value: 1e8, SatsRanges: wire.TxRanges{{Start: 100000000, Size: 100000000}}, PkScript: p2trScript,
 	}
 	testTx.AddTxOut(txOut)
 
 	prevFetcher := NewCannedPrevOutputFetcher(
-		txOut.PkScript, txOut.Value,
+		txOut.PkScript, txOut.Value, txOut.SatsRanges,
 	)
 	sigHashes := NewTxSigHashes(testTx, prevFetcher)
 
 	sig, err := RawTxInTapscriptSignature(
-		testTx, sigHashes, 0, txOut.Value,
+		testTx, sigHashes, 0, txOut.Value, txOut.SatsRanges,
 		txOut.PkScript, tapLeaf,
 		SigHashDefault, privKey,
 	)
