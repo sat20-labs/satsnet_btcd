@@ -99,11 +99,17 @@ func main() {
 	// 	os.Exit(1)
 	// }
 
+	// rpchost := "192.168.10.104"
+	// rpcPost := 14827
+	// rpcuser := "q17AIoqBJSEhW7djqjn0nTsZcz4="
+	// rpcpass := "nnlkAZn58bqsyYwVtHIajZ16cj8="
+	// certFileDir := "D:\\Work\\Tinyverse\\develop\\satsnet\\satsnet_btcd\\cmd\\btcd_client\\btcd104"
 	rpchost := "127.0.0.1"
 	rpcPost := 14827
-	//rpcuser := "q17AIoqBJSEhW7djqjn0nTsZcz4="
-	//rpcpass := "nnlkAZn58bqsyYwVtHIajZ16cj8="
-	err = satsnet_rpc.InitSatsNetClient(rpchost, rpcPost, cfg.RPCUser, cfg.RPCPassword, cfg.HomeDir)
+	rpcuser := cfg.RPCUser
+	rpcpass := cfg.RPCPassword
+	certFileDir := filepath.Join(cfg.HomeDir, "btcd")
+	err = satsnet_rpc.InitSatsNetClient(rpchost, rpcPost, rpcuser, rpcpass, certFileDir)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -151,7 +157,14 @@ func main() {
 			if length >= 3 {
 				address = words[2]
 			}
-			testAnchorTx(lockedTTxid, address)
+			amount := int64(1000000)
+			if length >= 4 {
+				newAmout, _ := strconv.ParseInt(words[3], 10, 64)
+				if newAmout != 0 {
+					amount = newAmout
+				}
+			}
+			testAnchorTx(lockedTTxid, address, amount)
 			continue
 		} else if method == "rpcanchortx" {
 			lockedTTxid := ""
@@ -290,6 +303,11 @@ func main() {
 			}
 
 			ShowBlocks(start, end)
+			continue
+		} else if method == "testrpcblocks" {
+			fmt.Fprintln(os.Stderr, listCmdMessage)
+			//os.Exit(0)
+			TestRPCGetBlocks()
 			continue
 		}
 

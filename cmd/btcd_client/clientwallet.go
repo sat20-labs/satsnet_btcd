@@ -12,6 +12,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
+	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
@@ -172,7 +173,18 @@ func testTransfer(address string, amount int64) {
 			err)
 		return
 	}
-	SendRawTransaction(raw)
+
+	hash, err := satsnet_rpc.SendRawTransaction(raw, true)
+	if err != nil {
+		fmt.Printf("rpc.SendRawTransaction failed: error: %s\n",
+			err)
+		wallet.RefreshAccountDetails()
+
+		return
+	}
+	txid := hash.String()
+	fmt.Printf("Transfer txid: %v\n", txid)
+	//SendRawTransaction(raw)
 
 	//fmt.Printf("Transfer txid: %v\n", txid)
 }

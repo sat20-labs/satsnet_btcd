@@ -21,11 +21,11 @@ import (
 // function is identical to RawTxInSignature, however the signature generated
 // signs a new sighash digest defined in BIP0143.
 func RawTxInWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
-	amt int64, subScript []byte, hashType SigHashType,
+	amt int64, satsRanges wire.TxRanges, subScript []byte, hashType SigHashType,
 	key *btcec.PrivateKey) ([]byte, error) {
 
 	hash, err := calcWitnessSignatureHashRaw(subScript, sigHashes, hashType, tx,
-		idx, amt)
+		idx, amt, satsRanges)
 	if err != nil {
 		return nil, err
 	}
@@ -40,11 +40,11 @@ func RawTxInWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 // template. The passed transaction must contain all the inputs and outputs as
 // dictated by the passed hashType. The signature generated observes the new
 // transaction digest algorithm defined within BIP0143.
-func WitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int, amt int64,
+func WitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int, amt int64, satsRanges wire.TxRanges,
 	subscript []byte, hashType SigHashType, privKey *btcec.PrivateKey,
 	compress bool) (wire.TxWitness, error) {
 
-	sig, err := RawTxInWitnessSignature(tx, sigHashes, idx, amt, subscript,
+	sig, err := RawTxInWitnessSignature(tx, sigHashes, idx, amt, satsRanges, subscript,
 		hashType, privKey)
 	if err != nil {
 		return nil, err

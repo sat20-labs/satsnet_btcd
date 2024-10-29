@@ -208,3 +208,27 @@ func ShowBlocks(start, end int64) {
 		log.Debugf(" -----------------------------------------------------------------")
 	}
 }
+
+func TestRPCGetBlocks() {
+
+	times := 10000
+	failedTimes := 0
+	for i := 0; i <= times; i++ {
+		currentHeight, err := satsnet_rpc.GetBlockCount()
+		if err != nil {
+			log.Error("GetBlockCount failed: ", err)
+			failedTimes++
+			continue
+		}
+
+		_, err = satsnet_rpc.GetBlockHash(currentHeight)
+		if err != nil {
+			log.Error("GetBlockHash failed: ", err)
+			failedTimes++
+			continue
+		}
+	}
+
+	log.Debugf("TestBlocks times: %d, failed times: %d", times, failedTimes)
+
+}

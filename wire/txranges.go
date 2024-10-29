@@ -71,8 +71,14 @@ func (d1 TxRanges) Merge(d2 TxRanges) TxRanges {
 }
 
 // 减去操作：原数据集减去指定数据集  r1 - r2
-func (r1 TxRanges) Subtract(r2 TxRanges) (TxRanges, error) {
+func (t TxRanges) Subtract(rngsCuted TxRanges) (TxRanges, error) {
 	var result TxRanges
+
+	// 需要对输入的源数据保持不变， 因此需要先拷贝
+	r1 := make(TxRanges, len(t))
+	copy(r1[:], t[:])
+	r2 := make(TxRanges, len(rngsCuted))
+	copy(r2[:], rngsCuted[:])
 
 	// 对r1按 Start 排序
 	sort.Slice(r1, func(i, j int) bool {
@@ -101,8 +107,10 @@ func (r1 TxRanges) Subtract(r2 TxRanges) (TxRanges, error) {
 // 返回剩余的数据片段集
 // 如果 r2 无法从数据集中减去（不相交），返回错误
 // 数据集已经按 Start 排序
-func (dataset TxRanges) SubSatsRange(r2 SatsRange) (TxRanges, error) {
+func (dataset TxRanges) SubSatsRange(rngCuted SatsRange) (TxRanges, error) {
 	result := TxRanges{}
+
+	r2 := rngCuted
 
 	// 遍历数据集中的每个片段
 	for _, r1 := range dataset {

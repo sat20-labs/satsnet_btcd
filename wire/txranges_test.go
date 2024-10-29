@@ -45,6 +45,12 @@ func TestTxRangesAppend(t *testing.T) {
 		t.Errorf("Append: wrong size - got %d, want %d", size, 80000)
 	}
 
+	appendRanges = ranges5.Merge(ranges6)
+	size = appendRanges.GetSize()
+	if size != 18817 {
+		t.Errorf("Append: wrong size - got %d, want %d", size, 80000)
+	}
+
 	for index, satsRange := range appendRanges {
 		rangeStart := int64(index * 1000000)
 		if rangeStart != satsRange.Start {

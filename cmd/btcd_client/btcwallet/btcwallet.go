@@ -461,7 +461,7 @@ func (wallet *BTCWallet) refreshBTCAddressDetails(details *BTCAddressDetails) er
 		return err
 	}
 
-	//	utxos, err := getBTCUtoxs(details.address)
+	//utxos, err := getBTCUtoxs(details.address)
 	utxos, err := getBTCUtoxsWithBlock(details.address)
 	if err != nil {
 		// wallet account is not created
@@ -1487,7 +1487,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 			fmt.Println("The pkScript IsPayToWitnessPubKeyHash: P2WKH")
 
 			err := spendWitnessKeyHash(
-				txIn, pkScript, int64(utxo.value),
+				txIn, pkScript, int64(utxo.value), utxo.satsRanges,
 				NetParams, privateKey, tx, hashCache, i,
 				prevOutFetcher)
 			if err != nil {
@@ -1498,7 +1498,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 		case txscript.IsPayToWitnessScriptHash(pkScript):
 			fmt.Println("The pkScript IsPayToWitnessScriptHash:P2WSH")
 			err := spendWitnessScriptHash(
-				txIn, pkScript, int64(utxo.value),
+				txIn, pkScript, int64(utxo.value), utxo.satsRanges,
 				NetParams, privateKey, tx, hashCache, i,
 				prevOutFetcher)
 			if err != nil {
@@ -1539,7 +1539,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 		// input fails the transaction has failed. (some of the
 		// test txns have good inputs, too..
 		vm, err := txscript.NewEngine(prevOut.PkScript, tx, i,
-			txscript.StandardVerifyFlags, nil, hashCache, prevOut.Value, prevOutFetcher)
+			txscript.StandardVerifyFlags, nil, hashCache, prevOut.Value, prevOut.SatsRanges, prevOutFetcher)
 		if err != nil {
 			fmt.Printf("NewEngine failed: %v\n", err)
 			return nil, nil, err
@@ -1844,7 +1844,7 @@ func (wallet *BTCWallet) fundOrdxTx(paymentAddresses []string, ordxUtxo string, 
 // will fail since the new sighash digest algorithm defined in BIP0143 includes
 // the input value in the sighash.
 func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
-	inputValue int64, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
+	inputValue int64, satsRanges wire.TxRanges, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
 	tx *wire.MsgTx, hashCache *txscript.TxSigHashes, idx int,
 	inputFetcher txscript.PrevOutputFetcher) error {
 
@@ -1890,7 +1890,7 @@ func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
 
 	fmt.Printf("witnessProgram: [%x]\n", witnessProgram)
 	witnessScript, err := txscript.WitnessSignature(tx, hashCache, idx,
-		inputValue, witnessProgram, txscript.SigHashAll, privateKey, true)
+		inputValue, satsRanges, witnessProgram, txscript.SigHashAll, privateKey, true)
 	if err != nil {
 		return err
 	}
@@ -1921,7 +1921,7 @@ func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
 // will fail since the new sighash digest algorithm defined in BIP0143 includes
 // the input value in the sighash.
 func spendWitnessScriptHash(txIn *wire.TxIn, pkScript []byte,
-	inputValue int64, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
+	inputValue int64, satsRanges wire.TxRanges, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
 	tx *wire.MsgTx, hashCache *txscript.TxSigHashes, idx int,
 	inputFetcher txscript.PrevOutputFetcher) error {
 
@@ -1999,7 +1999,7 @@ func spendWitnessScriptHash(txIn *wire.TxIn, pkScript []byte,
 		}
 	*/
 
-	sig, err := txscript.RawTxInWitnessSignature(tx, hashCache, idx, inputValue, witnessScript,
+	sig, err := txscript.RawTxInWitnessSignature(tx, hashCache, idx, inputValue, satsRanges, witnessScript,
 		txscript.SigHashAll, privateKey)
 	if err != nil {
 		return err
@@ -2073,7 +2073,7 @@ func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
 	// output.
 	witnessScript, err := txscript.TaprootWitnessSignature(
 		tx, hashCache, idx, inputValue, satsRanges, witnessProgram,
-		txscript.SigHashAll, privateKey,
+		txscript.SigHashDefault, privateKey,
 	)
 	if err != nil {
 		return err

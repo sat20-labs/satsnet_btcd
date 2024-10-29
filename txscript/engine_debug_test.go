@@ -170,7 +170,7 @@ func TestDebugEngine(t *testing.T) {
 	// Run the debug engine.
 	vm, err := NewDebugEngine(
 		txOut.PkScript, txCopy, 0, StandardVerifyFlags,
-		nil, sigHashes, txOut.Value, prevFetcher,
+		nil, sigHashes, txOut.Value, txOut.SatsRanges, prevFetcher,
 		callback,
 	)
 	require.NoError(t, err)

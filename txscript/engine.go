@@ -288,6 +288,7 @@ type Engine struct {
 	witnessVersion  int
 	witnessProgram  []byte
 	inputAmount     int64
+	satsRanges      wire.TxRanges
 	taprootCtx      *taprootExecutionCtx
 
 	// stepCallback is an optional function that will be called every time
@@ -1463,7 +1464,7 @@ func (vm *Engine) SetAltStack(data [][]byte) {
 // transaction, and input index.  The flags modify the behavior of the script
 // engine according to the description provided by each flag.
 func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags,
-	sigCache *SigCache, hashCache *TxSigHashes, inputAmount int64,
+	sigCache *SigCache, hashCache *TxSigHashes, inputAmount int64, satsRanges wire.TxRanges,
 	prevOutFetcher PrevOutputFetcher) (*Engine, error) {
 
 	const scriptVersion = 0
@@ -1500,8 +1501,10 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 		sigCache:       sigCache,
 		hashCache:      hashCache,
 		inputAmount:    inputAmount,
+		satsRanges:     satsRanges,
 		prevOutFetcher: prevOutFetcher,
 	}
+
 	if vm.hasFlag(ScriptVerifyCleanStack) && (!vm.hasFlag(ScriptBip16) &&
 		!vm.hasFlag(ScriptVerifyWitness)) {
 		return nil, scriptError(ErrInvalidFlags,
@@ -1637,12 +1640,12 @@ func NewEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int, flags ScriptFlags
 // This is useful for debugging script execution.
 func NewDebugEngine(scriptPubKey []byte, tx *wire.MsgTx, txIdx int,
 	flags ScriptFlags, sigCache *SigCache, hashCache *TxSigHashes,
-	inputAmount int64, prevOutFetcher PrevOutputFetcher,
+	inputAmount int64, satsRanges wire.TxRanges, prevOutFetcher PrevOutputFetcher,
 	stepCallback func(*StepInfo) error) (*Engine, error) {
 
 	vm, err := NewEngine(
 		scriptPubKey, tx, txIdx, flags, sigCache, hashCache,
-		inputAmount, prevOutFetcher,
+		inputAmount, satsRanges, prevOutFetcher,
 	)
 	if err != nil {
 		return nil, err

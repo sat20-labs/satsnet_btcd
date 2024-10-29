@@ -460,7 +460,7 @@ func testScripts(t *testing.T, tests [][]interface{}, useSigCache bool) {
 		prevOuts := NewCannedPrevOutputFetcher(scriptPubKey, int64(inputAmt), wire.TxRanges{{Start: 1000000, Size: 10}})
 		vm, err := NewEngine(
 			scriptPubKey, tx, 0, flags, sigCache, nil,
-			int64(inputAmt), prevOuts,
+			int64(inputAmt), wire.TxRanges{{Start: 1000000, Size: 10}}, prevOuts,
 		)
 		if err == nil {
 			err = vm.Execute()
@@ -670,7 +670,7 @@ testloop:
 			// input fails the transaction has failed. (some of the
 			// test txns have good inputs, too..
 			vm, err := NewEngine(prevOut.PkScript, tx.MsgTx(), k,
-				flags, nil, nil, prevOut.Value, prevOutFetcher)
+				flags, nil, nil, prevOut.Value, prevOut.SatsRanges, prevOutFetcher)
 			if err != nil {
 				continue testloop
 			}
@@ -824,7 +824,7 @@ testloop:
 				continue testloop
 			}
 			vm, err := NewEngine(prevOut.PkScript, tx.MsgTx(), k,
-				flags, nil, nil, prevOut.Value, prevOutFetcher)
+				flags, nil, nil, prevOut.Value, prevOut.SatsRanges, prevOutFetcher)
 			if err != nil {
 				t.Errorf("test (%d:%v:%d) failed to create "+
 					"script: %v", i, test, k, err)
@@ -966,7 +966,7 @@ func executeTaprootRefTest(t *testing.T, testCase taprootJsonTest) {
 
 		vm, err := NewEngine(
 			prevOut.PkScript, tx.MsgTx(), testCase.Index,
-			flags, nil, hashCache, prevOut.Value, prevOutFetcher,
+			flags, nil, hashCache, prevOut.Value, prevOut.SatsRanges, prevOutFetcher,
 		)
 		if err != nil {
 			t.Fatalf("unable to create vm: %v", err)

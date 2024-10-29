@@ -195,7 +195,7 @@ func calcSignatureHash(sigScript []byte, hashType SigHashType, tx *wire.MsgTx, i
 // wallet if fed an invalid input amount, the real sighash will differ causing
 // the produced signature to be invalid.
 func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
-	hashType SigHashType, tx *wire.MsgTx, idx int, amt int64) ([]byte, error) {
+	hashType SigHashType, tx *wire.MsgTx, idx int, amt int64, satsRanges wire.TxRanges) ([]byte, error) {
 
 	// As a sanity check, ensure the passed input index for the transaction
 	// is valid.
@@ -268,10 +268,25 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 			wire.WriteVarBytes(w, 0, subScript)
 		}
 
-		// Next, add the input amount, and sequence number of the input
+		// Next, add the input amount, sats ranges and sequence number of the input
 		// being signed.
 		binary.LittleEndian.PutUint64(scratch[:], uint64(amt))
 		w.Write(scratch[:])
+
+		satsRangesLen := len(satsRanges)
+		binary.LittleEndian.PutUint64(scratch[:], uint64(satsRangesLen))
+		w.Write(scratch[:])
+
+		for _, satsRange := range satsRanges {
+			binary.LittleEndian.PutUint64(scratch[:], uint64(satsRange.Start))
+			w.Write(scratch[:])
+			binary.LittleEndian.PutUint64(scratch[:], uint64(satsRange.Size))
+			w.Write(scratch[:])
+		}
+
+		binary.LittleEndian.PutUint64(scratch[:], uint64(amt))
+		w.Write(scratch[:])
+
 		binary.LittleEndian.PutUint32(scratch[:], txIn.Sequence)
 		w.Write(scratch[:4])
 
@@ -311,14 +326,14 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 // CalcWitnessSigHash computes the sighash digest for the specified input of
 // the target transaction observing the desired sig hash type.
 func CalcWitnessSigHash(script []byte, sigHashes *TxSigHashes, hType SigHashType,
-	tx *wire.MsgTx, idx int, amt int64) ([]byte, error) {
+	tx *wire.MsgTx, idx int, amt int64, satsRanges wire.TxRanges) ([]byte, error) {
 
 	const scriptVersion = 0
 	if err := checkScriptParses(scriptVersion, script); err != nil {
 		return nil, err
 	}
 
-	return calcWitnessSignatureHashRaw(script, sigHashes, hType, tx, idx, amt)
+	return calcWitnessSignatureHashRaw(script, sigHashes, hType, tx, idx, amt, satsRanges)
 }
 
 // sigHashExtFlag represents the sig hash extension flag as defined in BIP 341.

@@ -210,8 +210,7 @@ func (s *baseSegwitSigVerifier) Verify() verifyResult {
 
 	sigHash, err := calcWitnessSignatureHashRaw(
 		s.subScript, sigHashes, s.hashType, &s.vm.tx, s.vm.txIdx,
-		s.vm.inputAmount,
-	)
+		s.vm.inputAmount, s.vm.satsRanges)
 	if err != nil {
 		// TODO(roasbeef): this doesn't need to return an error, should
 		// instead be further up the stack? this only returns an error

@@ -74,12 +74,13 @@ out:
 			witness := txIn.Witness
 			pkScript := utxo.PkScript()
 			inputAmount := utxo.Amount()
+			satsRanges := utxo.SatsRanges()
 			fmt.Printf("txin pkscript: %x \n", pkScript)
 			fmt.Printf("txin amount: %d \n", inputAmount)
 			vm, err := txscript.NewEngine(
 				pkScript, txVI.tx.MsgTx(), txVI.txInIndex,
 				v.flags, v.sigCache, txVI.sigHashes,
-				inputAmount, v.utxoView,
+				inputAmount, satsRanges, v.utxoView,
 			)
 			if err != nil {
 				str := fmt.Sprintf("failed to parse input "+
@@ -199,6 +200,10 @@ func ValidateTransactionScripts(tx *btcutil.Tx, utxoView *UtxoViewpoint,
 	// First determine if segwit is active according to the scriptFlags. If
 	// it isn't then we don't need to interact with the HashCache.
 	segwitActive := flags&txscript.ScriptVerifyWitness == txscript.ScriptVerifyWitness
+
+	log.Debugf("Tx Hash = %s", tx.Hash())
+	//log.Debugf("Tx Witness Hash = %s", tx.WitnessHash())
+	log.Debugf("TX Msg Hash = %s", tx.MsgTx().TxHash())
 
 	// If the hashcache doesn't yet has the sighash midstate for this
 	// transaction, then we'll compute them now so we can re-use them

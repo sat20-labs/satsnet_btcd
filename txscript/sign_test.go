@@ -55,10 +55,10 @@ func mkGetScript(scripts map[string][]byte) ScriptDB {
 	})
 }
 
-func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, sigScript, pkScript []byte) error {
+func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, satsRanges wire.TxRanges, sigScript, pkScript []byte) error {
 	tx.TxIn[idx].SignatureScript = sigScript
 	vm, err := NewEngine(pkScript, tx, idx,
-		ScriptBip16|ScriptVerifyDERSignatures, nil, nil, inputAmt, nil)
+		ScriptBip16|ScriptVerifyDERSignatures, nil, nil, inputAmt, satsRanges, nil)
 	if err != nil {
 		return fmt.Errorf("failed to make script engine for %s: %v",
 			msg, err)
@@ -83,7 +83,7 @@ func signAndCheck(msg string, tx *wire.MsgTx, idx int, inputAmt int64, pkScript 
 		return fmt.Errorf("failed to sign output %s: %v", msg, err)
 	}
 
-	return checkScripts(msg, tx, idx, inputAmt, sigScript, pkScript)
+	return checkScripts(msg, tx, idx, inputAmt, wire.TxRanges{}, sigScript, pkScript)
 }
 
 func TestSignTxOutput(t *testing.T) {
@@ -227,7 +227,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], sigScript, pkScript)
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript, pkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
 					"%s: %v", msg, err)
@@ -325,7 +325,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i],
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
 				sigScript, pkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -424,7 +424,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], sigScript, pkScript)
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript, pkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
 					"%s: %v", msg, err)
@@ -522,7 +522,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i],
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
 				sigScript, pkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -660,7 +660,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i],
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -797,7 +797,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i],
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -933,7 +933,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i],
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -1068,7 +1068,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i],
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -1226,7 +1226,7 @@ func TestSignTxOutput(t *testing.T) {
 			}
 
 			// Only 1 out of 2 signed, this *should* fail.
-			if checkScripts(msg, tx, i, inputAmounts[i], sigScript,
+			if checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript,
 				scriptPkScript) == nil {
 				t.Errorf("part signed script valid for %s", msg)
 				break
@@ -1245,7 +1245,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], sigScript,
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript,
 				scriptPkScript)
 			if err != nil {
 				t.Errorf("fully signed script invalid for "+
@@ -1330,7 +1330,7 @@ func TestSignTxOutput(t *testing.T) {
 			}
 
 			// Only 1 out of 2 signed, this *should* fail.
-			if checkScripts(msg, tx, i, inputAmounts[i], sigScript,
+			if checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript,
 				scriptPkScript) == nil {
 				t.Errorf("part signed script valid for %s", msg)
 				break
@@ -1351,7 +1351,7 @@ func TestSignTxOutput(t *testing.T) {
 			}
 
 			// Now we should pass.
-			err = checkScripts(msg, tx, i, inputAmounts[i],
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("fully signed script invalid for "+
@@ -1674,7 +1674,7 @@ nexttest:
 		scriptFlags := ScriptBip16 | ScriptVerifyDERSignatures
 		for j := range tx.TxIn {
 			vm, err := NewEngine(sigScriptTests[i].
-				inputs[j].txout.PkScript, tx, j, scriptFlags, nil, nil, 0, nil)
+				inputs[j].txout.PkScript, tx, j, scriptFlags, nil, nil, 0, wire.TxRanges{}, nil)
 			if err != nil {
 				t.Errorf("cannot create script vm for test %v: %v",
 					sigScriptTests[i].name, err)
@@ -1773,7 +1773,7 @@ func TestRawTxInTaprootSignature(t *testing.T) {
 			txCopy.TxIn[0].Witness = wire.TxWitness{sig}
 			vm, err := NewEngine(
 				txOut.PkScript, txCopy, 0, StandardVerifyFlags,
-				nil, sigHashes, txOut.Value, prevFetcher,
+				nil, sigHashes, txOut.Value, txOut.SatsRanges, prevFetcher,
 			)
 			require.NoError(t, err)
 
@@ -1888,7 +1888,7 @@ func TestRawTxInTapscriptSignature(t *testing.T) {
 			// Finally, ensure that the signature produced is valid.
 			vm, err := NewEngine(
 				txOut.PkScript, txCopy, 0, StandardVerifyFlags,
-				nil, sigHashes, txOut.Value, prevFetcher,
+				nil, sigHashes, txOut.Value, txOut.SatsRanges, prevFetcher,
 			)
 			require.NoError(t, err)
 

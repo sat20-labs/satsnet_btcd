@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
@@ -128,12 +129,17 @@ func AddrToPkScript(addr string, netParams *chaincfg.Params) ([]byte, error) {
 	return txscript.PayToAddrScript(address)
 }
 
-func testAnchorTx(lockedTxid string, address string) {
+func testAnchorTx(lockedTxid string, address string, amount int64) {
 	fmt.Printf("testAnchorTx...\n")
 	TxidDefault := "b274b49e885fdd87ea2870930297d2c6ecee7cc62fe8e67b21b452fb348c441e"
 	//address := "tb1prm9fflqhtezag25s06t740e7ca4rydm9x5mucrc3lt6dlkxquyqq02k2cf"
-	amount := int64(1000000)
-	satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
+	//amount := int64(1000000)
+	//satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
+	satsRanges := make([]wire.SatsRange, 0)
+
+	Start := time.Now().UnixMicro()
+	Size := amount
+	satsRanges = append(satsRanges, wire.SatsRange{Start: Start, Size: Size})
 
 	walletManager := btcwallet.GetWalletInst()
 	if walletManager == nil {

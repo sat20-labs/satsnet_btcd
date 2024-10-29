@@ -21,11 +21,11 @@ import (
 
 const (
 	HOST_BTCCHAIN_RELEASE = "https://blockstream.info/api"
-	HOST_BTCCHAIN_TEST    = "https://blockstream.info/testnet/api"
+	HOST_BTCCHAIN_TEST    = "http://192.168.10.104:8019/testnet"
 
 	URL_GETTXLIST  = "%s/address/%s/txs"
 	URL_GETBALANCE = "%s/address/%s"
-	URL_GETUTXOS   = "%s/address/%s/utxo"
+	URL_GETUTXOS   = "%s/allutxos/address/%s"
 	URL_TRANSATION = "%s/tx"
 )
 
@@ -165,10 +165,16 @@ type BTCTXSummaryStruct struct {
 }
 
 type BTCUtxo struct {
-	TXID   string      `json:"txid"`
-	VOut   int64       `json:"vout"`
-	Status BTCTXStatus `json:"status"`
-	Value  int64       `json:"value"`
+	TXID  string `json:"txid"`
+	VOut  int64  `json:"vout"`
+	Value int64  `json:"value"`
+}
+
+type BTCUtxoResponse struct {
+	Code  int       `json:"code"`
+	Msg   string    `json:"msg"`
+	Total int       `json:"total"`
+	Utxos []BTCUtxo `json:"otherutxos"`
 }
 
 type BTCTxRes struct {
@@ -360,7 +366,7 @@ func (walletMgr *BTCWalletManager) GetDefaultAddress() (string, error) {
 	return address, nil
 }
 
-func GetBTCBalance(address string) (*big.Float, *big.Float, error) {
+func GetBTCBalance1(address string) (*big.Float, *big.Float, error) {
 	fmt.Printf("GetBTCBalance %s ...\n", address)
 
 	//fmt.Println("GetBTCBalance response : %+v", resAddress)
@@ -381,13 +387,13 @@ func GetBTCBalance(address string) (*big.Float, *big.Float, error) {
 	//result := big.NewFloat(resAddress.ChainStats.Funded_TXO_Sum)
 	return result, result_mempool, nil
 }
-func GetBTCBalance1(address string) (*big.Float, *big.Float, error) {
+func GetBTCBalance(address string) (*big.Float, *big.Float, error) {
 	fmt.Printf("GetBTCBalance %s ...\n", address)
 	var host string
 	//if defines.RUNTIME_ENVIRONMENT == defines.ENVIRONMENT_TEST {
-	//	host = HOST_BTCCHAIN_TEST
+	host = HOST_BTCCHAIN_TEST
 	//} else {
-	host = HOST_BTCCHAIN_RELEASE
+	//host = HOST_BTCCHAIN_RELEASE
 	//}
 
 	url := fmt.Sprintf(URL_GETBALANCE, host, address)
@@ -427,7 +433,7 @@ func GetBTCBalance1(address string) (*big.Float, *big.Float, error) {
 }
 
 func GetBTCUtoxs(address string) ([]*BTCUtxo, error) {
-	//	utxomap, err := getBTCUtoxs(address)
+	//utxomap, err := getBTCUtoxs(address)
 	utxomap, err := getBTCUtoxsWithBlock(address)
 	if err != nil {
 		return nil, err
@@ -448,13 +454,13 @@ func GetBTCUtoxs(address string) ([]*BTCUtxo, error) {
 	return utxoList, nil
 }
 
-func getBTCUtoxs1(address string) (map[wire.OutPoint]*utxo, error) {
+func getBTCUtoxs(address string) (map[wire.OutPoint]*utxo, error) {
 	fmt.Printf("GetBTCUtoxs %s ...\n", address)
 	var host string
 	//if defines.RUNTIME_ENVIRONMENT == defines.ENVIRONMENT_TEST {
-	//	host = HOST_BTCCHAIN_TEST
+	host = HOST_BTCCHAIN_TEST
 	//} else {
-	host = HOST_BTCCHAIN_RELEASE
+	//host = HOST_BTCCHAIN_RELEASE
 	//}
 
 	url := fmt.Sprintf(URL_GETUTXOS, host, address)
@@ -471,7 +477,8 @@ func getBTCUtoxs1(address string) (map[wire.OutPoint]*utxo, error) {
 	}
 
 	//fmt.Println("GetBTCUtoxs response data: %s", string(data))
-	resUtxos := make([]*BTCUtxo, 0)
+	//resUtxos := make([]*BTCUtxo, 0)
+	resUtxos := &BTCUtxoResponse{}
 	//resUtxos := &BTCUtxoRes{}
 	json.Unmarshal(data, &resUtxos)
 
@@ -495,7 +502,7 @@ func getBTCUtoxs1(address string) (map[wire.OutPoint]*utxo, error) {
 	logpkScript(selfAddrScript)
 
 	utxos := make(map[wire.OutPoint]*utxo)
-	for _, utxores := range resUtxos {
+	for _, utxores := range resUtxos.Utxos {
 		//fmt.Println("GetBTCUtoxs List index %d content: %+v", index, utxores)
 
 		op := &wire.OutPoint{}
@@ -525,7 +532,7 @@ func getBTCUtoxs1(address string) (map[wire.OutPoint]*utxo, error) {
 	return utxos, nil
 }
 
-func getBTCUtoxs(address string) (map[wire.OutPoint]*utxo, error) {
+func getBTCUtoxs1(address string) (map[wire.OutPoint]*utxo, error) {
 	fmt.Printf("GetBTCUtoxs %s ...\n", address)
 	utxos := make(map[wire.OutPoint]*utxo)
 	a, err := btcutil.DecodeAddress(address, NetParams)
@@ -607,10 +614,13 @@ func getBTCUtoxsWithBlock(address string) (map[wire.OutPoint]*utxo, error) {
 		//utxos[*op] = utxo
 
 		for op, utxo := range utxosBlock {
+			// if utxo.value > 10000 {
+			// 	continue
+			// }
 			utxos[op] = utxo
 		}
 
-		if len(utxos) > 0 {
+		if len(utxos) >= 2 {
 			// Just leave last utxo to avoid the utxo is spent
 			break
 		}

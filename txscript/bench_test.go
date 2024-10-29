@@ -64,7 +64,7 @@ func BenchmarkCalcWitnessSigHash(b *testing.B) {
 		for j := 0; j < len(manyInputsBenchTx.TxIn); j++ {
 			_, err := CalcWitnessSigHash(
 				prevOutScript, sigHashes, SigHashAll,
-				&manyInputsBenchTx, j, 5,
+				&manyInputsBenchTx, j, 5, wire.TxRanges{{Start: 100000000, Size: 5}},
 			)
 			if err != nil {
 				b.Fatalf("failed to calc signature hash: %v", err)
