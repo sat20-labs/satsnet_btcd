@@ -2414,7 +2414,7 @@ func opcodeCheckMultiSig(op *opcode, data []byte, vm *Engine) error {
 			}
 
 			hash, err = calcWitnessSignatureHashRaw(script, sigHashes, hashType,
-				&vm.tx, vm.txIdx, vm.inputAmount)
+				&vm.tx, vm.txIdx, vm.inputAmount, vm.satsRanges)
 			if err != nil {
 				return err
 			}
