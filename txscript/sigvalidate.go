@@ -386,6 +386,8 @@ func (t *taprootSigVerifier) Verify() verifyResult {
 		return verifyResult{}
 	}
 
+	log.Debugf("Taproot Verify sighash: %x", sigHash)
+
 	return verifyResult{
 		sigValid: t.verifySig(sigHash),
 	}

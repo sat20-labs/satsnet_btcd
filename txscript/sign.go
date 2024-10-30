@@ -30,6 +30,8 @@ func RawTxInWitnessSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 		return nil, err
 	}
 
+	log.Debugf("RawTxInWitnessSignature sighash: %x", hash)
+
 	signature := ecdsa.Sign(key, hash)
 
 	return append(signature.Serialize(), byte(hashType)), nil
@@ -83,6 +85,8 @@ func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	// Before we sign the sighash, we'll need to apply the taptweak to the
 	// private key based on the tapScriptRootHash.
 	privKeyTweak := TweakTaprootPrivKey(*key, tapScriptRootHash)
+
+	log.Debugf("Taproot sign sighash: %x", sigHash)
 
 	// With the sighash constructed, we can sign it with the specified
 	// private key.
@@ -154,6 +158,8 @@ func RawTxInTapscriptSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debugf("Taproot Script sign sighash: %x", sigHash)
 
 	// With the sighash constructed, we can sign it with the specified
 	// private key.
