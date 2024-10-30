@@ -187,6 +187,9 @@ func RawTxInSignature(tx *wire.MsgTx, idx int, subScript []byte,
 	if err != nil {
 		return nil, err
 	}
+
+	log.Debugf("RawTxInSignature sighash: %x", hash)
+
 	signature := ecdsa.Sign(key, hash)
 
 	return append(signature.Serialize(), byte(hashType)), nil
