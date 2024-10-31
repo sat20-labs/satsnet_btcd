@@ -6,6 +6,7 @@ package txscript
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/sat20-labs/satsnet_btcd/btcec"
 	"github.com/sat20-labs/satsnet_btcd/btcec/schnorr"
@@ -73,6 +74,14 @@ func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	amt int64, satsRanges wire.TxRanges, pkScript []byte, tapScriptRootHash []byte, hashType SigHashType,
 	key *btcec.PrivateKey) ([]byte, error) {
 
+	logOut("****************************************************************")
+	logOut("RawTxInTaprootSignature")
+	logOut("sigHashes = %x", sigHashes)
+	logOut("hashType = %x", hashType)
+	logOut("idx = %x", idx)
+	logOut("pkScript = %x", pkScript)
+	logOut("amt = %x", amt)
+	logOut("satsRanges = %x", satsRanges)
 	// First, we'll start by compute the top-level taproot sighash.
 	sigHash, err := calcTaprootSignatureHashRaw(
 		sigHashes, hashType, tx, idx,
@@ -81,12 +90,12 @@ func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	if err != nil {
 		return nil, err
 	}
+	logOut("Taproot sign sighash: %x", sigHash)
+	logOut("****************************************************************")
 
 	// Before we sign the sighash, we'll need to apply the taptweak to the
 	// private key based on the tapScriptRootHash.
 	privKeyTweak := TweakTaprootPrivKey(*key, tapScriptRootHash)
-
-	log.Debugf("Taproot sign sighash: %x", sigHash)
 
 	// With the sighash constructed, we can sign it with the specified
 	// private key.
@@ -105,6 +114,11 @@ func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 
 	// Otherwise, append the sighash type to the final sig.
 	return append(sig, byte(hashType)), nil
+}
+
+func logOut(format string, params ...interface{}) {
+	logStr := fmt.Sprintf(format, params...)
+	fmt.Println(logStr)
 }
 
 // TaprootWitnessSignature returns a valid witness stack that can be used to
@@ -148,6 +162,14 @@ func RawTxInTapscriptSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 	amt int64, satsRanges wire.TxRanges, pkScript []byte, tapLeaf TapLeaf, hashType SigHashType,
 	privKey *btcec.PrivateKey) ([]byte, error) {
 
+	logOut("****************************************************************")
+	logOut("RawTxInTapscriptSignature")
+	logOut("sigHashes = %x", sigHashes)
+	logOut("hashType = %x", hashType)
+	logOut("idx = %x", idx)
+	logOut("pkScript = %x", pkScript)
+	logOut("amt = %x", amt)
+	logOut("satsRanges = %x", satsRanges)
 	// First, we'll start by compute the top-level taproot sighash.
 	tapLeafHash := tapLeaf.TapHash()
 	sigHash, err := calcTaprootSignatureHashRaw(
@@ -159,7 +181,8 @@ func RawTxInTapscriptSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 		return nil, err
 	}
 
-	log.Debugf("Taproot Script sign sighash: %x", sigHash)
+	logOut("Taproot Script sign sighash: %x", sigHash)
+	logOut("****************************************************************")
 
 	// With the sighash constructed, we can sign it with the specified
 	// private key.

@@ -375,6 +375,12 @@ func (t *taprootSigVerifier) Verify() verifyResult {
 		opts = append(opts, WithAnnex(t.annex))
 	}
 
+	logOut("****************************************************************")
+	logOut("taprootSigVerifier Verify")
+	logOut("sigHashes = %x", t.hashCache)
+	logOut("hashType = %x", t.hashType)
+	logOut("idx = %x", t.inputIndex)
+
 	// Before we attempt to verify the signature, we'll need to first
 	// compute the sighash based on the input and tx information.
 	sigHash, err := calcTaprootSignatureHashRaw(
@@ -387,6 +393,7 @@ func (t *taprootSigVerifier) Verify() verifyResult {
 	}
 
 	log.Debugf("Taproot Verify sighash: %x", sigHash)
+	logOut("****************************************************************")
 
 	return verifyResult{
 		sigValid: t.verifySig(sigHash),
@@ -475,6 +482,11 @@ func (b *baseTapscriptSigVerifier) Verify() verifyResult {
 		opts = append(opts, WithAnnex(b.vm.taprootCtx.annex))
 	}
 
+	logOut("****************************************************************")
+	logOut("baseTapscriptSigVerifier Verify")
+	logOut("sigHashes = %x", b.hashCache)
+	logOut("hashType = %x", b.hashType)
+	logOut("idx = %x", b.inputIndex)
 	// Otherwise, we'll compute the sighash using the tapscript message
 	// extensions and return the outcome.
 	sigHash, err := calcTaprootSignatureHashRaw(
@@ -485,6 +497,8 @@ func (b *baseTapscriptSigVerifier) Verify() verifyResult {
 		// TODO(roasbeef): propagate the error here?
 		return verifyResult{}
 	}
+	logOut("baseTapscriptSigVerifier Verify sighash: %x", sigHash)
+	logOut("****************************************************************")
 
 	return verifyResult{
 		sigValid: b.verifySig(sigHash),
