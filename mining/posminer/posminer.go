@@ -45,7 +45,7 @@ const (
 	// while they are actively searching for a solution.  This is done to
 	// reduce the amount of syncs between the workers that must be done to
 	// keep track of the hashes per second.
-	blockGenerateSecs = 60
+	blockGenerateSecs = 12
 )
 
 var (
@@ -97,6 +97,9 @@ type Config struct {
 	// not current since any solved blocks would be on a side chain and and
 	// up orphaned anyways.
 	IsCurrent func() bool
+
+	// ValidatorId is the validator id for this node
+	ValidatorId uint64
 }
 
 // POSMiner provides facilities for solving blocks (mining) using the POS in
@@ -483,8 +486,14 @@ func (m *POSMiner) Start(timerGenerate bool) {
 		go m.miningWorkerController()
 	}
 
+	cfg := &validatormanager.Config{
+		ChainParams: m.cfg.ChainParams,
+		Dial:        m.cfg.Dial,
+		Lookup:      m.cfg.Lookup,
+		ValidatorId: m.cfg.ValidatorId,
+	}
 	// Start ValidatorManager
-	m.ValidatorMgr = validatormanager.New(m.cfg.ChainParams, m.cfg.Dial, m.cfg.Lookup)
+	m.ValidatorMgr = validatormanager.New(cfg)
 
 	if m.ValidatorMgr != nil {
 		m.ValidatorMgr.Start()

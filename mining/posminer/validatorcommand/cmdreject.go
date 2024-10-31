@@ -7,6 +7,8 @@ package validatorcommand
 import (
 	"fmt"
 	"io"
+
+	"github.com/btcsuite/btclog"
 )
 
 // RejectCode represents a numeric value by which a remote peer indicates
@@ -137,6 +139,13 @@ func (msg *MsgReject) MaxPayloadLength(pver uint32) uint32 {
 	plen := uint32(MaxCommandPayload)
 
 	return plen
+}
+
+func (msg *MsgReject) LogCommandInfo(log btclog.Logger) {
+	log.Debugf("Command MsgReject:")
+	log.Debugf("Cmd: %s", msg.Cmd)
+	log.Debugf("RejectCode: %s", msg.Code.String())
+	log.Debugf("Reason: %s", msg.Reason)
 }
 
 // NewMsgReject returns a new bitcoin reject message that conforms to the

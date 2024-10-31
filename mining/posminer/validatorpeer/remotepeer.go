@@ -26,7 +26,7 @@ import (
 // All notify functions should be start with "On". And all get functions should
 // be start with "Get".
 type RemotePeerInterface interface {
-	// OnPeerConnected is invoked when a remote peer connects to the local peer .
+	// OnPeerDisconnected is invoked when a remote peer connects to the local peer .
 	OnPeerDisconnected(net.Addr)
 }
 
@@ -70,6 +70,9 @@ type RemotePeerConfig struct {
 	// Dial connects to the address on the named network. It cannot be nil.
 	Dial   func(net.Addr) (net.Conn, error)
 	Lookup func(string) ([]net.IP, error)
+
+	LocalValidatorId uint64 // local validator id
+
 }
 
 // NOTE: The overall data flow of a peer is split into 3 goroutines.  Inbound
@@ -144,6 +147,8 @@ type RemotePeer struct {
 	lastPingNonce      uint64    // Set to nonce if we have a pending ping.
 	lastPingTime       time.Time // Time we sent last ping.
 	lastPingMicros     int64     // Time for last ping to return.
+
+	LocalValidatorId uint64 // local validator id
 
 }
 
@@ -334,7 +339,7 @@ func newRemotePeerBase(origCfg *RemotePeerConfig, inbound bool) *RemotePeer {
 		inbound:          inbound,
 		cfg:              cfg, // Copy so caller can't mutate.
 		validatorVersion: cfg.ValidatorVersion,
-
+		LocalValidatorId: cfg.LocalValidatorId,
 		// connReqIndex: 1,
 		// connMap:      make(map[uint64]*ConnReq),
 	}
@@ -351,7 +356,7 @@ func NewRemotePeer(cfg *RemotePeerConfig, addr net.Addr) (*RemotePeer, error) {
 	// p.addrsList = make([]net.Addr, 0, len(addrs))
 	// p.addrsList = append(p.addrsList, addrs...)
 
-	log.Debugf("NewLocalpeer IP:")
+	log.Debugf("NewRemotepeer (%s) with local validator ID: %d", addr.String(), p.LocalValidatorId)
 
 	p.addr = addr
 
@@ -493,13 +498,21 @@ func (p *RemotePeer) listenCommand(connReq *ConnReq) {
 func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Message) {
 	log.Debugf("----------[RemotePeer]handleCommand command [%v]:", command.Command())
 	switch cmd := command.(type) {
-	case *validatorcommand.MsgVersion:
+	case *validatorcommand.MsgGetInfo:
+		log.Debugf("----------[RemotePeer]Receive MsgGetInfo command, will response MsgPeerInfo command")
+		cmd.LogCommandInfo(log)
+		// Handle command ping, it will response "PeerInfo" message
+		cmdPeerInfo := validatorcommand.NewMsgPeerInfo(p.LocalValidatorId, cmd.Nonce)
+		connReq.SendCommand(cmdPeerInfo)
 
-	case *validatorcommand.MsgVerAck:
+	case *validatorcommand.MsgPeerInfo:
+		log.Debugf("----------[RemotePeer]Receive MsgPeerInfo command")
+		cmd.LogCommandInfo(log)
 
 	case *validatorcommand.MsgPing:
 
 		log.Debugf("----------[RemotePeer]Receive ping command, will response pong command")
+		cmd.LogCommandInfo(log)
 		// Handle command ping, it will response "pong" message
 		cmdPong := validatorcommand.NewMsgPong(cmd.Nonce)
 		connReq.SendCommand(cmdPong)

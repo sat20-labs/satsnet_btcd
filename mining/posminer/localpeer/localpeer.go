@@ -81,7 +81,7 @@ var (
 // be start with "Get".
 type LocalPeerInterface interface {
 	// OnPeerConnected is invoked when a remote peer connects to the local peer .
-	OnPeerConnected(net.Addr)
+	OnPeerConnected(net.Addr, uint64)
 
 	// GetAllValidators invoke when get all validators.
 	GetAllValidators() []byte
@@ -1004,13 +1004,13 @@ out:
 		// // Handle each supported message type.
 		// p.stallControl <- stallControlMsg{sccHandlerStart, rmsg}
 		switch msg := rmsg.(type) {
-		case *validatorcommand.MsgVersion:
+		case *validatorcommand.MsgGetInfo:
 			// Limit to one version message per peer.
 			p.PushRejectMsg(msg.Command(), validatorcommand.RejectDuplicate,
 				"duplicate version message", true)
 			break out
 
-		case *validatorcommand.MsgVerAck:
+		case *validatorcommand.MsgPeerInfo:
 			// Limit to one verack message per peer.
 			p.PushRejectMsg(
 				msg.Command(), validatorcommand.RejectDuplicate,
@@ -1381,7 +1381,7 @@ func (p *LocalPeer) readRemoteVersionMsg() error {
 
 	// Notify and disconnect clients if the first message is not a version
 	// message.
-	msg, ok := remoteMsg.(*validatorcommand.MsgVersion)
+	msg, ok := remoteMsg.(*validatorcommand.MsgGetInfo)
 	if !ok {
 		reason := "a version message must precede all others"
 		rejectMsg := validatorcommand.NewMsgReject(msg.Command(), validatorcommand.RejectMalformed,
@@ -1398,7 +1398,7 @@ func (p *LocalPeer) readRemoteVersionMsg() error {
 	// Negotiate the protocol version and set the services to what the remote
 	// peer advertised.
 	p.flagsMtx.Lock()
-	p.advertisedProtoVer = uint32(msg.ValidatorVersion)
+	p.advertisedProtoVer = uint32(msg.ProtocolVersion)
 	p.validatorVersion = minUint32(p.validatorVersion, p.advertisedProtoVer)
 	p.versionKnown = true
 	//p.services = msg.Services
@@ -1449,7 +1449,7 @@ func (p *LocalPeer) readRemoteVersionMsg() error {
 }
 
 // processRemoteVerAckMsg takes the verack from the remote peer and handles it.
-func (p *LocalPeer) processRemoteVerAckMsg(msg *validatorcommand.MsgVerAck) {
+func (p *LocalPeer) processRemoteVerAckMsg(msg *validatorcommand.MsgPeerInfo) {
 	p.flagsMtx.Lock()
 	p.verAckReceived = true
 	p.flagsMtx.Unlock()
@@ -1461,7 +1461,7 @@ func (p *LocalPeer) processRemoteVerAckMsg(msg *validatorcommand.MsgVerAck) {
 
 // localVersionMsg creates a version message that can be used to send to the
 // remote peer.
-func (p *LocalPeer) localVersionMsg() (*validatorcommand.MsgVersion, error) {
+func (p *LocalPeer) localVersionMsg() (*validatorcommand.MsgGetInfo, error) {
 	theirNA := p.na.ToLegacy()
 
 	// If p.na is a torv3 hidden service address, we'll need to send over
@@ -1504,7 +1504,7 @@ func (p *LocalPeer) localVersionMsg() (*validatorcommand.MsgVersion, error) {
 	sentNonces.Add(nonce)
 
 	// Version message.
-	msg := validatorcommand.NewMsgVersion(nonce)
+	msg := validatorcommand.NewMsgGetInfo(0, nonce)
 
 	return msg, nil
 }
@@ -1548,7 +1548,7 @@ func (p *LocalPeer) waitToFinishNegotiation(pver uint32) error {
 		// 			p.cfg.Listeners.OnSendAddrV2(p, m)
 		// 		}
 		// 	}
-		case *validatorcommand.MsgVerAck:
+		case *validatorcommand.MsgPeerInfo:
 			// Receiving a verack means we are done with the
 			// handshake.
 			p.processRemoteVerAckMsg(m)

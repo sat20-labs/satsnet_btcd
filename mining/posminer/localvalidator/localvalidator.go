@@ -1,6 +1,7 @@
 package localvalidator
 
 import (
+	"errors"
 	"net"
 	"time"
 
@@ -20,8 +21,23 @@ type LocalValidator struct {
 
 func NewValidator(config *validator.Config, addrs []net.Addr) (*LocalValidator, error) {
 	log.Debugf("NewValidator")
-	validator := &LocalValidator{}
-	validator.Cfg = config
+	validator := &LocalValidator{
+		Validator: validator.Validator{
+			ValidatorId: config.ValidatorId,
+			Cfg:         config,
+		},
+	}
+
+	log.Debugf("Local validator ID: %d", validator.ValidatorId)
+
+	// TODO Check local validator is valid or not
+	// As an avaliable validator, it should be obtained validator ID from the validator committee when the validator is Pledged assets to the validator committee
+	if validator.isValidLocalValidator() == false {
+		err := errors.New("invalid validator")
+		log.Errorf("Check validator failed: %v", err)
+		return nil, err
+	}
+
 	peer, err := validatorpeer.NewLocalPeer(validator.newPeerConfig(config), addrs)
 	if err != nil {
 		log.Errorf("NewValidator failed: %v", err)
@@ -39,6 +55,8 @@ func (v *LocalValidator) newPeerConfig(config *validator.Config) *validatorpeer.
 		ChainParams:    config.ChainParams,
 		Dial:           config.Dial,
 		Lookup:         config.Lookup,
+
+		ValidatorId: v.ValidatorId,
 	}
 }
 
@@ -51,13 +69,13 @@ func (v *LocalValidator) Start() {
 }
 
 // OnPeerConnected is invoked when a remote peer connects to the local peer .
-func (v *LocalValidator) OnPeerConnected(addr net.Addr) {
+func (v *LocalValidator) OnPeerConnected(addr net.Addr, validatorID uint64) {
 	// It will nitify the validator manager, an new validator peer is connected
 	log.Debugf("[LocalValidator]Receive a new validator peer connected[%s]", addr.String())
 	if v.Cfg == nil || v.Cfg.Listener == nil {
 		return
 	}
-	v.Cfg.Listener.OnNewValidatorPeerConnected(addr)
+	v.Cfg.Listener.OnNewValidatorPeerConnected(addr, validatorID)
 	return
 }
 
@@ -73,4 +91,14 @@ func (v *LocalValidator) GetValidatorAddrsList() []net.Addr {
 		return nil
 	}
 	return v.localPeer.GetPeerAddrsList()
+}
+
+func (v *LocalValidator) isValidLocalValidator() bool {
+	if v.ValidatorId == 0 {
+		log.Errorf("Invalid validator ID")
+		return false
+	}
+	// Check the validator is valid or not
+
+	return true
 }

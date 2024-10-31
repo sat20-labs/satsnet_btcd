@@ -10,6 +10,7 @@ import (
 	"io"
 	"unicode/utf8"
 
+	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -31,14 +32,14 @@ const MaxCommandPayload = (1024 * 1024 * 32) // 32MB
 
 // Commands used in bitcoin message headers which describe the type of message.
 const (
-	CmdVersion       = "version"       // command for get remote peer version
-	CmdVerAck        = "verack"        // Ack current peer version to requester
+	CmdGetInfo       = "getinfo"       // command for get remote peer info
+	CmdPeerInfo      = "peerinfo"      // Ack current peer info to requester
 	CmdGetValidators = "getvalidators" // command for get validators list
-	CmdValidators    = "validators"    // send validators list in local peer to requester
+	CmdValidators    = "validators"    // send validators list in local peer to remote peer
 	CmdGetEpoch      = "getepoch"      // command for get epoch list
-	CmdEpoch         = "epoch"         // send validators list for epoch in local peer to requester
+	CmdEpoch         = "epoch"         // send validators list for epoch in local peer to remote peer
 	CmdGetGenerator  = "getgenerator"  // command for get generator
-	CmdGenerator     = "generator"     // send generator in local peer to requester
+	CmdGenerator     = "generator"     // send generator in local peer to remote peer
 	CmdPing          = "ping"          // send ping to remote peer
 	CmdPong          = "pong"          // Ack pong to remote peer for response of ping
 	CmdReject        = "reject"        // send reject to remote peer
@@ -60,6 +61,7 @@ type Message interface {
 	BtcEncode(io.Writer, uint32) error
 	Command() string
 	MaxPayloadLength(uint32) uint32
+	LogCommandInfo(log btclog.Logger)
 }
 
 // makeEmptyMessage creates a message of the appropriate concrete type based
@@ -67,11 +69,11 @@ type Message interface {
 func makeEmptyMessage(command string) (Message, error) {
 	var msg Message
 	switch command {
-	case CmdVersion:
-		msg = &MsgVersion{}
+	case CmdGetInfo:
+		msg = &MsgGetInfo{}
 
-	case CmdVerAck:
-		msg = &MsgVerAck{}
+	case CmdPeerInfo:
+		msg = &MsgPeerInfo{}
 
 	case CmdGetValidators:
 	case CmdValidators:

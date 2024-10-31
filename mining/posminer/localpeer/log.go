@@ -147,11 +147,11 @@ func sanitizeString(str string, maxLength uint) string {
 // Not all messages have or need a summary.  This is used for debug logging.
 func messageSummary(msg validatorcommand.Message) string {
 	switch msg := msg.(type) {
-	case *validatorcommand.MsgVersion:
+	case *validatorcommand.MsgGetInfo:
 		return fmt.Sprintf("pver %d",
-			msg.ValidatorVersion)
+			msg.ProtocolVersion)
 
-	case *validatorcommand.MsgVerAck:
+	case *validatorcommand.MsgPeerInfo:
 		// No summary.
 
 	// case *wire.MsgGetAddr:

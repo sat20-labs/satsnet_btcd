@@ -273,8 +273,11 @@ func main() {
 			testGetRawTransaction(txid)
 			continue
 		} else if method == "sendrawtransaction" {
-
-			testSendRawTransaction()
+			raw := ""
+			if length >= 2 {
+				raw = words[1]
+			}
+			testSendRawTransaction(raw)
 			continue
 		} else if method == "sendtxsample" {
 

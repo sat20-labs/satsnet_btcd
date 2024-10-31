@@ -27,7 +27,7 @@ import (
 // be start with "Get".
 type LocalPeerInterface interface {
 	// OnPeerConnected is invoked when a remote peer connects to the local peer .
-	OnPeerConnected(net.Addr)
+	OnPeerConnected(net.Addr, uint64)
 
 	// GetAllValidators invoke when get all validators.
 	GetAllValidators() []byte
@@ -73,6 +73,8 @@ type LocalPeerConfig struct {
 	// Dial connects to the address on the named network. It cannot be nil.
 	Dial   func(net.Addr) (net.Conn, error)
 	Lookup func(string) ([]net.IP, error)
+
+	ValidatorId uint64 // local validator id
 }
 
 // NOTE: The overall data flow of a peer is split into 3 goroutines.  Inbound
@@ -352,6 +354,8 @@ func newLocalPeerBase(origCfg *LocalPeerConfig, inbound bool) *LocalPeer {
 func NewLocalPeer(cfg *LocalPeerConfig, addrs []net.Addr) (*LocalPeer, error) {
 	p := newLocalPeerBase(cfg, false)
 
+	log.Debugf("NewLocalPeervalidator ID: %d", p.cfg.ValidatorId)
+
 	p.addrsList = make([]net.Addr, 0, len(addrs))
 	p.addrsList = append(p.addrsList, addrs...)
 
@@ -480,18 +484,13 @@ func (p *LocalPeer) listenHandler(listener net.Listener) {
 			p.closeConn(connReq)
 		} else {
 			// The remote peer is new peer connected
-			// Notify the validator that we have a new connection
-			log.Debugf("----------[LocalPeer]The remote peer is new connected, will notify validator conn[%d]: %s", newConnReq.id, newConnReq.RemoteAddr)
-			if p.cfg.LocalValidator != nil {
-				p.cfg.LocalValidator.OnPeerConnected(newConnReq.RemoteAddr)
-			}
+			p.SendGetInfoCommand(newConnReq)
 		}
 
 		p.addConn(newConnReq)
 
 		// Start to listen the command from this conn
 		go p.listenCommand(newConnReq)
-
 	}
 
 	log.Debugf("----------listener %s has stopped ", listener.Addr())
@@ -518,18 +517,26 @@ func (p *LocalPeer) listenCommand(connReq *ConnReq) {
 func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Message) {
 	log.Debugf("----------[LocalPeer]handleCommand command [%v]:", command.Command())
 	switch cmd := command.(type) {
-	case *validatorcommand.MsgVersion:
+	case *validatorcommand.MsgGetInfo:
+		log.Debugf("----------[LocalPeer]Receive MsgGetInfo command, will response MsgPeerInfo command")
+		cmd.LogCommandInfo(log)
 
-	case *validatorcommand.MsgVerAck:
+	case *validatorcommand.MsgPeerInfo:
+		log.Debugf("----------[LocalPeer]Receive MsgPeerInfo command")
+		cmd.LogCommandInfo(log)
+		// Notify the validator that we have a new connection， And received peer info from the remote peer
+		p.HandleRemotePeerInfoConfirmed(cmd, connReq)
 
 	case *validatorcommand.MsgPing:
 
 		log.Debugf("----------[LocalPeer]Receive ping command, will response pong command")
+		cmd.LogCommandInfo(log)
 		// Handle command ping, it will response "pong" message
 		cmdPong := validatorcommand.NewMsgPong(cmd.Nonce)
 		connReq.SendCommand(cmdPong)
 
 	default:
+		cmd.LogCommandInfo(log)
 		log.Errorf("----------[LocalPeer]Not to handle command [%v] from %d", command.Command(), connReq.id)
 	}
 }
@@ -614,4 +621,33 @@ func (p *LocalPeer) logCurrentConn() {
 		connReq.logConnInfo(title)
 	}
 
+}
+
+func (p *LocalPeer) SendGetInfoCommand(newConnReq *ConnReq) {
+	nonce, err := wire.RandomUint64()
+	if err != nil {
+		nonce = 1234
+	}
+	newConnReq.CheckNonce = nonce
+	newConnReq.SendCommand(validatorcommand.NewMsgGetInfo(p.cfg.ValidatorId, nonce))
+
+	// wait receive info back
+}
+
+func (p *LocalPeer) HandleRemotePeerInfoConfirmed(peerInfo *validatorcommand.MsgPeerInfo, connReq *ConnReq) {
+	// 	First check the remote validator is valid, then notify the validator
+
+	if p.CheckValidatorID(peerInfo.ValidatorId) == false {
+		log.Errorf("----------[LocalPeer]The remote peer is not valid")
+		return
+	}
+
+	log.Debugf("----------[LocalPeer]The remote peer is comfirmed, will notify validator conn[%d]: %s", connReq.id, connReq.RemoteAddr)
+	if p.cfg.LocalValidator != nil {
+		p.cfg.LocalValidator.OnPeerConnected(connReq.RemoteAddr, peerInfo.ValidatorId)
+	}
+}
+
+func (p *LocalPeer) CheckValidatorID(validatorID uint64) bool {
+	return true
 }

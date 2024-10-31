@@ -190,6 +190,7 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"gettxspendingprevout":   handleGetTxSpendingPrevOut,
 	"getmempoolentry":        handleGetMempoolEntry,
 	"getblockstats":          handleGetBlockStats,
+	"estimatesmartfee":       handleEstimateSmartFee,
 }
 
 // list of commands that we recognize, but for which btcd has no support because
@@ -2458,6 +2459,16 @@ func handleGetBlockStats(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 	return ret, nil
 }
 
+func handleEstimateSmartFee(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	defaultFee := float64(0.1)
+	ret := &btcjson.EstimateSmartFeeResult{
+		FeeRate: &defaultFee,
+		Errors:  []string{},
+		Blocks:  int64(0),
+	}
+	return ret, nil
+}
+
 // handleGetMiningInfo implements the getmininginfo command. We only return the
 // fields that are not related to wallet functionality.
 func handleGetMiningInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
@@ -3522,6 +3533,15 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 
 	LogMsgTx("Received a transaction raw:", &msgTx)
 
+	// if msgTx.TxHash().String() == "ca44d33e337cf413e5a932735e834af6db9db20a01454f4d3918fccec8f4dfe3" {
+
+	// 	err = fmt.Errorf("Not Test Transaction")
+	// 	return nil, &btcjson.RPCError{
+	// 		Code:    btcjson.ErrRPCInvalidParameter,
+	// 		Message: "TX rejected: " + err.Error(),
+	// 	}
+	// }
+
 	// Use 0 for the tag to represent local node.
 	tx := btcutil.NewTx(&msgTx)
 	acceptedTxs, err := s.cfg.TxMemPool.ProcessTransaction(tx, false, false, 0)
@@ -4276,6 +4296,8 @@ type parsedRPCCmd struct {
 // commands which are not recognized or not implemented will return an error
 // suitable for use in replies.
 func (s *rpcServer) standardCmdResult(cmd *parsedRPCCmd, closeChan <-chan struct{}) (interface{}, error) {
+
+	rpcsLog.Debugf("Received command <%s> ", cmd.method)
 	handler, ok := rpcHandlers[cmd.method]
 	if ok {
 		goto handled
@@ -4675,6 +4697,7 @@ func (s *rpcServer) Start() {
 		w.Header().Set("Content-Type", "application/json")
 		r.Close = true
 
+		rpcsLog.Infof("Receive request from client %s", r.RemoteAddr)
 		// Limit the number of connections to max allowed.
 		if s.limitConnections(w, r.RemoteAddr) {
 			return

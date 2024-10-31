@@ -6,6 +6,8 @@ package validatorcommand
 
 import (
 	"io"
+
+	"github.com/btcsuite/btclog"
 )
 
 // MsgPong implements the Message interface and represents a bitcoin pong
@@ -52,6 +54,10 @@ func (msg *MsgPong) MaxPayloadLength(pver uint32) uint32 {
 	plen := uint32(8)
 
 	return plen
+}
+
+func (msg *MsgPong) LogCommandInfo(log btclog.Logger) {
+	log.Debugf("Command Pong, Nonce: %d", msg.Nonce)
 }
 
 // NewMsgPong returns a new bitcoin pong message that conforms to the Message

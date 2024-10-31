@@ -24,7 +24,7 @@ type ValidatorInfo struct {
 
 type ValidatorListener interface {
 	// An new validator peer is connected
-	OnNewValidatorPeerConnected(net.Addr)
+	OnNewValidatorPeerConnected(net.Addr, uint64)
 
 	// An validator peer is disconnected
 	OnValidatorPeerDisconnected(*Validator)
@@ -51,8 +51,9 @@ type ValidatorListener interface {
 	GetGenerator() *ValidatorInfo
 }
 
-// Config is the struct to hold configuration options useful to ValidatorPeer.
+// Config is the struct to hold configuration options useful to Validator.
 type Config struct {
+	ValidatorId uint64
 	// The listener for process message from/to this validator peer
 	Listener ValidatorListener // ChainParams identifies which chain parameters the cpu miner is
 	// associated with.
@@ -88,7 +89,8 @@ type Validator struct {
 func NewValidator(config *Config, addr net.Addr) (*Validator, error) {
 	log.Debugf("NewValidator")
 	validator := &Validator{
-		Cfg: config,
+		ValidatorId: config.ValidatorId,
+		Cfg:         config,
 	}
 	peer, err := validatorpeer.NewRemotePeer(validator.newPeerConfig(config), addr)
 	if err != nil {
@@ -103,10 +105,11 @@ func NewValidator(config *Config, addr net.Addr) (*Validator, error) {
 // newPeerConfig returns the configuration for the given serverPeer.
 func (v *Validator) newPeerConfig(config *Config) *validatorpeer.RemotePeerConfig {
 	return &validatorpeer.RemotePeerConfig{
-		RemoteValidator: v,
-		ChainParams:     config.ChainParams,
-		Dial:            config.Dial,
-		Lookup:          config.Lookup,
+		RemoteValidator:  v,
+		ChainParams:      config.ChainParams,
+		Dial:             config.Dial,
+		Lookup:           config.Lookup,
+		LocalValidatorId: v.ValidatorId,
 	}
 }
 
@@ -206,7 +209,7 @@ func (v *Validator) SetLocalValidator() {
 	v.isLocalValidator = true
 }
 
-// OnPeerConnected is invoked when a remote peer connects to the local peer .
+// OnPeerDisconnected is invoked when a remote peer connects to the local peer .
 func (v *Validator) OnPeerDisconnected(addr net.Addr) {
 	if v.Cfg == nil || v.Cfg.Listener == nil {
 		return

@@ -7,6 +7,8 @@ package validatorcommand
 import (
 	"encoding/binary"
 	"io"
+
+	"github.com/btcsuite/btclog"
 )
 
 // MsgPing implements the Message interface and represents a bitcoin ping
@@ -41,10 +43,10 @@ func (msg *MsgPing) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgPing) BtcEncode(w io.Writer, pver uint32) error {
-		err := binarySerializer.PutUint64(w, littleEndian, msg.Nonce)
-		if err != nil {
-			return err
-		}
+	err := binarySerializer.PutUint64(w, littleEndian, msg.Nonce)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -58,10 +60,14 @@ func (msg *MsgPing) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgPing) MaxPayloadLength(pver uint32) uint32 {
-		// Nonce 8 bytes.
-		plen := uint32(8)
+	// Nonce 8 bytes.
+	plen := uint32(8)
 
 	return plen
+}
+
+func (msg *MsgPing) LogCommandInfo(log btclog.Logger) {
+	log.Debugf("Command Ping, Nonce: %d", msg.Nonce)
 }
 
 // NewMsgPing returns a new bitcoin ping message that conforms to the Message

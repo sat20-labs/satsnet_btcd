@@ -15,6 +15,13 @@ const (
 	MAX_CONNECTED = 8
 )
 
+type Config struct {
+	ChainParams *chaincfg.Params
+	Dial        func(net.Addr) (net.Conn, error)
+	Lookup      func(string) ([]net.IP, error)
+	ValidatorId uint64
+}
+
 type ValidatorManager struct {
 	// ChainParams identifies which chain parameters the cpu miner is
 	// associated with.
@@ -23,41 +30,50 @@ type ValidatorManager struct {
 	Dial   func(net.Addr) (net.Conn, error)
 	lookup func(string) ([]net.IP, error)
 
-	myValidator      *localvalidator.LocalValidator // 当前的验证者
-	PreValidatorList []*validator.Validator         // 预备验证者列表， 用于初始化的验证者列表， 主要有本地保存和种子Seed中获取的Validator地址生成
-	ValidatorList    []*validator.Validator         // 所有的验证者列表
-	ConnectedList    []*validator.Validator         // 所有已连接的验证者列表
-	CurrentEpoch     *epoch.Epoch                   // 当前的Epoch
+	ValidatorId uint64
+	myValidator *localvalidator.LocalValidator // 当前的验证者
+	//	PreValidatorList []*validator.Validator         // 预备验证者列表， 用于初始化的验证者列表， 主要有本地保存和种子Seed中获取的Validator地址生成
+	ValidatorList []*validator.Validator // 所有的验证者列表
+	ConnectedList []*validator.Validator // 所有已连接的验证者列表
+	CurrentEpoch  *epoch.Epoch           // 当前的Epoch
 }
 
 //var validatorMgr *ValidatorManager
 
-func New(chainParams *chaincfg.Params, dail func(net.Addr) (net.Conn, error), lookup func(string) ([]net.IP, error)) *ValidatorManager {
+func New(cfg *Config) *ValidatorManager {
 	log.Debugf("New ValidatorManager")
 	validatorMgr := &ValidatorManager{
-		ChainParams: chainParams,
-		Dial:        dail,
-		lookup:      lookup,
+		ChainParams: cfg.ChainParams,
+		Dial:        cfg.Dial,
+		lookup:      cfg.Lookup,
+		ValidatorId: cfg.ValidatorId,
 
-		PreValidatorList: make([]*validator.Validator, 0),
-		ValidatorList:    make([]*validator.Validator, 0),
-		ConnectedList:    make([]*validator.Validator, 0),
+		ValidatorList: make([]*validator.Validator, 0),
+		ConnectedList: make([]*validator.Validator, 0),
 	}
 	localAddrs, _ := validatorMgr.getLocalAddr()
 	//log.Debugf("Get local address: %s", localAddr.String())
-	validatorCfg := validatorMgr.newValidatorConfig()
-	validatorMgr.myValidator, _ = localvalidator.NewValidator(validatorCfg, localAddrs)
+	validatorCfg := validatorMgr.newValidatorConfig(validatorMgr.ValidatorId)
+
+	var err error
+	validatorMgr.myValidator, err = localvalidator.NewValidator(validatorCfg, localAddrs)
+	if err != nil {
+		log.Errorf("New LocalValidator failed: %v", err)
+		return nil
+	}
 	validatorMgr.myValidator.Start()
 	log.Debugf("New ValidatorManager succeed")
 	return validatorMgr
 }
 
-func (vm *ValidatorManager) newValidatorConfig() *validator.Config {
+func (vm *ValidatorManager) newValidatorConfig(validatorID uint64) *validator.Config {
 	return &validator.Config{
 		Listener:    vm,
 		ChainParams: vm.ChainParams,
 		Dial:        vm.Dial,
 		Lookup:      vm.lookup,
+
+		ValidatorId: validatorID,
 	}
 }
 
@@ -69,7 +85,9 @@ func (vm *ValidatorManager) Start() {
 	// if the saved validators file not exists, start from dns seed
 	addrs, _ := vm.getSeed(vm.ChainParams)
 
-	validatorCfg := vm.newValidatorConfig()
+	validatorCfg := vm.newValidatorConfig(0) // Start , use 0 (unkown validator id)
+
+	PreValidatorList := make([]*validator.Validator, 0)
 
 	for _, addr := range addrs {
 		log.Debugf("Try to connect validator: %s", addr.String())
@@ -90,13 +108,13 @@ func (vm *ValidatorManager) Start() {
 			//vm.PreValidatorList = append(vm.PreValidatorList, validator)
 		} else {
 			log.Debugf("Validator is remote validator")
-			vm.PreValidatorList = append(vm.PreValidatorList, validator)
+			PreValidatorList = append(PreValidatorList, validator)
 		}
 
 	}
 
 	// Select Max validator to get current all validators info
-	validatorCount := len(vm.PreValidatorList)
+	validatorCount := len(PreValidatorList)
 	connectCount := validatorCount
 	if connectCount > MAX_CONNECTED {
 		connectCount = MAX_CONNECTED
@@ -107,7 +125,7 @@ func (vm *ValidatorManager) Start() {
 		if connectCount < validatorCount {
 			index = rand.Intn(validatorCount)
 		}
-		validator := vm.PreValidatorList[index]
+		validator := PreValidatorList[index]
 
 		// Connect to the validator
 		err := validator.Start()
@@ -176,7 +194,7 @@ func (vm *ValidatorManager) GetGenerator() *validator.ValidatorInfo {
 	return nil
 }
 
-func (vm *ValidatorManager) OnNewValidatorPeerConnected(netAddr net.Addr) {
+func (vm *ValidatorManager) OnNewValidatorPeerConnected(netAddr net.Addr, validatorId uint64) {
 	// New validator peer is connected
 	log.Debugf("[ValidatorManager]New validator peer connected: %s", netAddr.String())
 
@@ -208,7 +226,7 @@ func (vm *ValidatorManager) OnNewValidatorPeerConnected(netAddr net.Addr) {
 		Port: port,
 	}
 
-	validatorCfg := vm.newValidatorConfig()
+	validatorCfg := vm.newValidatorConfig(validatorId)
 	validatorPeer, err := validator.NewValidator(validatorCfg, addrPeer)
 	if err != nil {
 		log.Errorf("New Validator failed: %v", err)
@@ -223,7 +241,7 @@ func (vm *ValidatorManager) OnNewValidatorPeerConnected(netAddr net.Addr) {
 
 	vm.ConnectedList = append(vm.ConnectedList, validatorPeer)
 
-	log.Debugf("[ValidatorManager]New validator has added in connectedlist: %s", netAddr.String())
+	log.Debugf("[ValidatorManager]New validator added to connectedlist: %s", netAddr.String())
 }
 
 func (vm *ValidatorManager) OnValidatorPeerDisconnected(validator *validator.Validator) {

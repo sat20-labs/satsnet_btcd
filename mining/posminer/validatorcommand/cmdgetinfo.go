@@ -9,27 +9,32 @@ import (
 	"fmt"
 	"io"
 	"time"
+
+	"github.com/btcsuite/btclog"
 )
 
 // MaxUserAgentLen is the maximum allowed length for the user agent field in a
-// version message (MsgVersion).
+// version message (MsgGetInfo).
 const MaxUserAgentLen = 256
 
 // DefaultUserAgent for wire in the stack
 const DefaultUserAgent = "/btcwire:0.5.0/"
 
-// MsgVersion implements the Message interface and represents a bitcoin version
+// MsgGetInfo implements the Message interface and represents a bitcoin version
 // message.  It is used for a peer to advertise itself as soon as an outbound
 // connection is made.  The remote peer then uses this information along with
 // its own to negotiate.  The remote peer must then respond with a version
 // message of its own containing the negotiated values followed by a verack
 // message (MsgVerAck).  This exchange must take place before any further
 // communication is allowed to proceed.
-type MsgVersion struct {
+type MsgGetInfo struct {
 	// Version of the protocol the node is using.
-	ValidatorVersion int32
+	ProtocolVersion int32
 
-	// Time the message was generated.  This is encoded as an int64 on the wire.
+	// Current validator id
+	ValidatorId uint64
+
+	// Time the validator connected to Validator network.  This is encoded as an int64 on the wire.
 	Timestamp time.Time
 
 	// Unique value associated with message that is used to detect self
@@ -44,14 +49,14 @@ type MsgVersion struct {
 // *bytes.Buffer so the number of remaining bytes can be ascertained.
 //
 // This is part of the Message interface implementation.
-func (msg *MsgVersion) BtcDecode(r io.Reader, pver uint32) error {
+func (msg *MsgGetInfo) BtcDecode(r io.Reader, pver uint32) error {
 	buf, ok := r.(*bytes.Buffer)
 	if !ok {
-		return fmt.Errorf("MsgVersion.BtcDecode reader is not a " +
+		return fmt.Errorf("MsgGetInfo.BtcDecode reader is not a " +
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf, &msg.ValidatorVersion,
+	err := readElements(buf, &msg.ProtocolVersion, &msg.ValidatorId,
 		(*int64Time)(&msg.Timestamp))
 	if err != nil {
 		return err
@@ -69,8 +74,8 @@ func (msg *MsgVersion) BtcDecode(r io.Reader, pver uint32) error {
 
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
-func (msg *MsgVersion) BtcEncode(w io.Writer, pver uint32) error {
-	err := writeElements(w, msg.ValidatorVersion,
+func (msg *MsgGetInfo) BtcEncode(w io.Writer, pver uint32) error {
+	err := writeElements(w, msg.ProtocolVersion, msg.ValidatorId,
 		msg.Timestamp.Unix())
 	if err != nil {
 		return err
@@ -86,30 +91,39 @@ func (msg *MsgVersion) BtcEncode(w io.Writer, pver uint32) error {
 
 // Command returns the protocol command string for the message.  This is part
 // of the Message interface implementation.
-func (msg *MsgVersion) Command() string {
-	return CmdVersion
+func (msg *MsgGetInfo) Command() string {
+	return CmdGetInfo
 }
 
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
-func (msg *MsgVersion) MaxPayloadLength(pver uint32) uint32 {
+func (msg *MsgGetInfo) MaxPayloadLength(pver uint32) uint32 {
 	// XXX: <= 106 different
 
-	// Protocol version 4 bytes + timestamp 8 bytes + nonce 8 bytes
-	return 20
+	// Protocol version 4 bytes + validatorId 8 bytes  +timestamp 8 bytes + nonce 8 bytes
+	return 28
 }
 
-// NewMsgVersion returns a new bitcoin version message that conforms to the
+func (msg *MsgGetInfo) LogCommandInfo(log btclog.Logger) {
+	log.Debugf("Command MsgGetInfo:")
+	log.Debugf("ProtocolVersion: %d", msg.ProtocolVersion)
+	log.Debugf("ValidatorId: %d", msg.ValidatorId)
+	log.Debugf("Timestamp: %s", msg.Timestamp.Format(time.DateTime))
+	log.Debugf("Nonce: %d", msg.Nonce)
+}
+
+// NewMsgGetInfo returns a new bitcoin version message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.
-func NewMsgVersion(nonce uint64) *MsgVersion {
+func NewMsgGetInfo(validatorId uint64, nonce uint64) *MsgGetInfo {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
-	return &MsgVersion{
-		ValidatorVersion: int32(VALIDATOR_VERION),
-		Timestamp:        time.Unix(time.Now().Unix(), 0),
-		Nonce:            nonce,
+	return &MsgGetInfo{
+		ProtocolVersion: int32(VALIDATOR_VERION),
+		ValidatorId:     validatorId,
+		Timestamp:       time.Unix(time.Now().Unix(), 0),
+		Nonce:           nonce,
 	}
 
 }

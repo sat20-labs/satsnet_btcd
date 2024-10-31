@@ -129,6 +129,7 @@ type config struct {
 	DropTxIndex          bool          `long:"droptxindex" description:"Deletes the hash-based transaction index from the database on start up and then exits."`
 	ExternalIPs          []string      `long:"externalip" description:"Add an ip to the list of local addresses we claim to listen on to peers"`
 	Generate             bool          `long:"generate" description:"Generate (mine) bitcoins using the POS"`
+	ValidatorId          uint64        `long:"validatorid" description:"validator id using the POS"`
 	TimerGenerate        bool          `long:"timergenerate" description:"Generate (mine) bitcoins using the POS with timer enabled"`
 	FreeTxRelayLimit     float64       `long:"limitfreerelay" description:"Limit relay of transactions with no transaction fee to the given amount in thousands of bytes per minute"`
 	Listeners            []string      `long:"listen" description:"Add an interface/port to listen for connections (default all interfaces port: 8333, testnet: 18333)"`

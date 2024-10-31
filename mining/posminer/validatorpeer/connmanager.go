@@ -56,6 +56,9 @@ type ConnReq struct {
 	lastReceived int64 // last time it was used
 	connClose    int32 // set to 1, the connection has been closed
 
+	CheckNonce uint64
+	IsChecked  bool // if a peer connected , it should be checked the remote peer is valid validator peer
+
 	conn    net.Conn
 	version uint32
 	btcnet  wire.BitcoinNet
