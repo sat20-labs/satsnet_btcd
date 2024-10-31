@@ -348,6 +348,7 @@ func (t *taprootSigVerifier) verifySig(sigHash []byte) bool {
 		}
 	}
 
+	logOut("Verify public key: %x", t.pubKey.SerializeCompressed())
 	// If we didn't find the entry in the cache, then we'll perform full
 	// verification as normal, adding the entry to the cache if it's found
 	// to be valid.
