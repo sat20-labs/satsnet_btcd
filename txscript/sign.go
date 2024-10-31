@@ -114,6 +114,8 @@ func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 
 	sig := signature.Serialize()
 
+	logOut("Sign RawSig : %x", sig)
+
 	// If this is sighash default, then we can just return the signature
 	// directly.
 	if hashType == SigHashDefault {
