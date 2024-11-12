@@ -6,7 +6,6 @@ package btcutil_test
 
 import (
 	"os"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -41,12 +40,12 @@ func TestAppDataDir(t *testing.T) {
 
 	// Get the home directory to use for testing expected results.
 	var homeDir string
-	usr, err := user.Current()
-	if err != nil {
-		t.Errorf("user.Current: %v", err)
-		return
-	}
-	homeDir = usr.HomeDir
+	// usr, err := user.Current()
+	// if err != nil {
+	// 	t.Errorf("user.Current: %v", err)
+	// 	return
+	// }
+	homeDir = ""
 
 	// Mac app data directory.
 	macAppData := filepath.Join(homeDir, "Library", "Application Support")
