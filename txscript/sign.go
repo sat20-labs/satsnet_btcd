@@ -127,8 +127,8 @@ func RawTxInTaprootSignature(tx *wire.MsgTx, sigHashes *TxSigHashes, idx int,
 }
 
 func logOut(format string, params ...interface{}) {
-	logStr := fmt.Sprintf(format, params...)
-	fmt.Println(logStr)
+//	logStr := fmt.Sprintf(format, params...)
+//	fmt.Println(logStr)
 }
 
 // TaprootWitnessSignature returns a valid witness stack that can be used to
