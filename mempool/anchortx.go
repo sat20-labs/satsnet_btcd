@@ -21,14 +21,22 @@ const (
 
 // txscript.NewScriptBuilder().AddData(txid).AddData(pkScript).
 // AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
-type LockedTxInfo struct {
-	TxId     string // the txid with locked in lnd
-	PkScript []byte // pkScript for locked in lnd
-	Amount   int64  // the amount with locked in lnd
-}
+// type LockedTxInfo struct {
+// 	TxId     string // the txid with locked in lnd
+// 	Index    int32  // the index with locked in lnd
+// 	PkScript []byte // pkScript for locked in lnd
+// 	Amount   int64  // the amount with locked in lnd
+// }
 
 func (mp *TxPool) CheckAnchorTxValid(tx *wire.MsgTx) error {
 	fmt.Printf("CheckAnchorTxValid ...\n")
+
+	// Check the locked tx out is valid
+	err := anchortx.CheckAnchorTxValid(tx)
+	if err != nil {
+		log.Errorf("invalid Anchor tx: %s", tx.TxHash().String())
+		return err
+	}
 
 	txInfo, err := anchortx.GetLockedTxInfo(tx)
 	if err != nil {
@@ -44,8 +52,6 @@ func (mp *TxPool) CheckAnchorTxValid(tx *wire.MsgTx) error {
 		err = fmt.Errorf("the locked tx is anchored already in sats net")
 		return err
 	}
-
-	// Check the locked tx out is valid
 
 	for _, out := range tx.TxOut {
 		// Get the range size of the out
@@ -85,10 +91,10 @@ func (mp *TxPool) AddAnchorTx(tx *wire.MsgTx) error {
 
 	// Add the anchor tx to db
 	anchorTxInfo = &blockchain.AnchorTxInfo{
-		LockedTxid: txInfo.TxId,
-		PkScript:   txInfo.PkScript,
-		Amount:     txInfo.Amount,
-		AnchorTxid: tx.TxHash().String(),
+		LockedTxid:    txInfo.TxId,
+		WitnessScript: txInfo.WitnessScript,
+		Amount:        txInfo.Amount,
+		AnchorTxid:    tx.TxHash().String(),
 	}
 	err = mp.cfg.AddAnchorTx(anchorTxInfo)
 	if err != nil {

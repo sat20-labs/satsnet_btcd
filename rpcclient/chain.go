@@ -124,6 +124,8 @@ func (r FutureGetBlockResult) Receive() (*wire.MsgBlock, error) {
 		return nil, err
 	}
 
+	//fmt.Printf("serializedBlock: %x\n", serializedBlock)
+
 	// Deserialize the block and return it.
 	var msgBlock wire.MsgBlock
 	err = msgBlock.Deserialize(bytes.NewReader(serializedBlock))

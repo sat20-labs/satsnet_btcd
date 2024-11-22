@@ -1,6 +1,7 @@
 module github.com/sat20-labs/satsnet_btcd
 
 require (
+	github.com/btcsuite/btcd/btcutil v1.1.5
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f
 	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd
 	github.com/btcsuite/websocket v0.0.0-20150119174127-31079b680792
@@ -15,10 +16,12 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tyler-smith/go-bip39 v1.1.0
 	golang.org/x/crypto v0.22.0
-	golang.org/x/sys v0.20.0
+	golang.org/x/sys v0.27.0
 )
 
 require (
+	github.com/btcsuite/btcd/btcec/v2 v2.1.3 // indirect
+	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
@@ -29,6 +32,7 @@ require (
 
 require (
 	github.com/aead/siphash v1.0.1
+	github.com/btcsuite/btcd v0.24.2
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/kkdai/bstream v0.0.0-20161212061736-f391b8402d23

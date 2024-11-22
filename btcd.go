@@ -15,6 +15,7 @@ import (
 	"runtime/debug"
 	"runtime/pprof"
 
+	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/database"
@@ -255,9 +256,24 @@ func btcdMain(serverChan chan<- *server) error {
 	// drop unveil and tty
 	pledgex("stdio rpath wpath cpath flock dns inet")
 
+	// initialize anchor config
+	anchorCfg := &anchortx.AnchorConfig{
+		IndexerHost: cfg.IndexerHost,
+		IndexerNet:  cfg.IndexerNet,
+		ChainParams: activeNetParams.Params,
+	}
+	if anchortx.StartAnchorManager(anchorCfg) == false {
+		btcdLog.Errorf("Unable to start anchor manager")
+		return err
+	}
+	defer func() {
+		anchortx.Stop()
+		anchorLog.Infof("anchor manager shutdown complete")
+	}()
+
 	// Create server and start it.
 	server, err := newServer(cfg.Listeners, cfg.AgentBlacklist,
-		cfg.AgentWhitelist, db, activeNetParams.Params, interrupt)
+		cfg.AgentWhitelist, db, activeNetParams.Params, cfg.DataDir, interrupt)
 	if err != nil {
 		// TODO: this logging could do with some beautifying.
 		btcdLog.Errorf("Unable to start server on %v: %v",

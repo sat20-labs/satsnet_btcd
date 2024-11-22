@@ -191,6 +191,7 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"getmempoolentry":        handleGetMempoolEntry,
 	"getblockstats":          handleGetBlockStats,
 	"estimatesmartfee":       handleEstimateSmartFee,
+	"getanchortxinfo":        handleGetAnchorTxInfo,
 }
 
 // list of commands that we recognize, but for which btcd has no support because
@@ -2467,6 +2468,27 @@ func handleEstimateSmartFee(s *rpcServer, cmd interface{}, closeChan <-chan stru
 		Blocks:  int64(0),
 	}
 	return ret, nil
+}
+
+// handleGetBlockHash implements the getblockhash command.
+func handleGetAnchorTxInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.GetAnchorTxInfoCmd)
+	anchorInfo, err := s.cfg.Chain.FetchAnchorTx(c.TxId)
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCNoTxInfo,
+			Message: "Lock tx Not found.",
+		}
+	}
+
+	result := btcjson.GetAnchorTxInfoResult{
+		LockedTxid: anchorInfo.LockedTxid,
+		AnchorTxid: anchorInfo.AnchorTxid,
+		Witness:    hex.EncodeToString(anchorInfo.WitnessScript),
+		Amount:     anchorInfo.Amount,
+	}
+
+	return result, nil
 }
 
 // handleGetMiningInfo implements the getmininginfo command. We only return the

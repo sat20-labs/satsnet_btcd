@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/sat20-labs/satsnet_btcd/addrmgr"
+	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/blockchain"
 	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
 	"github.com/sat20-labs/satsnet_btcd/connmgr"
@@ -55,21 +56,22 @@ var (
 	// application shutdown.
 	logRotator *rotator.Rotator
 
-	adxrLog = backendLog.Logger("ADXR")
-	amgrLog = backendLog.Logger("AMGR")
-	cmgrLog = backendLog.Logger("CMGR")
-	bcdbLog = backendLog.Logger("BCDB")
-	btcdLog = backendLog.Logger("BTCD")
-	chanLog = backendLog.Logger("CHAN")
-	discLog = backendLog.Logger("DISC")
-	indxLog = backendLog.Logger("INDX")
-	minrLog = backendLog.Logger("MINR")
-	peerLog = backendLog.Logger("PEER")
-	rpcsLog = backendLog.Logger("RPCS")
-	scrpLog = backendLog.Logger("SCRP")
-	srvrLog = backendLog.Logger("SRVR")
-	syncLog = backendLog.Logger("SYNC")
-	txmpLog = backendLog.Logger("TXMP")
+	adxrLog   = backendLog.Logger("ADXR")
+	amgrLog   = backendLog.Logger("AMGR")
+	cmgrLog   = backendLog.Logger("CMGR")
+	bcdbLog   = backendLog.Logger("BCDB")
+	btcdLog   = backendLog.Logger("BTCD")
+	chanLog   = backendLog.Logger("CHAN")
+	discLog   = backendLog.Logger("DISC")
+	indxLog   = backendLog.Logger("INDX")
+	minrLog   = backendLog.Logger("MINR")
+	peerLog   = backendLog.Logger("PEER")
+	rpcsLog   = backendLog.Logger("RPCS")
+	scrpLog   = backendLog.Logger("SCRP")
+	srvrLog   = backendLog.Logger("SRVR")
+	syncLog   = backendLog.Logger("SYNC")
+	txmpLog   = backendLog.Logger("TXMP")
+	anchorLog = backendLog.Logger("ANCH")
 )
 
 // Initialize package-global logger variables.
@@ -86,6 +88,7 @@ func init() {
 	txscript.UseLogger(scrpLog)
 	netsync.UseLogger(syncLog)
 	mempool.UseLogger(txmpLog)
+	anchortx.UseLogger(anchorLog)
 }
 
 // subsystemLoggers maps each subsystem identifier to its associated logger.
@@ -105,6 +108,7 @@ var subsystemLoggers = map[string]btclog.Logger{
 	"SRVR": srvrLog,
 	"SYNC": syncLog,
 	"TXMP": txmpLog,
+	"ANCH": anchorLog,
 }
 
 // initLogRotator initializes the logging rotater to write logs to logFile and

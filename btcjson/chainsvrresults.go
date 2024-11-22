@@ -925,3 +925,10 @@ type GetTxSpendingPrevOutResult struct {
 	// spending this output (omitted if unspent).
 	SpendingTxid string `json:"spendingtxid,omitempty"`
 }
+
+type GetAnchorTxInfoResult struct {
+	LockedTxid string `json:"lockedTxid"`
+	AnchorTxid string `json:"anchorTxid"`
+	Witness    string `json:"witness"`
+	Amount     int64  `json:"amount"`
+}

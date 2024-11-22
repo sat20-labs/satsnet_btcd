@@ -1082,3 +1082,53 @@ func (c *Client) GetTxSpendingPrevOut(outpoints []wire.OutPoint) (
 
 	return c.GetTxSpendingPrevOutAsync(outpoints).Receive()
 }
+
+// FutureGetRawTransactionResult is a future promise to deliver the result of a
+// GetRawTransactionAsync RPC invocation (or an applicable error).
+type FutureGetAnchorTxInfoResult chan *Response
+
+// Receive waits for the Response promised by the future and returns a
+// transaction given its hash.
+func (r FutureGetAnchorTxInfoResult) Receive() (*btcjson.GetAnchorTxInfoResult, error) {
+	res, err := ReceiveFuture(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal result as a string.
+	var result btcjson.GetAnchorTxInfoResult
+	err = json.Unmarshal(res, &result)
+	if err != nil {
+		return nil, err
+	}
+
+	// // Decode the serialized transaction hex to raw bytes.
+	// serializedTx, err := hex.DecodeString(txHex)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// // Deserialize the transaction and return it.
+	// var result btcjson.GetAnchorTxInfoResult
+	// if err := msgTx.Deserialize(bytes.NewReader(serializedTx)); err != nil {
+	// 	return nil, err
+	// }
+	return &result, nil
+}
+
+// GetRawTransactionAsync returns an instance of a type that can be used to get
+// the result of the RPC at some future time by invoking the Receive function on
+// the returned instance.
+//
+// See GetRawTransaction for the blocking version and more details.
+func (c *Client) GetAnchorTxInfoAsync(lockedTxid string) FutureGetAnchorTxInfoResult {
+	cmd := btcjson.NewGetAnchorTxInfoCmd(lockedTxid)
+	return c.SendCmd(cmd)
+}
+
+// GetLockedTxInfo returns a locked tx info according to satsnet anchortx given its hash.
+//
+
+func (c *Client) GetAnchorTxInfo(lockedTxid string) (*btcjson.GetAnchorTxInfoResult, error) {
+	return c.GetAnchorTxInfoAsync(lockedTxid).Receive()
+}

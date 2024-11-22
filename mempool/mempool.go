@@ -1582,6 +1582,7 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 
 	// Don't allow transactions with fees too low to get into a mined
 	// block.
+	// In satsnet, the min relay fee is 0, not to validate relay Fee Met
 	err = mp.validateRelayFeeMet(
 		tx, txFee, txSize, utxoView, nextBlockHeight, isNew, rateLimit,
 	)

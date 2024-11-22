@@ -30,19 +30,27 @@ const CommandNameSize = 12
 // individual limits imposed by messages themselves.
 const MaxCommandPayload = (1024 * 1024 * 32) // 32MB
 
-// Commands used in bitcoin message headers which describe the type of message.
+// Commands used in satsnet posminer message headers which describe the type of message.
 const (
-	CmdGetInfo       = "getinfo"       // command for get remote peer info
-	CmdPeerInfo      = "peerinfo"      // Ack current peer info to requester
-	CmdGetValidators = "getvalidators" // command for get validators list
-	CmdValidators    = "validators"    // send validators list in local peer to remote peer
-	CmdGetEpoch      = "getepoch"      // command for get epoch list
-	CmdEpoch         = "epoch"         // send validators list for epoch in local peer to remote peer
-	CmdGetGenerator  = "getgenerator"  // command for get generator
-	CmdGenerator     = "generator"     // send generator in local peer to remote peer
-	CmdPing          = "ping"          // send ping to remote peer
-	CmdPong          = "pong"          // Ack pong to remote peer for response of ping
-	CmdReject        = "reject"        // send reject to remote peer
+	CmdGetInfo       = "getinfo"      // command for get remote peer info
+	CmdPeerInfo      = "peerinfo"     // Ack current peer info to requester
+	CmdGetValidators = "getvalidors"  // command for get validators list
+	CmdValidators    = "validators"   // send validators list in local peer to remote peer
+	CmdGetEpoch      = "getepoch"     // command for get epoch info， if exist next epoch，return next epoch together
+	CmdEpoch         = "epoch"        // send epoch info for epoch in local peer to remote peer， if exist next epoch，return next epoch together
+	CmdReqEpoch      = "reqepoch"     // Req a new epoch for next epoch, in normal, it will be senbt by last validator in current epoch, it will be response newepoch command
+	CmdNewEpoch      = "newepoch"     // Create a new epoch for next epoch
+	CmdConfirmEpoch  = "cfmepoch"     // Confirm a new epoch for next epoch
+	CmdNextEpoch     = "nextepoch"    // Turn to next epoch, in normal, it will be senbt by last validator in current epoch
+	CmdGetGenerator  = "getgenerator" // command for get generator
+	CmdGenerator     = "generator"    // declare generator by new generator
+	CmdHandOver      = "handover"     // handover generator by prev generator or voter (Epoch member)
+	CmdPing          = "ping"         // send ping to remote peer
+	CmdPong          = "pong"         // Ack pong to remote peer for response of ping
+	CmdReject        = "reject"       // send reject to remote peer
+	CmdVoteReq       = "votereq"      // send vote request to remote peer
+	CmdVoteResp      = "voteresp"     // response vote resp from local peer
+	CmdVoteResult    = "voteresult"   // send vote result to remote peer
 )
 
 // ErrUnknownMessage is the error returned when decoding an unknown message.
@@ -69,6 +77,9 @@ type Message interface {
 func makeEmptyMessage(command string) (Message, error) {
 	var msg Message
 	switch command {
+	// case CmdSyncInfo:
+	// 	msg = &MsgSyncInfo{}
+
 	case CmdGetInfo:
 		msg = &MsgGetInfo{}
 
@@ -76,17 +87,55 @@ func makeEmptyMessage(command string) (Message, error) {
 		msg = &MsgPeerInfo{}
 
 	case CmdGetValidators:
+		msg = &MsgGetValidators{}
+
 	case CmdValidators:
+		msg = &MsgValidators{}
+
 	case CmdGetEpoch:
+		msg = &MsgGetEpoch{}
+
 	case CmdEpoch:
+		msg = &MsgEpoch{}
+
+	case CmdReqEpoch:
+		msg = &MsgReqEpoch{}
+
+	case CmdNewEpoch:
+		msg = &MsgNewEpoch{}
+
+	case CmdConfirmEpoch:
+		msg = &MsgConfirmEpoch{}
+
+	case CmdNextEpoch:
+		msg = &MsgNextEpoch{}
+
 	case CmdGetGenerator:
+		msg = &MsgGetGenerator{}
+
 	case CmdGenerator:
+		msg = &MsgGenerator{}
+
+	case CmdHandOver:
+		msg = &MsgHandOver{}
 
 	case CmdPing:
 		msg = &MsgPing{}
 
 	case CmdPong:
 		msg = &MsgPong{}
+
+	case CmdReject:
+		msg = &MsgReject{}
+
+	case CmdVoteReq:
+		msg = &MsgVoteReq{}
+
+	case CmdVoteResp:
+		msg = &MsgVoteResp{}
+
+	case CmdVoteResult:
+		msg = &MsgVoteResult{}
 
 	default:
 		return nil, ErrUnknownCommand
@@ -251,6 +300,7 @@ func ReadMessage(r io.Reader, pver uint32, btcnet wire.BitcoinNet) (int, Message
 	n, hdr, err := readMessageHeader(r)
 	totalBytes += n
 	if err != nil {
+		err = fmt.Errorf("ReadMessage:unable to read message header: %v", err)
 		return totalBytes, nil, nil, err
 	}
 
@@ -304,6 +354,7 @@ func ReadMessage(r io.Reader, pver uint32, btcnet wire.BitcoinNet) (int, Message
 	n, err = io.ReadFull(r, payload)
 	totalBytes += n
 	if err != nil {
+		err = fmt.Errorf("ReadMessage:unable to read full payload (%d): %v", hdr.length, err)
 		return totalBytes, nil, nil, err
 	}
 
@@ -321,6 +372,7 @@ func ReadMessage(r io.Reader, pver uint32, btcnet wire.BitcoinNet) (int, Message
 	pr := bytes.NewBuffer(payload)
 	err = msg.BtcDecode(pr, pver)
 	if err != nil {
+		err = fmt.Errorf("ReadMessage:BtcDecode failed: %v", err)
 		return totalBytes, nil, nil, err
 	}
 

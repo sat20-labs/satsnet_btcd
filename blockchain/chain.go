@@ -1731,14 +1731,20 @@ func (b *BlockChain) locateInventory(locator BlockLocator, hashStop *chainhash.H
 	startNode := b.bestChain.Genesis()
 	for _, hash := range locator {
 		node := b.index.LookupNode(hash)
-		log.Debugf("Locate node: %s, Height:%d", node.hash.String(), node.height)
+		if node != nil {
+			log.Debugf("Locate node: %s, Height:%d", node.hash.String(), node.height)
+		} else {
+			log.Debugf("Locate node not found with hash: %s", hash.String())
+		}
 		if node != nil && b.bestChain.Contains(node) {
 			startNode = node
 			break
 		}
 	}
 
-	log.Debugf("Initial startNode: %s, Height: %d", startNode.hash.String(), startNode.height)
+	if startNode != nil {
+		log.Debugf("Initial startNode: %s, Height: %d", startNode.hash.String(), startNode.height)
+	}
 
 	// Start at the block after the most recently known block.  When there
 	// is no next block it means the most recently known block is the tip of

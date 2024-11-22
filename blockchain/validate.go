@@ -246,13 +246,13 @@ func CheckTransactionSanity(tx *btcutil.Tx) error {
 	}
 
 	// mapping transactions have no inputs.
-	if IsAnchorTx(msgTx) {
-		// Check anchor input
-		err := anchortx.CheckAnchorTxValid(msgTx)
-		if err != nil {
-			return err
-		}
-	}
+	// if IsAnchorTx(msgTx) {
+	// 	// Check anchor input
+	// 	err := anchortx.CheckAnchorTxValid(msgTx)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
 
 	// A transaction must not exceed the maximum allowed block payload when
 	// serialized.

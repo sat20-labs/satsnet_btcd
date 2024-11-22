@@ -6,7 +6,8 @@ package posminer
 
 import (
 	"github.com/btcsuite/btclog"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/localpeer"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/localvalidator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatormanager"
@@ -33,10 +34,9 @@ func DisableLog() {
 func UseLogger(logger btclog.Logger) {
 	log = logger
 	validatormanager.UseLogger(logger)
-
-	validator.UseLogger(logger)
-	validatorpeer.UseLogger(logger)
-
-	localpeer.UseLogger(logger)
-	localvalidator.UseLogger(logger)
+	localvalidator.UseLogger(logger) // local validator
+	validator.UseLogger(logger)      // remote validator
+	validatorpeer.UseLogger(logger)  // validator peer
+	epoch.UseLogger(logger)          // epoch
+	generator.UseLogger(logger)      // generator
 }

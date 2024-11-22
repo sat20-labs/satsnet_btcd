@@ -6,7 +6,9 @@
 package validatorpeer
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"strconv"
@@ -16,7 +18,10 @@ import (
 
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
@@ -28,6 +33,20 @@ import (
 type RemotePeerInterface interface {
 	// OnPeerDisconnected is invoked when a remote peer connects to the local peer .
 	OnPeerDisconnected(net.Addr)
+
+	OnValidatorInfoUpdated(validatorInfo *validatorinfo.ValidatorInfo, changeMask validatorinfo.ValidatorInfoMask)
+
+	OnAllValidatorsResponse(validatorInfo []validatorinfo.ValidatorInfo)
+
+	OnEpochResponse(currentEpoch *epoch.Epoch, nextEpoch *epoch.Epoch)
+
+	OnGeneratorResponse(generatorInfo *generator.Generator)
+
+	// New epoch command is received
+	OnNewEpoch(validatorId uint64, epoch *epoch.Epoch)
+
+	// GetLocalValidatorInfo invoke when local validator info.
+	GetLocalValidatorInfo(uint64) *validatorinfo.ValidatorInfo
 }
 
 // Config is the struct to hold configuration options useful to localpeer.
@@ -56,7 +75,7 @@ type RemotePeerConfig struct {
 	ValidatorVersion uint32
 
 	// RemotePeerInterface to be used by peer manager.
-	RemoteValidator RemotePeerInterface
+	RemoteValidatorListener RemotePeerInterface
 
 	// TrickleInterval is the duration of the ticker which trickles down the
 	// inventory to a peer.
@@ -71,7 +90,8 @@ type RemotePeerConfig struct {
 	Dial   func(net.Addr) (net.Conn, error)
 	Lookup func(string) ([]net.IP, error)
 
-	LocalValidatorId uint64 // local validator id
+	LocalValidatorId  uint64 // local validator id
+	RemoteValidatorId uint64 // remote validator id
 
 }
 
@@ -148,8 +168,10 @@ type RemotePeer struct {
 	lastPingTime       time.Time // Time we sent last ping.
 	lastPingMicros     int64     // Time for last ping to return.
 
-	LocalValidatorId uint64 // local validator id
+	//LocalValidatorId uint64 // local validator id
 
+	pingHandleStarted bool
+	pingQuit          chan struct{}
 }
 
 // String returns the peer's address and directionality as a human-readable
@@ -158,15 +180,6 @@ type RemotePeer struct {
 // This function is safe for concurrent access.
 func (p *RemotePeer) String() string {
 	return fmt.Sprintf("RemotePeer : %s", p.addr)
-}
-
-// StatsSnapshot returns a snapshot of the current peer flags and statistics.
-//
-// This function is safe for concurrent access.
-func (p *RemotePeer) StatsSnapshot() *StatsSnap {
-	// Get a copy of all relevant flags and stats.
-	statsSnap := &StatsSnap{}
-	return statsSnap
 }
 
 // ID returns the peer id.
@@ -303,6 +316,25 @@ func (p *RemotePeer) BytesReceived() uint64 {
 	return atomic.LoadUint64(&p.bytesReceived)
 }
 
+// OnConnDisonnected to be called when a connection is disconnected.
+//
+// This function is safe for concurrent access.
+func (p *RemotePeer) OnConnDisonnected(connReq *ConnReq) {
+	log.Debugf("----------[RemotePeer]OnConnDisonnected conn[%d]: %s", connReq.id, connReq.RemoteAddr)
+
+	// The connection is disconnected, set current connection to nil
+	atomic.StoreInt32(&p.connected, 0)
+	p.connReq = nil
+
+	// The connection is disconnected, will try to dail again
+	isSucceed := p.Connected()
+	if isSucceed == false {
+		p.Disconnect()
+		p.cfg.RemoteValidatorListener.OnPeerDisconnected(p.addr)
+	}
+	log.Debugf("----------[RemotePeer]OnConnDisonnected End")
+}
+
 // TimeConnected returns the time at which the peer connected.
 //
 // This function is safe for concurrent access.
@@ -312,6 +344,58 @@ func (p *RemotePeer) TimeConnected() time.Time {
 	p.statsMtx.RUnlock()
 
 	return timeConnected
+}
+
+func (p *RemotePeer) RequestValidatorId(validatorInfo *validatorinfo.ValidatorInfo) {
+	if p.connReq == nil || p.connReq.isInactive() {
+		return
+	}
+
+	p.connReq.SendCommand(validatorcommand.NewMsgGetInfo(validatorInfo))
+}
+
+func (p *RemotePeer) RequestGetValidators() error {
+	if p.connReq == nil || p.connReq.isInactive() {
+		err := errors.New("validator peer is inactive")
+		return err
+	}
+
+	p.connReq.SendCommand(validatorcommand.NewMsgGetValidators(p.cfg.LocalValidatorId))
+
+	return nil
+}
+
+func (p *RemotePeer) RequestGetEpoch() error {
+	if p.connReq == nil || p.connReq.isInactive() {
+		err := errors.New("validator peer is inactive")
+		return err
+	}
+
+	p.connReq.SendCommand(validatorcommand.NewMsgGetEpoch(p.cfg.LocalValidatorId))
+
+	return nil
+}
+
+func (p *RemotePeer) RequestGetGenerator() error {
+	if p.connReq == nil || p.connReq.isInactive() {
+		err := errors.New("validator peer is inactive")
+		return err
+	}
+
+	p.connReq.SendCommand(validatorcommand.NewMsgGetGenerator(p.cfg.LocalValidatorId))
+
+	return nil
+}
+
+func (p *RemotePeer) SendCommand(command validatorcommand.Message) error {
+	if p.connReq == nil || p.connReq.isInactive() {
+		err := errors.New("validator peer is inactive")
+		return err
+	}
+
+	p.connReq.SendCommand(command)
+
+	return nil
 }
 
 // newPeerBase returns a new base bitcoin peer based on the inbound flag.  This
@@ -339,7 +423,7 @@ func newRemotePeerBase(origCfg *RemotePeerConfig, inbound bool) *RemotePeer {
 		inbound:          inbound,
 		cfg:              cfg, // Copy so caller can't mutate.
 		validatorVersion: cfg.ValidatorVersion,
-		LocalValidatorId: cfg.LocalValidatorId,
+		//LocalValidatorId: cfg.LocalValidatorId,
 		// connReqIndex: 1,
 		// connMap:      make(map[uint64]*ConnReq),
 	}
@@ -356,7 +440,7 @@ func NewRemotePeer(cfg *RemotePeerConfig, addr net.Addr) (*RemotePeer, error) {
 	// p.addrsList = make([]net.Addr, 0, len(addrs))
 	// p.addrsList = append(p.addrsList, addrs...)
 
-	log.Debugf("NewRemotepeer (%s) with local validator ID: %d", addr.String(), p.LocalValidatorId)
+	log.Debugf("NewRemotepeer (%s) with local validator ID: %d", addr.String(), p.cfg.LocalValidatorId)
 
 	p.addr = addr
 
@@ -421,6 +505,7 @@ func (p *RemotePeer) Connect() error {
 		btcnet:       p.cfg.ChainParams.Net,
 		version:      p.ValidatorVersion(),
 		lastReceived: time.Now().Unix(), // default value, connected time is last received time
+		Listener:     p,
 	}
 	//newConnReq.setLast()
 	newConnReq.logConnInfo("newConnReq")
@@ -434,8 +519,25 @@ func (p *RemotePeer) Connect() error {
 	go p.listenCommand(newConnReq)
 
 	// new pingHandler to send ping timer
-	go p.pingHandler()
+	if p.pingHandleStarted == false {
+		p.pingQuit = make(chan struct{})
+		p.pingHandleStarted = true
+		go p.pingHandler()
+	}
 
+	return nil
+}
+
+func (p *RemotePeer) Disconnect() error {
+	if p.pingHandleStarted == true {
+		close(p.pingQuit)
+		p.pingHandleStarted = false
+	}
+
+	if p.connReq == nil || p.connReq.isInactive() {
+		return nil
+	}
+	p.connReq.Close()
 	return nil
 }
 
@@ -454,7 +556,8 @@ out:
 
 				if p.reconnectTimes > peerReconnectMaxTimes {
 					log.Errorf("***********Reconnect times too much, will disconnect the validator peer. %d", p.reconnectTimes)
-					p.cfg.RemoteValidator.OnPeerDisconnected(p.addr)
+					p.Disconnect()
+					p.cfg.RemoteValidatorListener.OnPeerDisconnected(p.addr)
 					// The peer is disconnected, will exit ping handler
 					break out
 				}
@@ -471,6 +574,9 @@ out:
 			log.Debugf("**********Sending \"ping\" to validator peer [%s] with nonce=%d", p, nonce)
 			//p.QueueMessage(validatorcommand.NewMsgPing(nonce), nil)
 			p.connReq.SendCommand(validatorcommand.NewMsgPing(nonce))
+
+		case <-p.pingQuit:
+			break out
 		}
 	}
 }
@@ -484,7 +590,12 @@ func (p *RemotePeer) listenCommand(connReq *ConnReq) {
 		log.Debugf("----------[RemotePeer]Will read command from conn[%d]: %s to %s", connReq.id, connReq.RemoteAddr, connReq.LocalAddr)
 		_, command, _, err := validatorcommand.ReadMessage(connReq.conn, p.ValidatorVersion(), p.cfg.ChainParams.Net)
 		if err != nil {
-			log.Errorf("----------[RemotePeer]conn[%d]: Read message err: %v", connReq.id, err)
+			if err == io.EOF {
+				log.Errorf("----------[RemotePeer]conn[%d]: Connection closed by peer。", connReq.id)
+				connReq.Close()
+			} else {
+				log.Errorf("----------[RemotePeer]conn[%d]: Read message failed: %v", connReq.id, err)
+			}
 			return
 		}
 		log.Debugf("----------[RemotePeer]Received validator command [%v] from %d", command.Command(), connReq.id)
@@ -496,28 +607,143 @@ func (p *RemotePeer) listenCommand(connReq *ConnReq) {
 }
 
 func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Message) {
-	log.Debugf("----------[RemotePeer]handleCommand command [%v]:", command.Command())
+	log.Debugf("----------[RemotePeer]handleCommand command [%v] from %s", command.Command(), connReq.RemoteAddr.String())
 	switch cmd := command.(type) {
 	case *validatorcommand.MsgGetInfo:
 		log.Debugf("----------[RemotePeer]Receive MsgGetInfo command, will response MsgPeerInfo command")
 		cmd.LogCommandInfo(log)
 		// Handle command ping, it will response "PeerInfo" message
-		cmdPeerInfo := validatorcommand.NewMsgPeerInfo(p.LocalValidatorId, cmd.Nonce)
+		validatorInfo := p.cfg.RemoteValidatorListener.GetLocalValidatorInfo(p.cfg.RemoteValidatorId)
+		cmdPeerInfo := validatorcommand.NewMsgPeerInfo(validatorInfo)
 		connReq.SendCommand(cmdPeerInfo)
+
+		p.HandleRemoteGetInfo(cmd, connReq)
 
 	case *validatorcommand.MsgPeerInfo:
 		log.Debugf("----------[RemotePeer]Receive MsgPeerInfo command")
 		cmd.LogCommandInfo(log)
 
+		p.HandleRemotePeerInfo(cmd, connReq)
+
 	case *validatorcommand.MsgPing:
 
 		log.Debugf("----------[RemotePeer]Receive ping command, will response pong command")
-		cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo(log)
 		// Handle command ping, it will response "pong" message
 		cmdPong := validatorcommand.NewMsgPong(cmd.Nonce)
 		connReq.SendCommand(cmdPong)
 
+	case *validatorcommand.MsgGetValidators:
+		log.Debugf("----------[RemotePeer]Receive GetValidators command, it's invalid command for remote peer")
+		//cmd.LogCommandInfo(log)
+
+	case *validatorcommand.MsgValidators:
+		log.Debugf("----------[RemotePeer]Receive Validators command, will notify validatorManager for sync validators")
+		//cmd.LogCommandInfo(log)
+		p.HandleValidatorsResponse(cmd, connReq)
+
+	case *validatorcommand.MsgEpoch:
+		log.Debugf("----------[RemotePeer]Receive Epoch command, will notify validatorManager for sync Epoch")
+		cmd.LogCommandInfo(log)
+		p.HandleEpochResponse(cmd, connReq)
+
+	case *validatorcommand.MsgGenerator:
+		log.Debugf("----------[RemotePeer]Receive Generator command, will notify validatorManager for sync Generator")
+		cmd.LogCommandInfo(log)
+		p.HandleGeneratorResponse(cmd, connReq)
+
+	case *validatorcommand.MsgNewEpoch:
+		log.Debugf("----------[LocalPeer]Receive MsgReqEpoch command, will response new epoch info to remote peer with MsgNewEpoch command")
+		//cmd.LogCommandInfo(log)
+		p.HandleNewEpoch(cmd, connReq)
+
 	default:
 		log.Errorf("----------[RemotePeer]Not to handle command [%v] from %d", command.Command(), connReq.id)
 	}
+}
+
+func (p *RemotePeer) HandleRemotePeerInfo(peerInfo *validatorcommand.MsgPeerInfo, connReq *ConnReq) {
+	// 	First check the remote validator is valid, then notify the validator
+
+	if CheckValidatorID(peerInfo.ValidatorId) == false {
+		log.Errorf("----------[RemotePeer]The remote peer is not valid")
+		return
+	}
+
+	log.Debugf("----------[RemotePeer]The remote peer info is response, the remote validatorvalidator ID: %d", peerInfo.ValidatorId)
+	p.cfg.RemoteValidatorId = peerInfo.ValidatorId
+
+	validatorInfo := validatorinfo.ValidatorInfo{
+		ValidatorId: peerInfo.ValidatorId,
+		PublicKey:   peerInfo.PublicKey,
+		CreateTime:  peerInfo.CreateTime,
+	}
+	p.cfg.RemoteValidatorListener.OnValidatorInfoUpdated(&validatorInfo, validatorinfo.MaskValidatorId|validatorinfo.MaskPublicKey|validatorinfo.MaskCreateTime)
+}
+
+func (p *RemotePeer) HandleRemoteGetInfo(getInfo *validatorcommand.MsgGetInfo, connReq *ConnReq) {
+	// 	First check the remote validator is valid, then notify the validator
+
+	if CheckValidatorID(getInfo.ValidatorId) == false {
+		log.Errorf("----------[RemotePeer]The remote peer is not valid")
+		return
+	}
+
+	log.Debugf("----------[RemotePeer]The remote peer info is response, the remote validatorvalidator ID: %d", getInfo.ValidatorId)
+
+	p.cfg.RemoteValidatorId = getInfo.ValidatorId
+
+	validatorInfo := validatorinfo.ValidatorInfo{
+		ValidatorId: getInfo.ValidatorId,
+		PublicKey:   getInfo.PublicKey,
+		CreateTime:  getInfo.CreateTime,
+	}
+	p.cfg.RemoteValidatorListener.OnValidatorInfoUpdated(&validatorInfo, validatorinfo.MaskValidatorId|validatorinfo.MaskPublicKey|validatorinfo.MaskCreateTime)
+}
+
+func (p *RemotePeer) HandleValidatorsResponse(validatorsCmd *validatorcommand.MsgValidators, connReq *ConnReq) {
+	// 	First check the remote validator is valid, then notify the validator
+	log.Debugf("----------[RemotePeer]The remote peer All Validators is response from  validatorvalidator ID: %d", p.cfg.RemoteValidatorId)
+
+	p.cfg.RemoteValidatorListener.OnAllValidatorsResponse(validatorsCmd.Validators)
+}
+
+func (p *RemotePeer) HandleEpochResponse(epochCmd *validatorcommand.MsgEpoch, connReq *ConnReq) {
+	// 	First check the remote validator is valid, then notify the validator
+	log.Debugf("----------[RemotePeer]The epoch is response from  validator ID: %d", p.cfg.RemoteValidatorId)
+
+	p.cfg.RemoteValidatorListener.OnEpochResponse(epochCmd.CurrentEpoch, epochCmd.NextEpoch)
+}
+
+func (p *RemotePeer) HandleGeneratorResponse(generatorCmd *validatorcommand.MsgGenerator, connReq *ConnReq) {
+	// 	First check the remote validator is valid, then notify the validator
+	log.Debugf("----------[RemotePeer]The generator info is response from  validatorvalidator ID: %d", p.cfg.RemoteValidatorId)
+
+	// if generator.IsValid(generatorCmd.GeneratorInfo) == false {
+	// 	return
+	// }
+
+	p.cfg.RemoteValidatorListener.OnGeneratorResponse(&generatorCmd.GeneratorInfo)
+}
+
+func (p *RemotePeer) HandleNewEpoch(newEpochCmd *validatorcommand.MsgNewEpoch, connReq *ConnReq) {
+	// 	First check the remote validator is valid, then notify the validator
+	log.Debugf("----------[RemotePeer]The epoch list is response from  validatorvalidator ID: %d", p.cfg.RemoteValidatorId)
+	newEpoch := &epoch.Epoch{
+		EpochIndex:   newEpochCmd.EpochIndex,
+		CreateHeight: newEpochCmd.CreateHeight,
+		CreateTime:   newEpochCmd.CreateTime,
+		ItemList:     make([]*epoch.EpochItem, 0),
+	}
+	for _, epochItem := range newEpochCmd.ItemList {
+		validatorItem := &epoch.EpochItem{
+			ValidatorId: epochItem.ValidatorId,
+			Host:        epochItem.Host,
+			PublicKey:   epochItem.PublicKey,
+			Index:       epochItem.Index,
+		}
+		newEpoch.ItemList = append(newEpoch.ItemList, validatorItem)
+	}
+
+	p.cfg.RemoteValidatorListener.OnNewEpoch(newEpochCmd.ValidatorId, newEpoch)
 }

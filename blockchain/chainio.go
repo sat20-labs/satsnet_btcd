@@ -1539,26 +1539,26 @@ func (b *BlockChain) BlockByHash(hash *chainhash.Hash) (*btcutil.Block, error) {
 // bestChainState represents the data to be stored the database for the current
 // best chain state.
 type AnchorTxInfo struct {
-	LockedTxid string
-	AnchorTxid string
-	PkScript   []byte
-	Amount     int64
+	LockedTxid    string
+	AnchorTxid    string
+	WitnessScript []byte
+	Amount        int64
 }
 
 // serializeAnchorTxInfo returns the serialization of the passed Anchor Tx info.
 // This is data to be stored in the anchor tx info bucket.
 func serializeAnchorTxInfo(anchorTxInfo *AnchorTxInfo) []byte {
-	lenPkScript := len(anchorTxInfo.PkScript)
+	lenWitnessScript := len(anchorTxInfo.WitnessScript)
 	// Calculate the full size needed to serialize the AnchorTxInfo.
-	serializedLen := 64 + 64 + 4 + lenPkScript + 8
+	serializedLen := 64 + 64 + 4 + lenWitnessScript + 8
 
 	// Serialize the chain state.
 	serializedData := make([]byte, serializedLen)
 	copy(serializedData[0:64], []byte(anchorTxInfo.LockedTxid))
 	copy(serializedData[64:128], []byte(anchorTxInfo.AnchorTxid))
-	byteOrder.PutUint32(serializedData[128:], uint32(lenPkScript))
-	copy(serializedData[132:132+lenPkScript], anchorTxInfo.PkScript[:])
-	byteOrder.PutUint64(serializedData[132+lenPkScript:], uint64(anchorTxInfo.Amount))
+	byteOrder.PutUint32(serializedData[128:], uint32(lenWitnessScript))
+	copy(serializedData[132:132+lenWitnessScript], anchorTxInfo.WitnessScript[:])
+	byteOrder.PutUint64(serializedData[132+lenWitnessScript:], uint64(anchorTxInfo.Amount))
 	return serializedData
 }
 
@@ -1586,8 +1586,8 @@ func deserializeAnchorTxInfo(serializedData []byte) (*AnchorTxInfo, error) {
 
 	lenScript := byteOrder.Uint32(serializedData[128:132])
 
-	anchorTxInfo.PkScript = make([]byte, lenScript)
-	copy(anchorTxInfo.PkScript[:], serializedData[132:132+lenScript])
+	anchorTxInfo.WitnessScript = make([]byte, lenScript)
+	copy(anchorTxInfo.WitnessScript[:], serializedData[132:132+lenScript])
 
 	amount := byteOrder.Uint64(serializedData[132+lenScript : 132+lenScript+8])
 	anchorTxInfo.Amount = int64(amount)

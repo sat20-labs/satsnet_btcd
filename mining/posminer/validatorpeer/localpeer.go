@@ -16,7 +16,10 @@ import (
 
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
@@ -27,10 +30,37 @@ import (
 // be start with "Get".
 type LocalPeerInterface interface {
 	// OnPeerConnected is invoked when a remote peer connects to the local peer .
-	OnPeerConnected(net.Addr, uint64)
+	OnPeerConnected(net.Addr, *validatorinfo.ValidatorInfo)
 
 	// GetAllValidators invoke when get all validators.
-	GetAllValidators() []byte
+	GetAllValidators(uint64) []*validatorinfo.ValidatorInfo
+
+	// GetLocalValidatorInfo invoke when local validator info.
+	GetLocalValidatorInfo(uint64) *validatorinfo.ValidatorInfo
+
+	// received broadcast for validators declare
+	OnAllValidatorsDeclare([]validatorinfo.ValidatorInfo, net.Addr)
+
+	// GetEpoch from local peer
+	GetLocalEpoch(uint64) (*epoch.Epoch, *epoch.Epoch, error)
+
+	// Req new epoch from remote peer
+	ReqNewEpoch(uint64, uint32) (*epoch.Epoch, error)
+
+	// OnNextEpoch from local peer to manager to change epoch to next
+	OnNextEpoch(*epoch.HandOverEpoch)
+
+	// GetGenerator from local peer
+	GetGenerator(uint64) *generator.Generator
+
+	// received broadcast for validators declare
+	OnHandOverGenerator(generator.GeneratorHandOver, net.Addr)
+
+	// Receives a generator response from remote with GetGenerator cmmand
+	OnGeneratorResponse(*generator.Generator)
+
+	// Received a confirm epoch command
+	OnConfirmEpoch(*epoch.Epoch, net.Addr)
 }
 
 // Config is the struct to hold configuration options useful to localpeer.
@@ -159,15 +189,6 @@ type LocalPeer struct {
 // This function is safe for concurrent access.
 func (p *LocalPeer) String() string {
 	return fmt.Sprintf("LocalPeer")
-}
-
-// StatsSnapshot returns a snapshot of the current peer flags and statistics.
-//
-// This function is safe for concurrent access.
-func (p *LocalPeer) StatsSnapshot() *StatsSnap {
-	// Get a copy of all relevant flags and stats.
-	statsSnap := &StatsSnap{}
-	return statsSnap
 }
 
 // ID returns the peer id.
@@ -315,6 +336,21 @@ func (p *LocalPeer) TimeConnected() time.Time {
 	return timeConnected
 }
 
+// OnConnDisonnected to be called when a connection is disconnected.
+//
+// This function is safe for concurrent access.
+func (p *LocalPeer) OnConnDisonnected(connReq *ConnReq) {
+	log.Debugf("----------[LocalPeer]OnConnDisonnected conn[%d]: %s", connReq.id, connReq.RemoteAddr)
+
+	p.connMapMtx.Lock()
+	delete(p.connMap, connReq.id)
+	p.connMapMtx.Unlock()
+
+	p.logCurrentConn()
+
+	log.Debugf("----------[LocalPeer]OnConnDisonnected End")
+}
+
 // newPeerBase returns a new base bitcoin peer based on the inbound flag.  This
 // is used by the NewInboundPeer and NewOutboundPeer functions to perform base
 // setup needed by both types of peers.
@@ -364,32 +400,32 @@ func NewLocalPeer(cfg *LocalPeerConfig, addrs []net.Addr) (*LocalPeer, error) {
 		log.Debugf("  %s", addr.String())
 	}
 
-	p.addr = addrs[0].String() // Default to the first address
+	//p.addr = addrs[0].String() // Default to the first address
 
-	host, portStr, err := net.SplitHostPort(p.addr)
-	if err != nil {
-		return nil, err
-	}
+	// host, portStr, err := net.SplitHostPort(p.addr)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	port, err := strconv.ParseUint(portStr, 10, 16)
-	if err != nil {
-		return nil, err
-	}
+	// port, err := strconv.ParseUint(portStr, 10, 16)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	if cfg.HostToNetAddress != nil {
-		na, err := cfg.HostToNetAddress(host, uint16(port), 0)
-		if err != nil {
-			return nil, err
-		}
-		p.na = na
-	} else {
-		// If host is an onion hidden service or a hostname, it is
-		// likely that a nil-pointer-dereference will occur. The caller
-		// should set HostToNetAddress if connecting to these.
-		p.na = wire.NetAddressV2FromBytes(
-			time.Now(), 0, net.ParseIP(host), uint16(port),
-		)
-	}
+	// if cfg.HostToNetAddress != nil {
+	// 	na, err := cfg.HostToNetAddress(host, uint16(port), 0)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	p.na = na
+	// } else {
+	// 	// If host is an onion hidden service or a hostname, it is
+	// 	// likely that a nil-pointer-dereference will occur. The caller
+	// 	// should set HostToNetAddress if connecting to these.
+	// 	p.na = wire.NetAddressV2FromBytes(
+	// 		time.Now(), 0, net.ParseIP(host), uint16(port),
+	// 	)
+	// }
 
 	return p, nil
 }
@@ -436,9 +472,44 @@ func (p *LocalPeer) initListeners() ([]net.Listener, error) {
 			continue
 		}
 		listeners = append(listeners, listener)
+		if p.addr == "" {
+			// Set the default addr is first address can be used
+			//p.addr = listenAddr
+			p.setDefaultAddr(addr)
+		}
 	}
 
 	return listeners, nil
+}
+
+func (p *LocalPeer) setDefaultAddr(addr net.Addr) error {
+	p.addr = addr.String() // Default to the first address
+
+	host, portStr, err := net.SplitHostPort(p.addr)
+	if err != nil {
+		return err
+	}
+
+	port, err := strconv.ParseUint(portStr, 10, 16)
+	if err != nil {
+		return err
+	}
+
+	if p.cfg.HostToNetAddress != nil {
+		na, err := p.cfg.HostToNetAddress(host, uint16(port), 0)
+		if err != nil {
+			return err
+		}
+		p.na = na
+	} else {
+		// If host is an onion hidden service or a hostname, it is
+		// likely that a nil-pointer-dereference will occur. The caller
+		// should set HostToNetAddress if connecting to these.
+		p.na = wire.NetAddressV2FromBytes(
+			time.Now(), 0, net.ParseIP(host), uint16(port),
+		)
+	}
+	return nil
 }
 
 // listenHandler accepts incoming connections on a given listener.  It must be
@@ -468,6 +539,7 @@ func (p *LocalPeer) listenHandler(listener net.Listener) {
 			CmdsLock:   sync.RWMutex{},
 			btcnet:     p.cfg.ChainParams.Net,
 			version:    p.ValidatorVersion(),
+			Listener:   p,
 		}
 		newConnReq.setLastReceived()
 		newConnReq.logConnInfo("newConnReq")
@@ -519,7 +591,12 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 	switch cmd := command.(type) {
 	case *validatorcommand.MsgGetInfo:
 		log.Debugf("----------[LocalPeer]Receive MsgGetInfo command, will response MsgPeerInfo command")
-		cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo(log)
+
+		validatorInfo := p.cfg.LocalValidator.GetLocalValidatorInfo(0)
+		// Handle command ping, it will response "PeerInfo" message
+		cmdPeerInfo := validatorcommand.NewMsgPeerInfo(validatorInfo)
+		connReq.SendCommand(cmdPeerInfo)
 
 	case *validatorcommand.MsgPeerInfo:
 		log.Debugf("----------[LocalPeer]Receive MsgPeerInfo command")
@@ -530,11 +607,55 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 	case *validatorcommand.MsgPing:
 
 		log.Debugf("----------[LocalPeer]Receive ping command, will response pong command")
-		cmd.LogCommandInfo(log)
+		// cmd.LogCommandInfo(log)
 		// Handle command ping, it will response "pong" message
 		cmdPong := validatorcommand.NewMsgPong(cmd.Nonce)
 		connReq.SendCommand(cmdPong)
 
+	case *validatorcommand.MsgGetValidators:
+		log.Debugf("----------[LocalPeer]Receive GetValidators command, will response Validators command")
+		// cmd.LogCommandInfo(log)
+		p.HandleGetValidators(cmd, connReq)
+
+	case *validatorcommand.MsgValidators:
+		// The command should be boardcast command to all peers when the validators are changed
+		log.Debugf("----------[LocalPeer]Receive Validators command, will notify validatorManager for sync validators")
+		// cmd.LogCommandInfo(log)
+
+	case *validatorcommand.MsgGetEpoch:
+		log.Debugf("----------[LocalPeer]Receive MsgGetEpoch command, will response local epoch list to remote peer with MsgEpoch command")
+		//cmd.LogCommandInfo(log)
+		p.HandleGetEpoch(cmd, connReq)
+
+	case *validatorcommand.MsgReqEpoch:
+		log.Debugf("----------[LocalPeer]Receive MsgReqEpoch command, will response new epoch info to remote peer with MsgNewEpoch command")
+		//cmd.LogCommandInfo(log)
+		p.HandleReqEpoch(cmd, connReq)
+
+	case *validatorcommand.MsgNextEpoch:
+		log.Debugf("----------[LocalPeer]Receive MsgNextEpoch command, will notify validatorManager for change to next epoch. ")
+		//cmd.LogCommandInfo(log)
+		p.HandleNextEpoch(cmd, connReq)
+
+	case *validatorcommand.MsgGetGenerator:
+		log.Debugf("----------[LocalPeer]Receive MsgGetGetGenerator command, will response local generator list to remote peer with MsgGenerator command")
+		//cmd.LogCommandInfo(log)
+		p.HandleGetGenerator(cmd, connReq)
+
+	case *validatorcommand.MsgHandOver:
+		log.Debugf("----------[LocalPeer]Receive MsgHandOver command, will notify validatorManager for generator handovered. ")
+		//cmd.LogCommandInfo(log)
+		p.HandleHandOverGenerator(cmd, connReq)
+
+	case *validatorcommand.MsgGenerator:
+		log.Debugf("----------[LocalPeer]Receive MsgGenerator command, will notify validatorManager for generator updated. ")
+		//cmd.LogCommandInfo(log)
+		p.HandleGeneratorResponse(cmd, connReq)
+
+	case *validatorcommand.MsgConfirmEpoch:
+		log.Debugf("----------[LocalPeer]Receive MsgConfirmEpoch command, will notify validatorManager for the confirm epoch. ")
+		cmd.LogCommandInfo(log)
+		p.HandleConfirmEpoch(cmd, connReq)
 	default:
 		cmd.LogCommandInfo(log)
 		log.Errorf("----------[LocalPeer]Not to handle command [%v] from %d", command.Command(), connReq.id)
@@ -560,7 +681,7 @@ func (p *LocalPeer) checkInactiveConn() {
 		if connReq.isInactive() {
 			// The connection is inactive, will close it, and remove it from connMap
 			log.Debugf("----------[LocalPeer]The connection [%s] is inactive, will close it, and remove it from connMap", connReq.RemoteAddr)
-			connReq.close()
+			connReq.Close()
 			delete(p.connMap, connReq.id)
 		}
 	}
@@ -583,7 +704,7 @@ func (p *LocalPeer) addConn(connReq *ConnReq) {
 func (p *LocalPeer) closeConn(connReq *ConnReq) {
 	log.Debugf("----------[LocalPeer]closeConn")
 
-	connReq.close()
+	connReq.Close()
 	p.connMapMtx.Lock()
 	delete(p.connMap, connReq.id)
 	p.connMapMtx.Unlock()
@@ -595,12 +716,12 @@ func (p *LocalPeer) closeConn(connReq *ConnReq) {
 
 func (p *LocalPeer) lookupConn(addr net.Addr) *ConnReq {
 	log.Debugf("----------[LocalPeer]lookupConn")
-	addrHost := addr.(*net.TCPAddr).IP
+	addrHost := validatorinfo.GetAddrHost(addr)
 	p.connMapMtx.RLock()
 	defer p.connMapMtx.RUnlock()
 
 	for _, connReq := range p.connMap {
-		remoteHost := connReq.RemoteAddr.(*net.TCPAddr).IP
+		remoteHost := validatorinfo.GetAddrHost(connReq.RemoteAddr)
 		if addrHost.Equal(remoteHost) {
 			// is same host,
 			return connReq
@@ -624,30 +745,128 @@ func (p *LocalPeer) logCurrentConn() {
 }
 
 func (p *LocalPeer) SendGetInfoCommand(newConnReq *ConnReq) {
-	nonce, err := wire.RandomUint64()
-	if err != nil {
-		nonce = 1234
-	}
-	newConnReq.CheckNonce = nonce
-	newConnReq.SendCommand(validatorcommand.NewMsgGetInfo(p.cfg.ValidatorId, nonce))
 
-	// wait receive info back
+	validatorInfo := p.cfg.LocalValidator.GetLocalValidatorInfo(0)
+	getInfoCmd := validatorcommand.NewMsgGetInfo(validatorInfo)
+	//log.Debugf("----------[LocalPeer]Will Send GetInfoCommand")
+	//getInfoCmd.LogCommandInfo(log)
+	newConnReq.SendCommand(getInfoCmd)
 }
 
 func (p *LocalPeer) HandleRemotePeerInfoConfirmed(peerInfo *validatorcommand.MsgPeerInfo, connReq *ConnReq) {
 	// 	First check the remote validator is valid, then notify the validator
 
-	if p.CheckValidatorID(peerInfo.ValidatorId) == false {
+	if CheckValidatorID(peerInfo.ValidatorId) == false {
 		log.Errorf("----------[LocalPeer]The remote peer is not valid")
 		return
 	}
 
 	log.Debugf("----------[LocalPeer]The remote peer is comfirmed, will notify validator conn[%d]: %s", connReq.id, connReq.RemoteAddr)
 	if p.cfg.LocalValidator != nil {
-		p.cfg.LocalValidator.OnPeerConnected(connReq.RemoteAddr, peerInfo.ValidatorId)
+		validatorInfo := &validatorinfo.ValidatorInfo{
+			ValidatorId: peerInfo.ValidatorId,
+			PublicKey:   peerInfo.PublicKey,
+			Host:        peerInfo.Host,
+			CreateTime:  peerInfo.CreateTime,
+		}
+		p.cfg.LocalValidator.OnPeerConnected(connReq.RemoteAddr, validatorInfo)
 	}
 }
 
-func (p *LocalPeer) CheckValidatorID(validatorID uint64) bool {
-	return true
+func (p *LocalPeer) HandleGetValidators(getValidatorsCmd *validatorcommand.MsgGetValidators, connReq *ConnReq) {
+	validators := p.cfg.LocalValidator.GetAllValidators(getValidatorsCmd.ValidatorId)
+	if validators == nil {
+		validators = []*validatorinfo.ValidatorInfo{}
+	}
+	respValidators := validatorcommand.NewMsgValidators(validators)
+
+	//log.Debugf("----------[LocalPeer]Send MsgValidators command")
+	//respValidators.LogCommandInfo(log)
+	connReq.SendCommand(respValidators)
+}
+
+func (p *LocalPeer) HandleAllValidatorsDeclare(validatorsCmd *validatorcommand.MsgValidators, connReq *ConnReq) {
+	// 	First check the remote validator is valid, then notify the validator
+
+	log.Debugf("----------[LocalPeer]The remote peer is comfirmed, will notify validator conn[%d]: %s", connReq.id, connReq.RemoteAddr)
+	if p.cfg.LocalValidator != nil {
+		p.cfg.LocalValidator.OnAllValidatorsDeclare(validatorsCmd.Validators, connReq.RemoteAddr)
+	}
+}
+
+func (p *LocalPeer) HandleGetEpoch(getEpochCmd *validatorcommand.MsgGetEpoch, connReq *ConnReq) {
+	log.Debugf("----------[LocalPeer]HandleGetEpoch...")
+	currentEpoch, nextEpoch, err := p.cfg.LocalValidator.GetLocalEpoch(getEpochCmd.ValidatorId)
+	if err != nil {
+		//validators = []*epoch.EpochItem{}
+		log.Errorf("----------[LocalPeer]GetLocalEpoch error: %s", err.Error())
+		return
+	}
+	epochCommand := validatorcommand.NewMsgEpoch(currentEpoch, nextEpoch)
+
+	//log.Debugf("----------[LocalPeer]Send MsgValidators command")
+	epochCommand.LogCommandInfo(log)
+	connReq.SendCommand(epochCommand)
+}
+
+func (p *LocalPeer) HandleReqEpoch(getEpochCmd *validatorcommand.MsgReqEpoch, connReq *ConnReq) {
+	newEpoch, err := p.cfg.LocalValidator.ReqNewEpoch(getEpochCmd.ValidatorId, getEpochCmd.EpochIndex)
+	if err != nil {
+		log.Errorf("----------[LocalPeer]ReqNewEpoch error: %s", err.Error())
+		return
+	} else {
+		log.Debugf("----------[LocalPeer]ReqNewEpoch success: %v", newEpoch)
+	}
+	respNewEpoch := validatorcommand.NewMsgNewEpoch(p.cfg.ValidatorId, newEpoch)
+
+	log.Debugf("----------[LocalPeer]Send MsgNewEpoch command")
+	respNewEpoch.LogCommandInfo(log)
+	connReq.SendCommand(respNewEpoch)
+}
+
+func (p *LocalPeer) HandleNextEpoch(nextEpochCmd *validatorcommand.MsgNextEpoch, connReq *ConnReq) {
+	p.cfg.LocalValidator.OnNextEpoch(&nextEpochCmd.HandoverEpoch)
+}
+
+func (p *LocalPeer) HandleGetGenerator(getGeneratorCmd *validatorcommand.MsgGetGenerator, connReq *ConnReq) {
+	generator := p.cfg.LocalValidator.GetGenerator(getGeneratorCmd.ValidatorId)
+	respGeneratorCmd := validatorcommand.NewMsgGenerator(generator)
+
+	log.Debugf("----------[LocalPeer]Send MsgGenerator command")
+	respGeneratorCmd.LogCommandInfo(log)
+	connReq.SendCommand(respGeneratorCmd)
+}
+
+func (p *LocalPeer) HandleHandOverGenerator(handOverGeneratorCmd *validatorcommand.MsgHandOver, connReq *ConnReq) {
+	p.cfg.LocalValidator.OnHandOverGenerator(handOverGeneratorCmd.HandOverInfo, connReq.RemoteAddr)
+}
+
+func (p *LocalPeer) HandleGeneratorResponse(generatorCmd *validatorcommand.MsgGenerator, connReq *ConnReq) {
+	// 	First check the remote validator is valid, then notify the validator
+	log.Debugf("----------[LocalPeer]The generator info is response from  validatorvalidator ID: %s", connReq.RemoteAddr.String())
+
+	// if generator.IsValid(generatorCmd.GeneratorInfo) == false {
+	// 	return
+	// }
+
+	p.cfg.LocalValidator.OnGeneratorResponse(&generatorCmd.GeneratorInfo)
+}
+
+func (p *LocalPeer) HandleConfirmEpoch(confirmEpochCmd *validatorcommand.MsgConfirmEpoch, connReq *ConnReq) {
+	confirmEpoch := &epoch.Epoch{
+		EpochIndex:   confirmEpochCmd.EpochIndex,
+		ItemList:     make([]*epoch.EpochItem, 0),
+		CreateHeight: confirmEpochCmd.CreateHeight,
+		CreateTime:   confirmEpochCmd.CreateTime,
+	}
+	for _, epochItem := range confirmEpochCmd.ItemList {
+		validatorItem := &epoch.EpochItem{
+			ValidatorId: epochItem.ValidatorId,
+			Host:        epochItem.Host,
+			PublicKey:   epochItem.PublicKey,
+			Index:       epochItem.Index,
+		}
+		confirmEpoch.ItemList = append(confirmEpoch.ItemList, validatorItem)
+	}
+	p.cfg.LocalValidator.OnConfirmEpoch(confirmEpoch, connReq.RemoteAddr)
 }

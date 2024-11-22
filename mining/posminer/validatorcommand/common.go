@@ -12,6 +12,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/sat20-labs/satsnet_btcd/btcec"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 )
 
@@ -296,7 +297,28 @@ func readElement(r io.Reader, element interface{}) error {
 			return err
 		}
 		return nil
+	case *[btcec.PubKeyBytesLenCompressed]byte:
+		_, err := io.ReadFull(r, e[:])
+		if err != nil {
+			return err
+		}
+		return nil
 
+	case *string:
+		//len := len(e)
+		//buf := []byte(e)
+
+		len, err := binarySerializer.Uint32(r, binary.LittleEndian)
+		if err != nil {
+			return err
+		}
+		buf := make([]byte, len)
+		_, err = io.ReadFull(r, buf[:])
+		if err != nil {
+			return err
+		}
+		*e = string(buf)
+		return nil
 	}
 
 	// Fall back to the slower binary.Read if a fast path was not available
@@ -392,6 +414,26 @@ func writeElement(w io.Writer, element interface{}) error {
 		}
 		return nil
 
+	case [btcec.PubKeyBytesLenCompressed]byte:
+		_, err := w.Write(e[:])
+		if err != nil {
+			return err
+		}
+		return nil
+
+	case string:
+		len := len(e)
+		buf := []byte(e)
+
+		err := binarySerializer.PutUint32(w, littleEndian, uint32(len))
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(buf[:])
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	// Fall back to the slower binary.Write if a fast path was not available

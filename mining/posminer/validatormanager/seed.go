@@ -20,15 +20,10 @@ func (vm *ValidatorManager) getSeed(chainParams *chaincfg.Params) ([]net.Addr, e
 
 	addrs := make([]net.Addr, 0, len(chainParams.DNSSeeds))
 	for _, dnsseed := range chainParams.DNSSeeds {
-		ips, err := vm.lookup(dnsseed.Host)
+		addr, err := vm.getAddr(dnsseed.Host)
 		if err != nil {
 			log.Infof("DNS discovery failed on seed %s: %v", dnsseed.Host, err)
 			continue
-		}
-		port := vm.GetValidatorPort()
-		addr := &net.TCPAddr{
-			IP:   ips[0],
-			Port: port,
 		}
 		addrs = append(addrs, addr)
 	}
@@ -62,4 +57,17 @@ func (vm *ValidatorManager) getLocalAddr() ([]net.Addr, error) {
 	}
 	localAddrsList = append(localAddrsList, addr)
 	return addrs, nil
+}
+
+func (vm *ValidatorManager) getAddr(Host string) (net.Addr, error) {
+	ips, err := vm.Cfg.Lookup(Host)
+	if err != nil {
+		return nil, err
+	}
+	port := vm.GetValidatorPort()
+	addr := &net.TCPAddr{
+		IP:   ips[0],
+		Port: port,
+	}
+	return addr, nil
 }

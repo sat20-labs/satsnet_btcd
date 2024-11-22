@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/btcec"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 )
 
 // MsgPeerInfo defines a bitcoin verack message which is used for a peer to
@@ -25,12 +27,14 @@ type MsgPeerInfo struct {
 	// Current validator id
 	ValidatorId uint64
 
-	// Time the validator connected to Validator network.  This is encoded as an int64 on the wire.
-	Timestamp time.Time
+	// validator public key
+	PublicKey [btcec.PubKeyBytesLenCompressed]byte
 
-	// Unique value associated with message that is used to detect self
-	// connections.
-	Nonce uint64
+	// validator Host
+	Host string
+
+	// Time the validator connected to Validator network.  This is encoded as an int64 on the wire.
+	CreateTime time.Time
 }
 
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
@@ -38,35 +42,24 @@ type MsgPeerInfo struct {
 func (msg *MsgPeerInfo) BtcDecode(r io.Reader, pver uint32) error {
 	buf, ok := r.(*bytes.Buffer)
 	if !ok {
-		return fmt.Errorf("MsgGetInfo.BtcDecode reader is not a " +
+		return fmt.Errorf("MsgPeerInfo.BtcDecode reader is not a " +
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf, &msg.ProtocolVersion, &msg.ValidatorId,
-		(*int64Time)(&msg.Timestamp))
+	err := readElements(buf, &msg.ProtocolVersion, &msg.ValidatorId, &msg.PublicKey, &msg.Host,
+		(*int64Time)(&msg.CreateTime))
 	if err != nil {
 		return err
 	}
 
-	if buf.Len() > 0 {
-		err = readElement(buf, &msg.Nonce)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgPeerInfo) BtcEncode(w io.Writer, pver uint32) error {
-	err := writeElements(w, msg.ProtocolVersion, msg.ValidatorId,
-		msg.Timestamp.Unix())
-	if err != nil {
-		return err
-	}
-
-	err = writeElement(w, msg.Nonce)
+	err := writeElements(w, msg.ProtocolVersion, msg.ValidatorId, msg.PublicKey, msg.Host,
+		msg.CreateTime.Unix())
 	if err != nil {
 		return err
 	}
@@ -83,28 +76,32 @@ func (msg *MsgPeerInfo) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgPeerInfo) MaxPayloadLength(pver uint32) uint32 {
-	return 28
+
+	// Protocol version 4 bytes + validatorId 8 bytes  + btcec.PubKeyBytesLenCompressed bytes + timestamp 8 bytes
+	return 20 + btcec.PubKeyBytesLenCompressed + MaxHostSize
 }
 
 func (msg *MsgPeerInfo) LogCommandInfo(log btclog.Logger) {
 	log.Debugf("Command MsgPeerInfo:")
 	log.Debugf("ProtocolVersion: %d", msg.ProtocolVersion)
 	log.Debugf("ValidatorId: %d", msg.ValidatorId)
-	log.Debugf("Timestamp: %s", msg.Timestamp.Format(time.DateTime))
-	log.Debugf("Nonce: %d", msg.Nonce)
+	log.Debugf("PublicKey: %x", msg.PublicKey)
+	log.Debugf("Host: %s", msg.Host)
+	log.Debugf("CreateTime: %s", msg.CreateTime.Format(time.DateTime))
 }
 
 // NewMsgPeerInfo returns a new bitcoin verack message that conforms to the
 // Message interface.
-func NewMsgPeerInfo(validatorId uint64, nonce uint64) *MsgPeerInfo {
+func NewMsgPeerInfo(validatorInfo *validatorinfo.ValidatorInfo) *MsgPeerInfo {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
 	return &MsgPeerInfo{
 		ProtocolVersion: int32(VALIDATOR_VERION),
-		ValidatorId:     validatorId,
-		Timestamp:       time.Unix(time.Now().Unix(), 0),
-		Nonce:           nonce,
+		ValidatorId:     validatorInfo.ValidatorId,
+		PublicKey:       validatorInfo.PublicKey,
+		Host:            validatorInfo.Host,
+		CreateTime:      validatorInfo.CreateTime,
 	}
 
 }

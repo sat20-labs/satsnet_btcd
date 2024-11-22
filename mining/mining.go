@@ -713,10 +713,10 @@ mempoolLoop:
 		// Skip free transactions once the block is larger than the
 		// minimum block size.
 		if sortedByFee &&
-			prioItem.feePerKB < int64(g.policy.TxMinFreeFee) &&
+			prioItem.fee < int64(g.policy.TxMinFreeFee) &&
 			blockPlusTxWeight >= g.policy.BlockMinWeight {
 
-			log.Debugf("Skipping tx %s with feePerKB %d "+
+			log.Debugf("Skipping tx %s with fee %d "+
 				"< TxMinFreeFee %d and block weight %d >= "+
 				"minBlockWeight %d", tx.Hash(), prioItem.feePerKB,
 				g.policy.TxMinFreeFee, blockPlusTxWeight,

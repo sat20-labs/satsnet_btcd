@@ -274,6 +274,19 @@ func NewGetBlockHashCmd(index int64) *GetBlockHashCmd {
 	}
 }
 
+// GetBlockHashCmd defines the getblockhash JSON-RPC command.
+type GetAnchorTxInfoCmd struct {
+	TxId string
+}
+
+// NewGetBlockHashCmd returns a new instance which can be used to issue a
+// getblockhash JSON-RPC command.
+func NewGetAnchorTxInfoCmd(txid string) *GetAnchorTxInfoCmd {
+	return &GetAnchorTxInfoCmd{
+		TxId: txid,
+	}
+}
+
 // GetBlockHeaderCmd defines the getblockheader JSON-RPC command.
 type GetBlockHeaderCmd struct {
 	Hash    string
@@ -1163,4 +1176,5 @@ func init() {
 	MustRegisterCmd("verifytxoutproof", (*VerifyTxOutProofCmd)(nil), flags)
 	MustRegisterCmd("testmempoolaccept", (*TestMempoolAcceptCmd)(nil), flags)
 	MustRegisterCmd("gettxspendingprevout", (*GetTxSpendingPrevOutCmd)(nil), flags)
+	MustRegisterCmd("getanchortxinfo", (*GetAnchorTxInfoCmd)(nil), flags)
 }

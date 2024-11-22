@@ -7,6 +7,7 @@ package posminer
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math/rand"
 	"net"
 	"sync"
@@ -68,6 +69,9 @@ type Config struct {
 	// Lookup returns the DNS host lookup function to use when
 	// connecting to servers.
 	Lookup func(string) ([]net.IP, error)
+
+	// Btcd Dir
+	BtcdDir string
 
 	// BlockTemplateGenerator identifies the instance to use in order to
 	// generate block templates that the miner will attempt to solve.
@@ -225,8 +229,7 @@ func (m *POSMiner) submitBlock(block *btcutil.Block) bool {
 // This function will return early with false when conditions that trigger a
 // stale block such as a new block showing up or periodically when there are
 // new transactions and enough time has elapsed without finding a solution.
-func (m *POSMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32,
-	ticker *time.Ticker, quit chan struct{}) bool {
+func (m *POSMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32) bool {
 
 	log.Debugf("solveBlock ...")
 	// Choose a random extra nonce offset for this block template and
@@ -330,6 +333,7 @@ func (m *POSMiner) generateBlocks(quit chan struct{}) {
 	defer ticker.Stop()
 out:
 	for {
+		log.Debugf("generateBlocks ......")
 		// Quit when the miner is stopped.
 		select {
 		case <-quit:
@@ -382,12 +386,12 @@ out:
 			// with false when conditions that trigger a stale block, so
 			// a new block template can be generated.  When the return is
 			// true a solution was found, so submit the solved block.
-			if m.solveBlock(template.Block, curHeight+1, ticker, quit) {
+			if m.solveBlock(template.Block, curHeight+1) {
 				log.Debugf("solveBlock ...")
 				block := btcutil.NewBlock(template.Block)
 				m.submitBlock(block)
 			}
-		default:
+			//default:
 			// Non-blocking select to fall through
 		}
 	}
@@ -491,6 +495,8 @@ func (m *POSMiner) Start(timerGenerate bool) {
 		Dial:        m.cfg.Dial,
 		Lookup:      m.cfg.Lookup,
 		ValidatorId: m.cfg.ValidatorId,
+		BtcdDir:     m.cfg.BtcdDir,
+		PosMiner:    m,
 	}
 	// Start ValidatorManager
 	m.ValidatorMgr = validatormanager.New(cfg)
@@ -516,6 +522,10 @@ func (m *POSMiner) Stop() {
 	// discrete mode (using GenerateNBlocks).
 	if !m.started || m.discreteMining {
 		return
+	}
+
+	if m.ValidatorMgr != nil {
+		m.ValidatorMgr.Stop()
 	}
 
 	close(m.quit)
@@ -661,7 +671,7 @@ func (m *POSMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		// with false when conditions that trigger a stale block, so
 		// a new block template can be generated.  When the return is
 		// true a solution was found, so submit the solved block.
-		if m.solveBlock(template.Block, curHeight+1, ticker, nil) {
+		if m.solveBlock(template.Block, curHeight+1) {
 			block := btcutil.NewBlock(template.Block)
 			m.submitBlock(block)
 			blockHashes[i] = block.Hash()
@@ -692,4 +702,97 @@ func New(cfg *Config) *POSMiner {
 		queryHashesPerSec: make(chan float64),
 		updateHashes:      make(chan uint64),
 	}
+}
+
+// OnTimeGenerateBlock is invoke when time to generate block.
+func (m *POSMiner) OnTimeGenerateBlock() (*chainhash.Hash, error) {
+	log.Debugf("Timeup for OnTimeGenerateBlock ......")
+
+	return m.GenerateNewTestBlock()
+}
+
+func (m *POSMiner) GenerateNewTestBlock() (*chainhash.Hash, error) {
+	log.Debugf("GenerateNewTestBlock ......")
+
+	// return nil, errors.New("Test generate failed.")
+
+	blockHash := chainhash.DoubleHashRaw(func(w io.Writer) error {
+		buf := make([]byte, 128)
+		for i := 0; i < 128; i++ {
+			data := rand.Int31()
+			buf[i] = byte(data)
+		}
+		if _, err := w.Write(buf[:]); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	return &blockHash, nil
+}
+
+func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, error) {
+	// Wait until there is a connection to at least one other peer
+	// since there is no way to relay a found block or receive
+	// transactions to work on when there are no connected peers.
+	// if m.cfg.ConnectedCount() == 0 {
+	// 	time.Sleep(time.Second)
+	// 	continue
+	// }
+
+	// No point in searching for a solution before the chain is
+	// synced.  Also, grab the same lock as used for block
+	// submission, since the current block will be changing and
+	// this would otherwise end up building a new block template on
+	// a block that is in the process of becoming stale.
+	m.submitBlockLock.Lock()
+	log.Debugf("Lock block ...")
+	curHeight := m.g.BestSnapshot().Height
+	if curHeight != 0 && !m.cfg.IsCurrent() {
+		m.submitBlockLock.Unlock()
+		time.Sleep(time.Second)
+		log.Debugf("curHeight = %d and not current.", curHeight)
+		err := fmt.Errorf("The blockchain is not best chain.")
+		return nil, err
+	}
+
+	// Choose a payment address at random.
+	rand.Seed(time.Now().UnixNano())
+	payToAddr := m.cfg.MiningAddrs[rand.Intn(len(m.cfg.MiningAddrs))]
+
+	// Create a new block template using the available transactions
+	// in the memory pool as a source of transactions to potentially
+	// include in the block.
+	log.Debugf("NewBlockTemplate...")
+	template, err := m.g.NewBlockTemplate(payToAddr)
+	m.submitBlockLock.Unlock()
+	if err != nil {
+		errStr := fmt.Sprintf("Failed to create new block "+
+			"template: %v", err)
+		log.Errorf(errStr)
+		return nil, err
+	}
+
+	log.Debugf("NewBlockTemplate done.")
+
+	// Attempt to solve the block.  The function will exit early
+	// with false when conditions that trigger a stale block, so
+	// a new block template can be generated.  When the return is
+	// true a solution was found, so submit the solved block.
+	if m.solveBlock(template.Block, curHeight+1) {
+		log.Debugf("solveBlock ...")
+		block := btcutil.NewBlock(template.Block)
+		m.submitBlock(block)
+		blockHash := block.Hash()
+		return blockHash, nil
+	}
+
+	err = fmt.Errorf("Failed to solve block")
+	return nil, err
+}
+
+// GetBlockHeight invoke when get block height from pos miner.
+func (m *POSMiner) GetBlockHeight() int32 {
+	return m.g.BestSnapshot().Height
 }

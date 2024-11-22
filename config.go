@@ -131,6 +131,8 @@ type config struct {
 	Generate             bool          `long:"generate" description:"Generate (mine) bitcoins using the POS"`
 	ValidatorId          uint64        `long:"validatorid" description:"validator id using the POS"`
 	TimerGenerate        bool          `long:"timergenerate" description:"Generate (mine) bitcoins using the POS with timer enabled"`
+	IndexerHost          string        `long:"indexerhost" description:"The host for indexer"`
+	IndexerNet           string        `long:"indexernet" description:"The net for indexer, one of mainnet and testnet"`
 	FreeTxRelayLimit     float64       `long:"limitfreerelay" description:"Limit relay of transactions with no transaction fee to the given amount in thousands of bytes per minute"`
 	Listeners            []string      `long:"listen" description:"Add an interface/port to listen for connections (default all interfaces port: 8333, testnet: 18333)"`
 	LogDir               string        `long:"logdir" description:"Directory to log output."`
@@ -1054,33 +1056,33 @@ func loadConfig() (*config, []string, error) {
 
 	// Only allow TLS to be disabled if the RPC is bound to localhost
 	// addresses.
-	if !cfg.DisableRPC && cfg.DisableTLS {
-		allowedTLSListeners := map[string]struct{}{
-			"localhost": {},
-			"127.0.0.1": {},
-			"::1":       {},
-		}
-		for _, addr := range cfg.RPCListeners {
-			host, _, err := net.SplitHostPort(addr)
-			if err != nil {
-				str := "%s: RPC listen interface '%s' is " +
-					"invalid: %v"
-				err := fmt.Errorf(str, funcName, addr, err)
-				fmt.Fprintln(os.Stderr, err)
-				fmt.Fprintln(os.Stderr, usageMessage)
-				return nil, nil, err
-			}
-			if _, ok := allowedTLSListeners[host]; !ok {
-				str := "%s: the --notls option may not be used " +
-					"when binding RPC to non localhost " +
-					"addresses: %s"
-				err := fmt.Errorf(str, funcName, addr)
-				fmt.Fprintln(os.Stderr, err)
-				fmt.Fprintln(os.Stderr, usageMessage)
-				return nil, nil, err
-			}
-		}
-	}
+	// if !cfg.DisableRPC && cfg.DisableTLS {
+	// 	allowedTLSListeners := map[string]struct{}{
+	// 		"localhost": {},
+	// 		"127.0.0.1": {},
+	// 		"::1":       {},
+	// 	}
+	// 	for _, addr := range cfg.RPCListeners {
+	// 		host, _, err := net.SplitHostPort(addr)
+	// 		if err != nil {
+	// 			str := "%s: RPC listen interface '%s' is " +
+	// 				"invalid: %v"
+	// 			err := fmt.Errorf(str, funcName, addr, err)
+	// 			fmt.Fprintln(os.Stderr, err)
+	// 			fmt.Fprintln(os.Stderr, usageMessage)
+	// 			return nil, nil, err
+	// 		}
+	// 		if _, ok := allowedTLSListeners[host]; !ok {
+	// 			str := "%s: the --notls option may not be used " +
+	// 				"when binding RPC to non localhost " +
+	// 				"addresses: %s"
+	// 			err := fmt.Errorf(str, funcName, addr)
+	// 			fmt.Fprintln(os.Stderr, err)
+	// 			fmt.Fprintln(os.Stderr, usageMessage)
+	// 			return nil, nil, err
+	// 		}
+	// 	}
+	// }
 
 	// Add default port to all added peer addresses if needed and remove
 	// duplicate addresses.

@@ -11,14 +11,14 @@ import (
 	"time"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/btcec"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 )
 
-// MaxUserAgentLen is the maximum allowed length for the user agent field in a
-// version message (MsgGetInfo).
-const MaxUserAgentLen = 256
-
-// DefaultUserAgent for wire in the stack
-const DefaultUserAgent = "/btcwire:0.5.0/"
+const (
+	// MaxMsgSize is the maximum number of bytes a message can be in bytes
+	MaxHostSize = 256
+)
 
 // MsgGetInfo implements the Message interface and represents a bitcoin version
 // message.  It is used for a peer to advertise itself as soon as an outbound
@@ -34,12 +34,14 @@ type MsgGetInfo struct {
 	// Current validator id
 	ValidatorId uint64
 
-	// Time the validator connected to Validator network.  This is encoded as an int64 on the wire.
-	Timestamp time.Time
+	// validator public key
+	PublicKey [btcec.PubKeyBytesLenCompressed]byte
 
-	// Unique value associated with message that is used to detect self
-	// connections.
-	Nonce uint64
+	// validator Host
+	Host string
+
+	// Time the validator connected to Validator network.  This is encoded as an int64 on the wire.
+	CreateTime time.Time
 }
 
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
@@ -56,17 +58,10 @@ func (msg *MsgGetInfo) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf, &msg.ProtocolVersion, &msg.ValidatorId,
-		(*int64Time)(&msg.Timestamp))
+	err := readElements(buf, &msg.ProtocolVersion, &msg.ValidatorId, &msg.PublicKey, &msg.Host,
+		(*int64Time)(&msg.CreateTime))
 	if err != nil {
 		return err
-	}
-
-	if buf.Len() > 0 {
-		err = readElement(buf, &msg.Nonce)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -75,13 +70,8 @@ func (msg *MsgGetInfo) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgGetInfo) BtcEncode(w io.Writer, pver uint32) error {
-	err := writeElements(w, msg.ProtocolVersion, msg.ValidatorId,
-		msg.Timestamp.Unix())
-	if err != nil {
-		return err
-	}
-
-	err = writeElement(w, msg.Nonce)
+	err := writeElements(w, msg.ProtocolVersion, msg.ValidatorId, msg.PublicKey, msg.Host,
+		msg.CreateTime.Unix())
 	if err != nil {
 		return err
 	}
@@ -98,32 +88,33 @@ func (msg *MsgGetInfo) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgGetInfo) MaxPayloadLength(pver uint32) uint32 {
-	// XXX: <= 106 different
 
-	// Protocol version 4 bytes + validatorId 8 bytes  +timestamp 8 bytes + nonce 8 bytes
-	return 28
+	// Protocol version 4 bytes + validatorId 8 bytes  + btcec.PubKeyBytesLenCompressed bytes + timestamp 8 bytes
+	return 20 + btcec.PubKeyBytesLenCompressed + MaxHostSize
 }
 
 func (msg *MsgGetInfo) LogCommandInfo(log btclog.Logger) {
 	log.Debugf("Command MsgGetInfo:")
 	log.Debugf("ProtocolVersion: %d", msg.ProtocolVersion)
 	log.Debugf("ValidatorId: %d", msg.ValidatorId)
-	log.Debugf("Timestamp: %s", msg.Timestamp.Format(time.DateTime))
-	log.Debugf("Nonce: %d", msg.Nonce)
+	log.Debugf("PublicKey: %x", msg.PublicKey)
+	log.Debugf("Host: %x", msg.Host)
+	log.Debugf("CreateTime: %s", msg.CreateTime.Format(time.DateTime))
 }
 
 // NewMsgGetInfo returns a new bitcoin version message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.
-func NewMsgGetInfo(validatorId uint64, nonce uint64) *MsgGetInfo {
+func NewMsgGetInfo(validatorInfo *validatorinfo.ValidatorInfo) *MsgGetInfo {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
 	return &MsgGetInfo{
 		ProtocolVersion: int32(VALIDATOR_VERION),
-		ValidatorId:     validatorId,
-		Timestamp:       time.Unix(time.Now().Unix(), 0),
-		Nonce:           nonce,
+		ValidatorId:     validatorInfo.ValidatorId,
+		PublicKey:       validatorInfo.PublicKey,
+		Host:            validatorInfo.Host,
+		CreateTime:      validatorInfo.CreateTime,
 	}
 
 }

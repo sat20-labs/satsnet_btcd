@@ -468,10 +468,10 @@ func (s *utxoCache) addTxIns(tx *btcutil.Tx, stxos *[]SpentTxOut, anchorTxInfos 
 				return err
 			}
 			anchorTxInfo := AnchorTxInfo{
-				LockedTxid: lockedTxInfo.TxId,
-				PkScript:   lockedTxInfo.PkScript,
-				Amount:     lockedTxInfo.Amount,
-				AnchorTxid: tx.MsgTx().TxID(),
+				LockedTxid:    lockedTxInfo.TxId,
+				WitnessScript: lockedTxInfo.WitnessScript,
+				Amount:        lockedTxInfo.Amount,
+				AnchorTxid:    tx.MsgTx().TxID(),
 			}
 			*anchorTxInfos = append(*anchorTxInfos, anchorTxInfo)
 		}

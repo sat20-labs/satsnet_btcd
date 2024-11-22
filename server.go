@@ -2745,7 +2745,7 @@ func setupRPCListeners() ([]net.Listener, error) {
 // bitcoin network type specified by chainParams.  Use start to begin accepting
 // connections from peers.
 func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
-	db database.DB, chainParams *chaincfg.Params,
+	db database.DB, chainParams *chaincfg.Params, homeDir string,
 	interrupt <-chan struct{}) (*server, error) {
 
 	services := defaultServices
@@ -2978,6 +2978,7 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 		ConnectedCount:         s.ConnectedCount,
 		IsCurrent:              s.syncManager.IsCurrent,
 		ValidatorId:            cfg.ValidatorId,
+		BtcdDir:                homeDir,
 	})
 
 	// Only setup a function to return new addresses to connect to when
