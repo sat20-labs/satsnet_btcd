@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
@@ -72,4 +73,74 @@ func testSendRawTransaction(rawSend string) {
 	//btcwallet.LogMsgTx(result.MsgTx())
 	fmt.Printf("sendrawtransaction success,result: %v\n", result)
 
+}
+
+func testGetAccordingLockedInfo(txid string) {
+	fmt.Printf("testGetAccordingLockedInfo...\n")
+
+	// Get Anchor tx from sats net
+	txHash, err := chainhash.NewHashFromStr(txid)
+	if err != nil {
+		log.Errorf("Invalid Txid : %s", txid)
+	}
+
+	// SendRawTransaction(raw)
+	result, err := satsnet_rpc.GetRawTransaction(txHash)
+	if err != nil {
+		fmt.Printf("getrawtransaction error: %s\n", err)
+		return
+	}
+
+	//btcwallet.LogMsgTx(result.MsgTx())
+
+	lockedTxInfo, err := anchortx.GetLockedTxInfo(result.MsgTx())
+	if err != nil {
+		fmt.Printf("GetLockedTxInfo error: %s\n", err)
+		return
+	}
+
+	fmt.Printf("Locked TX info: \n")
+	fmt.Printf("Locked TX txid(BTC): %s\n", lockedTxInfo.TxId)
+	fmt.Printf("Locked TX WitnessScript: %v\n", lockedTxInfo.WitnessScript)
+	fmt.Printf("Locked TX Amount: %d\n", lockedTxInfo.Amount)
+
+	fmt.Printf("Anchor TX txid(Satsnet): %s\n", txid)	
+}
+
+func testGetAccordingAnchorInfo(lockedTxid string) {
+	fmt.Printf("testGetAccordingAnchorInfo...\n")
+
+	// SendRawTransaction(raw)
+	result, err := satsnet_rpc.GetAnchorTxInfo(lockedTxid)
+	if err != nil {
+		fmt.Printf("testGetAccordingAnchorInfo error: %s\n", err)
+		return
+	}
+
+	//btcwallet.LogMsgTx(result.MsgTx())
+
+	fmt.Printf("According TX info: \n")
+	fmt.Printf("Locked TX txid(BTC): %s\n", result.LockedTxid)
+	fmt.Printf("Locked TX Witness: %s\n", result.Witness)
+	fmt.Printf("Locked TX Amount: %d\n", result.Amount)
+
+	fmt.Printf("Anchor TX txid(Satsnet): %s\n", result.AnchorTxid)
+
+	fmt.Printf("************************************Anchor TX Info**************************************\n")
+	// Get Anchor tx from sats net
+	txHash, err := chainhash.NewHashFromStr(result.AnchorTxid)
+	if err != nil {
+		log.Errorf("Invalid Anchor Txid : %s", result.AnchorTxid)
+		return
+	}
+
+	// SendRawTransaction(raw)
+	resultTx, err := satsnet_rpc.GetRawTransaction(txHash)
+	if err != nil {
+		fmt.Printf("getrawtransaction error: %s\n", err)
+		return
+	}
+
+	btcwallet.LogMsgTx(resultTx.MsgTx())
+	fmt.Printf("************************************Anchor TX End**************************************\n")
 }

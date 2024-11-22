@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -166,6 +167,21 @@ func main() {
 			}
 			testAnchorTx(lockedTTxid, address, amount)
 			continue
+		} else if method == "parseanchorscript" {
+			script := ""
+			if length < 2 {
+				fmt.Printf("parseanchorscript need anchorscript\n")
+				continue
+			}
+			script = words[1]
+
+			anchorScript, err := hex.DecodeString(script)
+			if err != nil {
+				fmt.Println(err)
+				continue
+			}
+			testParseAnchorScript(anchorScript)
+			continue
 		} else if method == "rpcanchortx" {
 			lockedTTxid := ""
 			address := ""
@@ -272,6 +288,33 @@ func main() {
 
 			testGetRawTransaction(txid)
 			continue
+		} else if method == "getlockedtx" {
+			if length < 2 {
+				fmt.Printf("getlockedtx need txid\n")
+				continue
+			}
+			txid := words[1]
+
+			testGetLockedTx(txid)
+			continue
+		} else if method == "accordinglockedinfo" {
+			if length < 2 {
+				fmt.Printf("accordinglockedinfo need txid\n")
+				continue
+			}
+			txid := words[1]
+
+			testGetAccordingLockedInfo(txid)
+			continue
+		} else if method == "accordinganchorinfo" {
+			if length < 2 {
+				fmt.Printf("accordinganchorinfo need txid\n")
+				continue
+			}
+			txid := words[1]
+
+			testGetAccordingAnchorInfo(txid)
+			continue
 		} else if method == "sendrawtransaction" {
 			raw := ""
 			if length >= 2 {
@@ -282,6 +325,12 @@ func main() {
 		} else if method == "sendtxsample" {
 
 			testSampleTx()
+			continue
+		} else if method == "showgenesis" {
+			showGenesisBlock(currentNetwork)
+			continue
+		} else if method == "creategenesis" {
+			GenerateGenesisBlock(currentNetwork)
 			continue
 		} else if method == "showblocks" {
 			start := int64(0)

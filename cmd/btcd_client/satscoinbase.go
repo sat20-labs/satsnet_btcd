@@ -1,10 +1,14 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"time"
 
+	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
@@ -49,6 +53,8 @@ func CreateAnchorTx(txid string, addr string, amount int64, satsRanges []wire.Sa
 	if err != nil {
 		panic(err)
 	}
+
+	anchorScript, _ = hex.DecodeString("4034613439313566643336366137326531613830333535616438303336333131623539623761346539383632323965323863343534396137613833366231306139475221023c3a8c93daccdd35fd2687aa2fbe67eaabcb89fb9dea5062d19618e6b08be8f121030069982b2833b615c7b8d56c4ef85fb489ae76549a6251765ad4edae77298e2252ae02204e0813ba76fbd0dd7140")
 
 	tx := wire.NewMsgTx(1)
 	tx.AddTxIn(&wire.TxIn{
@@ -102,13 +108,30 @@ func StandardCoinbaseScript(blockHeight int32, extraNonce uint64) ([]byte, error
 		AddInt64(int64(extraNonce)).Script()
 }
 
+// StandardGenesisScript returns a standard genesis block script suitable for use as the
+// signature script.
+func StandardGenesisScript(pkScript []byte, genesisTime int64) ([]byte, error) {
+	blockHeight := 0
+	extraNonce := rand.Uint64()
+	return txscript.NewScriptBuilder().AddInt64(int64(blockHeight)).AddData(pkScript).AddInt64(genesisTime).
+		AddInt64(int64(extraNonce)).Script()
+}
+
 // StandardAnchorScript returns a standard script suitable for use as the
 // signature script of the coinbase transaction of a new block.  In particular,
 // it starts with the block height that is required by version 2 blocks.
 func StandardAnchorScript(txid string, pkScript []byte, amount int64) ([]byte, error) {
-	extraNonce := rand.Uint64()
-	return txscript.NewScriptBuilder().AddData([]byte(txid)).AddData(pkScript).
-		AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
+	// extraNonce := rand.Uint64()
+	// return txscript.NewScriptBuilder().AddData([]byte(txid)).AddData(pkScript).
+	// 	AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
+
+	hash := sha256.Sum256([]byte(txid))
+	bytes := hash[:8]
+	return txscript.NewScriptBuilder().
+		AddData([]byte(txid)).
+		AddData(pkScript).
+		AddInt64(int64(amount)).
+		AddInt64(int64(binary.LittleEndian.Uint64(bytes))).Script()
 }
 
 // StandardUnnchorScript returns a standard script suitable for use as the
@@ -226,4 +249,15 @@ func testrpcAnchorTx(lockedTxid string, address string) {
 	fmt.Printf("SendRawTransaction success,txid: %s\n", hash.String())
 
 	fmt.Printf("testAnchorTx done.\n")
+}
+
+func testParseAnchorScript(script []byte) {
+	fmt.Printf("testParseAnchorScript...\n")
+
+	lockedInfo, err := anchortx.ParseAnchorScript(script)
+	if err != nil {
+		fmt.Printf("ParseAnchorScript error: %s\n", err)
+		return
+	}
+	fmt.Printf("ParseAnchorScript success,lockedInfo: %v\n", lockedInfo)
 }

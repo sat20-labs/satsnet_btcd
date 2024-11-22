@@ -37,32 +37,29 @@ func startDaemon() {
 }
 
 func parseBlock(height int64) error {
-	log.Debugf("Block: %d", height)
+	log.Debugf("-------------------  Block Info  -------------------------")
+	log.Debugf("    Block: %d", height)
 	hash, err := satsnet_rpc.GetBlockHash(height)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	log.Debugf("Block Hash: %s", hash.String())
+	log.Debugf("    Block Hash: %s", hash.String())
 	block, err := satsnet_rpc.GetRawBlock(hash)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	// blockData, err := hex.DecodeString(rawBlock)
-	// if err != nil {
-	// 	log.Errorf("syncBlock-> Failed to decode block: %v", err)
-	// 	return err
-	// }
 
-	// Deserialize the bytes into a btcutil.Block.
-	// block, err := btcutil.NewBlockFromBytes(blockData)
-	// if err != nil {
-	// 	//log.Panicf("syncBlock-> Failed to parse block: %v", err)
-	// 	log.Error(err)
-	// 	return err
-	// }
+	// Show Block info
+	log.Debugf("    Block Version: 0x%x", block.Header.Version)
+	log.Debugf("    Prev Block Hash: %s", block.Header.PrevBlock.String())
+	log.Debugf("    MerkleRoot Hash: %s", block.Header.MerkleRoot.String())
+	log.Debugf("    Block Time: %s", block.Header.Timestamp.Format(time.DateTime))
+	log.Debugf("    Block Bits: 0x%x", block.Header.Bits)
+	log.Debugf("    Block Nonce: 0x%x", block.Header.Nonce)
+	log.Debugf("-------------------------  End  --------------------------")
 
 	transactions := block.Transactions
 	for index, tx := range transactions {
@@ -170,6 +167,7 @@ func NewUtxo(pkScript []byte, assets UtxoAssets) {
 		log.Errorf("NewUtxo->PkScriptToAddr failed: %x", pkScript)
 		return
 	}
+	log.Debugf("pkScript: %x", pkScript)
 	log.Debugf("address: %s", address)
 	log.Debugf("utxo:%s, Value:%d", assets.Utxo, assets.Value)
 	for _, satsRange := range assets.SatsRanges {

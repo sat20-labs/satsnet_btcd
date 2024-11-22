@@ -16,11 +16,11 @@ var client *rpcclient.Client
 func InitSatsNetClient(host string, port int, user, passwd string, certFileDir string) error {
 	ntfnHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txns []*btcutil.Tx) {
-			fmt.Printf("Block connected: %v (%d) %v",
+			fmt.Printf("Block connected: %v (%d) %v \n",
 				header.BlockHash(), height, header.Timestamp)
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
-			fmt.Printf("Block disconnected: %v (%d) %v",
+			fmt.Printf("Block disconnected: %v (%d) %v \n",
 				header.BlockHash(), height, header.Timestamp)
 		},
 	}
@@ -45,6 +45,7 @@ func InitSatsNetClient(host string, port int, user, passwd string, certFileDir s
 		Pass:     passwd,
 		//HTTPPostMode: true,
 		Certificates: certs,
+		//DisableTLS:   true,
 	}
 	client, err = rpcclient.New(connCfg, &ntfnHandlers)
 	if err != nil {
