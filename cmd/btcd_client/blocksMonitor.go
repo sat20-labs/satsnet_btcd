@@ -163,12 +163,12 @@ func SpentUtxo(utxo string) {
 
 func NewUtxo(pkScript []byte, assets UtxoAssets) {
 	address, err := btcwallet.PkScriptToAddr(pkScript)
-	if err != nil {
-		log.Errorf("NewUtxo->PkScriptToAddr failed: %x", pkScript)
-		return
-	}
 	log.Debugf("pkScript: %x", pkScript)
-	log.Debugf("address: %s", address)
+	if err != nil {
+		log.Errorf("NewUtxo->PkScriptToAddr failed: %v ", err)
+	} else {
+		log.Debugf("address: %s", address)
+	}
 	log.Debugf("utxo:%s, Value:%d", assets.Utxo, assets.Value)
 	for _, satsRange := range assets.SatsRanges {
 		log.Debugf("    Sats Range: [%d-%d]", satsRange.Start, satsRange.Start+satsRange.Size-1)

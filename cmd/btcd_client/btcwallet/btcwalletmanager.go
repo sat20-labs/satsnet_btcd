@@ -928,7 +928,7 @@ func PkScriptToAddr(pkScript []byte) (string, error) {
 	}
 
 	if len(addrs) == 0 {
-		err := fmt.Errorf("failed to get addr with pkscript[%v]", pkScript)
+		err := fmt.Errorf("failed to get addr with pkscript [%x]", pkScript)
 		return "", err
 	}
 
