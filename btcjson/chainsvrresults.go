@@ -772,6 +772,7 @@ type TxRawDecodeResult struct {
 type ValidateAddressChainResult struct {
 	IsValid        bool    `json:"isvalid"`
 	Address        string  `json:"address,omitempty"`
+	ScriptPubKey   string  `json:"scriptPubKey,omitempty"` // same as Address
 	IsScript       *bool   `json:"isscript,omitempty"`
 	IsWitness      *bool   `json:"iswitness,omitempty"`
 	WitnessVersion *int32  `json:"witness_version,omitempty"`

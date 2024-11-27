@@ -3810,7 +3810,13 @@ func handleValidateAddress(s *rpcServer, cmd interface{}, closeChan <-chan struc
 	}
 
 	result.Address = addr.EncodeAddress()
-	result.IsValid = true
+	pkScript, err := txscript.PayToAddrScript(addr)
+	if err == nil {
+		result.ScriptPubKey = hex.EncodeToString(pkScript)
+		result.IsValid = true
+	} else {
+		result.IsValid = false
+	}
 
 	return result, nil
 }
