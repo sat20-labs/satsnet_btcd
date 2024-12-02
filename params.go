@@ -89,7 +89,7 @@ var mainSatsNetParams = params{
 // to emulate the full reference implementation RPC API.
 var testSatsNetParams = params{
 	Params:  &chaincfg.SatsTestNetParams,
-	rpcPort: "14827",
+	rpcPort: "15827",
 }
 
 // netName returns the name used when referring to a bitcoin network.  At the

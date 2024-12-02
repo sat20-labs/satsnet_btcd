@@ -25,7 +25,7 @@ const (
 	// consequently notifications.
 	unusableFlags = btcjson.UFWebsocketOnly | btcjson.UFNotification
 
-	RPC_BTCD = 1
+	RPC_BTCD   = 1
 	RPC_WALLET = 2
 )
 
@@ -160,9 +160,9 @@ func normalizeAddress(addr string, chain *chaincfg.Params, useWallet bool) (stri
 			}
 		case &chaincfg.SatsTestNetParams:
 			if useWallet {
-				defaultPort = "14828"
+				defaultPort = "15828"
 			} else {
-				defaultPort = "14827"
+				defaultPort = "15827"
 			}
 		default:
 			if useWallet {

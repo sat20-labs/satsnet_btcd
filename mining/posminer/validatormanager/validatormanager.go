@@ -730,7 +730,7 @@ func (vm *ValidatorManager) GetValidatorPort() int {
 		return 4829
 
 	case wire.SatsTestNet:
-		return 14829
+		return 15829
 	}
 
 	return 4829

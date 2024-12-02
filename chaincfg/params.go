@@ -1143,7 +1143,7 @@ var SatsMainNetParams = Params{
 var SatsTestNetParams = Params{
 	Name:        "satstestnet",
 	Net:         wire.SatsTestNet,
-	DefaultPort: "14826",
+	DefaultPort: "15826",
 	DNSSeeds: []DNSSeed{
 		//{"39.108.147.241", true},
 		{"192.168.10.20", true},
@@ -1153,8 +1153,8 @@ var SatsTestNetParams = Params{
 	},
 
 	// Chain parameters
-	GenesisBlock:             &testNet4GenesisBlock,
-	GenesisHash:              &testNet4GenesisHash,
+	GenesisBlock:             &satsTestNetGenesisBlock,
+	GenesisHash:              &satsTestNetGenesisHash,
 	PowLimit:                 testNet4PowLimit,
 	PowLimitBits:             0x1d00ffff,
 	BIP0034Height:            1,

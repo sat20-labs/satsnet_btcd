@@ -101,12 +101,12 @@ func main() {
 	// }
 
 	// rpchost := "192.168.10.104"
-	// rpcPost := 14827
+	// rpcPost := 15827
 	// rpcuser := "q17AIoqBJSEhW7djqjn0nTsZcz4="
 	// rpcpass := "nnlkAZn58bqsyYwVtHIajZ16cj8="
 	// certFileDir := "D:\\Work\\Tinyverse\\develop\\satsnet\\satsnet_btcd\\cmd\\btcd_client\\btcd104"
 	rpchost := "127.0.0.1"
-	rpcPost := 14827
+	rpcPost := 15827
 	rpcuser := cfg.RPCUser
 	rpcpass := cfg.RPCPassword
 	certFileDir := filepath.Join(cfg.HomeDir, "btcd")
