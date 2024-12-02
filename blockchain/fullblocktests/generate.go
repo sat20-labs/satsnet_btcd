@@ -1169,7 +1169,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 		for i := 0; i < txnsNeeded; i++ {
 			prevTx = createSpendTxForTx(prevTx, testhelper.LowFee)
 			prevTx.TxOut[0].Value -= 2
-			prevTx.AddTxOut(wire.NewTxOut(2, []wire.SatsRange{}, p2shScript))
+			prevTx.AddTxOut(wire.NewTxOut(2, wire.TxAssets{}, p2shScript))
 			b.AddTransaction(prevTx)
 		}
 	})
@@ -1825,7 +1825,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 		const zeroCoin = int64(0)
 		spendTx := b.Transactions[1]
 		for i := 0; i < numAdditionalOutputs; i++ {
-			spendTx.AddTxOut(wire.NewTxOut(zeroCoin, []wire.SatsRange{}, testhelper.OpTrueScript))
+			spendTx.AddTxOut(wire.NewTxOut(zeroCoin, wire.TxAssets{}, testhelper.OpTrueScript))
 		}
 
 		// Add transactions spending from the outputs added above that
@@ -1894,7 +1894,7 @@ func Generate(includeLargeReorg bool) (tests [][]TestInstance, err error) {
 			if err != nil {
 				panic(err)
 			}
-			spendTx.AddTxOut(wire.NewTxOut(zeroCoin, []wire.SatsRange{}, opRetScript))
+			spendTx.AddTxOut(wire.NewTxOut(zeroCoin, wire.TxAssets{}, opRetScript))
 		}
 	})
 	for i := uint32(2); i < 6; i++ {

@@ -36,16 +36,17 @@ const (
 
 	// pingInterval is the interval of time to wait in between sending ping
 	// messages.
-	pingInterval = 10 * time.Second //2 * time.Minute
+	pingInterval         = 10 * time.Second // 2 * time.Minute
+	urgent_ping_interval = 1 * time.Second  //
 
 	peerInActiveInterval = 5 * pingInterval // 5 times pingInterval
 
-	peerReconnectMaxTimes = 10
+	peerReconnectMaxTimes = 3
 )
 
 type ConnListener interface {
 	// An new validator peer is connected
-	OnConnDisonnected(*ConnReq)
+	OnConnDisconnected(*ConnReq)
 }
 
 // ConnReq is the connection request to a network address. The
@@ -101,12 +102,16 @@ func (connReq *ConnReq) Close() {
 	connReq.quitQueue <- struct{}{}
 
 	if connReq.Listener != nil {
-		connReq.Listener.OnConnDisonnected(connReq)
+		connReq.Listener.OnConnDisconnected(connReq)
 	}
 }
 
 func (connReq *ConnReq) setLastReceived() {
 	atomic.StoreInt64(&connReq.lastReceived, time.Now().Unix())
+}
+
+func (connReq *ConnReq) GetLastReceived() int64 {
+	return atomic.LoadInt64(&connReq.lastReceived)
 }
 
 func (connReq *ConnReq) isInactive() bool {
@@ -154,25 +159,25 @@ func (connReq *ConnReq) SendCommand(command validatorcommand.Message) error {
 	if atomic.LoadInt32(&connReq.connClose) != 0 {
 		// The connection was closed
 		err := fmt.Errorf("connection %s closed", connReq.RemoteAddr)
-		log.Debugf("**********SendCommand (%s) to (%s) failed: %v", command.Command(), connReq.RemoteAddr, err)
+		log.Errorf("**********SendCommand (%s) to (%s) failed: %v", command.Command(), connReq.RemoteAddr, err)
 		return err
 	}
 
 	connReq.AddCommand(command)
 
-	log.Debugf("----------[%s]Send signal to send command", connReq.String())
+	//log.Debugf("----------[%s]Send signal to send command", connReq.String())
 	// Signal the send queue
 	connReq.sendQueue <- struct{}{}
 
-	log.Debugf("----------[%s]Command [%s] has sent", connReq.String(), command.Command())
+	//log.Debugf("----------[%s]Command [%s] has sent", connReq.String(), command.Command())
 	return nil
 }
 
 func (connReq *ConnReq) AddCommand(command validatorcommand.Message) {
-	log.Debugf("----------[%s]Add command [%s] to send queue", connReq.String(), command.Command())
+	//log.Debugf("----------[%s]Add command [%s] to send queue", connReq.String(), command.Command())
 	connReq.CmdsLock.Lock()
 	connReq.pendingCmds.PushBack(command)
-	log.Debugf("----------[%s]Command count: %d", connReq.String(), connReq.pendingCmds.Len())
+	//log.Debugf("----------[%s]Command count: %d", connReq.String(), connReq.pendingCmds.Len())
 	connReq.CmdsLock.Unlock()
 
 	return
@@ -184,19 +189,19 @@ func (connReq *ConnReq) PopNextCommand() validatorcommand.Message {
 	connReq.pendingCmds.Remove(item)
 	connReq.CmdsLock.Unlock()
 
-	if item != nil {
-		log.Debugf("----------[%s]Next command [%s] in send queue", connReq.String(), item.Value.(validatorcommand.Message).Command())
-	} else {
-		log.Debugf("----------[%s]No command in send queue", connReq.String())
-	}
+	// if item != nil {
+	// 	log.Debugf("----------[%s]Next command [%s] in send queue", connReq.String(), item.Value.(validatorcommand.Message).Command())
+	// } else {
+	// 	log.Debugf("----------[%s]No command in send queue", connReq.String())
+	// }
 	return item.Value.(validatorcommand.Message)
 }
 
 func (connReq *ConnReq) RemoveItem(item *list.Element) {
-	log.Debugf("----------[%s]Remove command [%s] from send queue", connReq.String(), item.Value.(validatorcommand.Message).Command())
+	//	log.Debugf("----------[%s]Remove command [%s] from send queue", connReq.String(), item.Value.(validatorcommand.Message).Command())
 	connReq.CmdsLock.Lock()
 	connReq.pendingCmds.Remove(item)
-	log.Debugf("----------[%s]Command count: %d", connReq.String(), connReq.pendingCmds.Len())
+	//	log.Debugf("----------[%s]Command count: %d", connReq.String(), connReq.pendingCmds.Len())
 	connReq.CmdsLock.Unlock()
 }
 
@@ -206,24 +211,23 @@ func (connReq *ConnReq) RemoveItem(item *list.Element) {
 func (connReq *ConnReq) sendQueueHandler() {
 out:
 	for {
-		log.Debugf("----------[%s]Wait...", connReq.String())
 		select {
 		case <-connReq.sendQueue:
-			log.Debugf("----------[%s]Received signal to send command.", connReq.String())
+			//log.Debugf("----------[%s]Received signal to send command.", connReq.String())
 			command := connReq.PopNextCommand()
 			if command == nil {
 				// No command in queue, wait for the next signal
-				log.Debugf("----------[%s]No command to be sent.", connReq.String())
+				//log.Debugf("----------[%s]No command to be sent.", connReq.String())
 				continue
 			}
 
 			//command := item.Value.(validatorcommand.Message)
-			log.Debugf("----------[%s]Will send command [%s].", connReq.String(), command.Command())
+			//log.Debugf("----------[%s]Will send command [%s].", connReq.String(), command.Command())
 
 			err := connReq.writeMessage(command)
 			if err != nil {
 				// TODO: writeMessage error, maybe the connect is disconnect
-				log.Debugf("----------[%s]writeMessage failed, the conn is disconnect, close it.", connReq.String())
+				log.Errorf("----------[%s]writeMessage failed, the conn is disconnect, close it.", connReq.String())
 				connReq.Close()
 				break out
 			}
@@ -235,7 +239,7 @@ out:
 			// message.
 			atomic.StoreInt64(&connReq.lastSend, time.Now().Unix())
 
-			log.Debugf("----------[%s]command [%s] has done.", connReq.String(), command.Command())
+			log.Debugf("----------[%s]command [%s] has sent.", connReq.String(), command.Command())
 
 		// 	connReq.sendDoneQueue <- item
 
@@ -259,7 +263,7 @@ out:
 		}
 	}
 
-	log.Debugf("----------[%s] sendQueueHandler done for %d", connReq.id, connReq.String())
+	//log.Debugf("----------[%d] sendQueueHandler done for %s", connReq.id, connReq.String())
 }
 
 // writeMessage sends a bitcoin message to the peer with logging.
@@ -268,19 +272,19 @@ func (connReq *ConnReq) writeMessage(msg validatorcommand.Message) error {
 	if atomic.LoadInt32(&connReq.connClose) != 0 {
 		// The connection was closed
 		err := fmt.Errorf("connection %s closed", connReq.RemoteAddr)
-		log.Debugf("[%s]**********WriteMessage (%s) to (%s) failed: %v", connReq.String(), msg.Command(), connReq.RemoteAddr, err)
+		//log.Debugf("[%s]**********WriteMessage (%s) to (%s) failed: %v", connReq.String(), msg.Command(), connReq.RemoteAddr, err)
 		return err
 	}
 
 	// Write the message to the peer.
-	n, err := validatorcommand.WriteMessageWithEncodingN(connReq.conn, msg,
+	_, err := validatorcommand.WriteMessageWithEncodingN(connReq.conn, msg,
 		connReq.version, connReq.btcnet)
 	if err != nil {
-		log.Debugf("**********[%s]WriteMessage (%s) to (%s) failed: %v", connReq.String(), msg.Command(), connReq.RemoteAddr, err)
+		//log.Debugf("**********[%s]WriteMessage (%s) to (%s) failed: %v", connReq.String(), msg.Command(), connReq.RemoteAddr, err)
 		return err
 	}
 
-	log.Debugf("**********[%s]WriteMessage (%s) to (%s): %d bytes written", connReq.String(), msg.Command(), connReq.RemoteAddr, n)
+	//log.Debugf("**********[%s]WriteMessage (%s) to (%s): %d bytes written", connReq.String(), msg.Command(), connReq.RemoteAddr, n)
 
 	return nil
 }

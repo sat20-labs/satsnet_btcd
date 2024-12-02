@@ -23,9 +23,6 @@ const (
 // message.  It is used for a peer to get all validators by sorts from the another peer.
 // The remote peer must then respond validators message.
 type MsgEpoch struct {
-	// Current validators count and validators for this epoch
-	//ValidatorCount int32
-	//Validators     []epoch.EpochItem
 	CurrentEpoch *epoch.Epoch
 	NextEpoch    *epoch.Epoch
 }
@@ -45,7 +42,7 @@ func (msg *MsgEpoch) BtcDecode(r io.Reader, pver uint32) error {
 	}
 
 	// Read CurrentEpoch
-	epoch, err := msg.ReadEpoch(buf)
+	epoch, err := ReadEpoch(buf)
 	if err != nil {
 		return err
 	}
@@ -53,7 +50,7 @@ func (msg *MsgEpoch) BtcDecode(r io.Reader, pver uint32) error {
 	msg.CurrentEpoch = epoch
 
 	// Read NextEpoch
-	epoch, err = msg.ReadEpoch(buf)
+	epoch, err = ReadEpoch(buf)
 	if err != nil {
 		return err
 	}
@@ -63,7 +60,7 @@ func (msg *MsgEpoch) BtcDecode(r io.Reader, pver uint32) error {
 	return nil
 }
 
-func (msg *MsgEpoch) ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
+func ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
 	var exist uint32
 	err := readElements(buf, &exist)
 	if err != nil {
@@ -77,12 +74,6 @@ func (msg *MsgEpoch) ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
 	receivedEpoch := &epoch.Epoch{
 		ItemList: make([]*epoch.EpochItem, 0),
 	}
-	// EpochIndex      uint32               // Epoch Index, start from 0
-	// CreateHeight    int32                // 创建Epoch时当前Block的高度
-	// CreateTime      time.Time            // 当前Epoch的创建时间
-	// ItemList        []*EpochItem         // 当前Epoch包含的验证者列表，（已排序）， 在一个Epoch结束前不会改变
-	// Generator       *generator.Generator // 当前Generator
-	// CurGeneratorPos int32                // 当前Generator在ItemList中的位置
 
 	// Read EpochIndex, CreateHeight, CreateTime
 	err = readElements(buf, &receivedEpoch.EpochIndex, &receivedEpoch.CreateHeight, (*int64Time)(&receivedEpoch.CreateTime))
@@ -150,44 +141,19 @@ func (msg *MsgEpoch) ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgEpoch) BtcEncode(w io.Writer, pver uint32) error {
-	// err := writeElements(w, msg.ValidatorCount)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// for _, validator := range msg.Validators {
-	// 	err = writeElements(w, validator.ValidatorId)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	err = writeElements(w, validator.Host)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// 	err = writeElements(w, validator.PublicKey)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	err = writeElements(w, validator.Index)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-
-	// }
-	err := msg.WriteEpoch(w, msg.CurrentEpoch)
+	err := WriteEpoch(w, msg.CurrentEpoch)
 	if err != nil {
 		return err
 	}
 
-	err = msg.WriteEpoch(w, msg.NextEpoch)
+	err = WriteEpoch(w, msg.NextEpoch)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (msg *MsgEpoch) WriteEpoch(w io.Writer, epoch *epoch.Epoch) error {
+func WriteEpoch(w io.Writer, epoch *epoch.Epoch) error {
 
 	var exist uint32
 	if epoch == nil {
@@ -287,22 +253,11 @@ func (msg *MsgEpoch) Command() string {
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgEpoch) MaxPayloadLength(pver uint32) uint32 {
 	//  MaxMsgEpochLength bytes
-	//return MaxMsgEpochLength
-	return 12 // For test
+	return MaxMsgEpochLength
 }
 
 func (msg *MsgEpoch) LogCommandInfo(log btclog.Logger) {
 	log.Debugf("Command MsgEpoch:")
-	// log.Debugf("Validator Count: %d", msg.ValidatorCount)
-	// for index, validator := range msg.Validators {
-	// 	log.Debugf("——————————————————————————————————")
-	// 	log.Debugf("No: %d", index)
-	// 	log.Debugf("Validator Id: %d", validator.ValidatorId)
-	// 	log.Debugf("Validator Host: %s", validator.Host)
-	// 	log.Debugf("Validator PublicKey: %x", validator.PublicKey)
-	// 	log.Debugf("Validator Index: %d", validator.Index)
-	// 	log.Debugf("")
-	// }
 	showEpoch(log, "MsgEpoch: CurrentEpoch", msg.CurrentEpoch)
 	showEpoch(log, "MsgEpoch: NexEpoch", msg.NextEpoch)
 	log.Debugf("——————————————————————————————————")
@@ -313,26 +268,12 @@ func (msg *MsgEpoch) LogCommandInfo(log btclog.Logger) {
 // fields.
 func NewMsgEpoch(currentEpoch, nextEpoch *epoch.Epoch) *MsgEpoch {
 
-	// Limit the timestamp to one second precision since the protocol
-	// doesn't support better.
-	validatorsMsg := &MsgEpoch{
+	epochMsg := &MsgEpoch{
 		CurrentEpoch: currentEpoch,
 		NextEpoch:    nextEpoch,
 	}
-	// validatorsMsg.ValidatorCount = int32(len(validatorList))
-	// validatorsMsg.Validators = make([]epoch.EpochItem, 0)
 
-	// for _, validator := range validatorList {
-	// 	validatorItem := epoch.EpochItem{
-	// 		ValidatorId: validator.ValidatorId,
-	// 		Host:        validator.Host,
-	// 		PublicKey:   validator.PublicKey,
-	// 		Index:       validator.Index,
-	// 	}
-	// 	validatorsMsg.Validators = append(validatorsMsg.Validators, validatorItem)
-	// }
-
-	return validatorsMsg
+	return epochMsg
 
 }
 
@@ -361,13 +302,6 @@ func showEpoch(log btclog.Logger, title string, epoch *epoch.Epoch) {
 			log.Debugf("	No generator")
 		} else {
 			log.Debugf("	Generator ID: %d", generator.GeneratorId)
-			if generator.Validatorinfo != nil {
-				log.Debugf("	Generator Public: %x", generator.Validatorinfo.PublicKey[:])
-				log.Debugf("	Generator Host: %s", generator.Validatorinfo.Host)
-				log.Debugf("	Generator ConnectTime: %s", generator.Validatorinfo.CreateTime.Format("2006-01-02 15:04:05"))
-			} else {
-				log.Debugf("	Invalid validator info for Generator.")
-			}
 			log.Debugf("	Generator TimeStamp: %s", time.Unix(generator.Timestamp, 0).Format("2006-01-02 15:04:05"))
 			log.Debugf("	Generator Token: %s", generator.Token)
 			log.Debugf("	Generator Block Height: %d", generator.Height)

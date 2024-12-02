@@ -111,13 +111,8 @@ func ExampleSignTxOutput() {
 		fmt.Println(err)
 		return
 	}
-	satsRanges := []wire.SatsRange{
-		{
-			Start: 0,
-			Size:  100000000,
-		},
-	}
-	txOut := wire.NewTxOut(100000000, satsRanges, pkScript)
+
+	txOut := wire.NewTxOut(100000000, wire.TxAssets{}, pkScript)
 	originTx.AddTxOut(txOut)
 	originTxHash := originTx.TxHash()
 
@@ -133,8 +128,7 @@ func ExampleSignTxOutput() {
 
 	// Ordinarily this would contain that actual destination of the funds,
 	// but for this example don't bother.
-	satsRanges = []wire.SatsRange{}
-	txOut = wire.NewTxOut(0, satsRanges, nil)
+	txOut = wire.NewTxOut(0, wire.TxAssets{}, nil)
 	redeemTx.AddTxOut(txOut)
 
 	// Sign the redeeming transaction.
@@ -174,7 +168,7 @@ func ExampleSignTxOutput() {
 		txscript.ScriptStrictMultiSig |
 		txscript.ScriptDiscourageUpgradableNops
 	vm, err := txscript.NewEngine(originTx.TxOut[0].PkScript, redeemTx, 0,
-		flags, nil, nil, -1, wire.TxRanges{}, nil)
+		flags, nil, nil, -1, wire.TxAssets{}, nil)
 	if err != nil {
 		fmt.Println(err)
 		return

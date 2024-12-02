@@ -30,7 +30,7 @@ const (
 	// CoinbaseFlags is added to the coinbase script of a generated block
 	// and is used to monitor BIP16 support as well as blocks that are
 	// generated via btcd.
-	CoinbaseFlags = "/P2SH/btcd/"
+	CoinbaseFlags = "/satsnet/btcd/"
 )
 
 // TxDesc is a descriptor about a transaction in a transaction source along with
@@ -50,7 +50,7 @@ type TxDesc struct {
 	Fee int64
 
 	// FeeRanges is the fee sats ranges the transaction associated with the entry pays.
-	FeeRanges []wire.SatsRange
+	FeeAssets wire.TxAssets
 
 	// FeePerKB is the fee the transaction pays in Satoshi per 1000 bytes.
 	FeePerKB int64
@@ -83,7 +83,7 @@ type txPrioItem struct {
 	fee       int64
 	priority  float64
 	feePerKB  int64
-	feeRanges []wire.SatsRange
+	feeAssets wire.TxAssets
 
 	// dependsOn holds a map of transaction hashes which this one depends
 	// on.  It will only be set when the transaction references other
@@ -285,9 +285,9 @@ func createCoinbaseTx(params *chaincfg.Params, coinbaseScript []byte, nextBlockH
 	})
 	tx.AddTxOut(&wire.TxOut{
 		//		Value:    blockchain.CalcBlockSubsidy(nextBlockHeight, params),
-		Value:      0, // For satoshinet, no award.
-		SatsRanges: make([]wire.SatsRange, 0),
-		PkScript:   pkScript,
+		Value:    0, // For satoshinet, no award.
+		Assets:   wire.TxAssets{},
+		PkScript: pkScript,
 	})
 	return btcutil.NewTx(tx), nil
 }
@@ -590,7 +590,7 @@ mempoolLoop:
 
 		// Calculate the fee in Satoshi/kB.
 		prioItem.feePerKB = txDesc.FeePerKB
-		prioItem.feeRanges = txDesc.FeeRanges
+		prioItem.feeAssets = txDesc.FeeAssets
 		prioItem.fee = txDesc.Fee
 
 		// Add the transaction to the priority queue to mark it ready
@@ -615,7 +615,7 @@ mempoolLoop:
 		blockchain.GetTransactionWeight(coinbaseTx))
 	blockSigOpCost := coinbaseSigOpCost
 	totalFees := int64(0)
-	totalFeeRanges := make([]wire.SatsRange, 0)
+	totalFeeAssets := wire.TxAssets{}
 
 	// Query the version bits state to see if segwit has been activated, if
 	// so then this means that we'll include any transactions with witness
@@ -788,8 +788,8 @@ mempoolLoop:
 		blockWeight += txWeight
 		blockSigOpCost += int64(sigOpCost)
 		totalFees += prioItem.fee
-		if len(prioItem.feeRanges) > 0 {
-			totalFeeRanges = append(totalFeeRanges, prioItem.feeRanges...)
+		if len(prioItem.feeAssets) > 0 {
+			totalFeeAssets = append(totalFeeAssets, prioItem.feeAssets...)
 		}
 		txFees = append(txFees, prioItem.fee)
 		txSigOpCosts = append(txSigOpCosts, int64(sigOpCost))
@@ -823,8 +823,8 @@ mempoolLoop:
 		(uint32(wire.VarIntSerializeSize(uint64(len(blockTxns)))) *
 			blockchain.WitnessScaleFactor)
 	coinbaseTx.MsgTx().TxOut[0].Value += totalFees
-	if len(totalFeeRanges) > 0 {
-		coinbaseTx.MsgTx().TxOut[0].SatsRanges = append(coinbaseTx.MsgTx().TxOut[0].SatsRanges, totalFeeRanges...)
+	if len(totalFeeAssets) > 0 {
+		coinbaseTx.MsgTx().TxOut[0].Assets = append(coinbaseTx.MsgTx().TxOut[0].Assets, totalFeeAssets...)
 	}
 	txFees[0] = -totalFees
 

@@ -81,18 +81,18 @@ type PrevOutputFetcher interface {
 // CannedPrevOutputFetcher is an implementation of PrevOutputFetcher that only
 // is able to return information for a single previous output.
 type CannedPrevOutputFetcher struct {
-	pkScript   []byte
-	amt        int64
-	SatsRanges wire.TxRanges
+	pkScript []byte
+	amt      int64
+	txAssets wire.TxAssets
 }
 
 // NewCannedPrevOutputFetcher returns an instance of a CannedPrevOutputFetcher
 // that can only return the TxOut defined by the passed script and amount.
-func NewCannedPrevOutputFetcher(script []byte, amt int64, satsRanges wire.TxRanges) *CannedPrevOutputFetcher {
+func NewCannedPrevOutputFetcher(script []byte, amt int64, assets wire.TxAssets) *CannedPrevOutputFetcher {
 	return &CannedPrevOutputFetcher{
-		pkScript:   script,
-		amt:        amt,
-		SatsRanges: satsRanges,
+		pkScript: script,
+		amt:      amt,
+		txAssets: assets,
 	}
 }
 
@@ -102,9 +102,9 @@ func NewCannedPrevOutputFetcher(script []byte, amt int64, satsRanges wire.TxRang
 // NOTE: This is a part of the PrevOutputFetcher interface.
 func (c *CannedPrevOutputFetcher) FetchPrevOutput(wire.OutPoint) *wire.TxOut {
 	return &wire.TxOut{
-		PkScript:   c.pkScript,
-		Value:      c.amt,
-		SatsRanges: c.SatsRanges,
+		PkScript: c.pkScript,
+		Value:    c.amt,
+		Assets:   c.txAssets,
 	}
 }
 
@@ -164,16 +164,19 @@ func calcHashInputAmounts(tx *wire.MsgTx, inputFetcher PrevOutputFetcher) chainh
 
 		_ = binary.Write(&b, binary.LittleEndian, prevOut.Value)
 
-		// Write the sats ranges
-		lenSatsRange := len(prevOut.SatsRanges)
+		// Write the TxAssets
+		countAssets := len(prevOut.Assets)
 
-		// Write the number of sats ranges
-		_ = binary.Write(&b, binary.LittleEndian, lenSatsRange)
+		// Write the count of TxAssets
+		_ = binary.Write(&b, binary.LittleEndian, countAssets)
 
 		// Write the sats ranges
-		for _, r := range prevOut.SatsRanges {
-			_ = binary.Write(&b, binary.LittleEndian, r.Start)
-			_ = binary.Write(&b, binary.LittleEndian, r.Size)
+		for _, asset := range prevOut.Assets {
+			_ = wire.WriteVarBytes(&b, 0, []byte(asset.Name.Protocol))
+			_ = wire.WriteVarBytes(&b, 0, []byte(asset.Name.Type))
+			_ = wire.WriteVarBytes(&b, 0, []byte(asset.Name.Ticker))
+			_ = binary.Write(&b, binary.LittleEndian, asset.Amount)
+			_ = binary.Write(&b, binary.LittleEndian, asset.BindingSat)
 		}
 	}
 

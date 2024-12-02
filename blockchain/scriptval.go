@@ -74,13 +74,13 @@ out:
 			witness := txIn.Witness
 			pkScript := utxo.PkScript()
 			inputAmount := utxo.Amount()
-			satsRanges := utxo.SatsRanges()
+			txAssets := utxo.TxAssets()
 			fmt.Printf("txin pkscript: %x \n", pkScript)
 			fmt.Printf("txin amount: %d \n", inputAmount)
 			vm, err := txscript.NewEngine(
 				pkScript, txVI.tx.MsgTx(), txVI.txInIndex,
 				v.flags, v.sigCache, txVI.sigHashes,
-				inputAmount, satsRanges, v.utxoView,
+				inputAmount, txAssets, v.utxoView,
 			)
 			if err != nil {
 				str := fmt.Sprintf("failed to parse input "+

@@ -495,8 +495,15 @@ func (wallet *BTCWallet) refreshBTCAddressDetails(details *BTCAddressDetails) er
 		fmt.Println("    utxo: ", op.String())
 		fmt.Println("    Value: ", utxo.value)
 		fmt.Println("    SatsRanges: ")
-		for _, satsRange := range utxo.satsRanges {
-			fmt.Println("          Start: ", satsRange.Start, " Size: ", satsRange.Size)
+		fmt.Printf("TxAssets count: %d \n", len(utxo.txAssets))
+		for index, asset := range utxo.txAssets {
+			fmt.Println("		---------------------------------")
+			fmt.Printf("			TxAssets index: %d\n", index)
+			fmt.Printf("			TxAssets Name Protocol: %d\n", asset.Name.Protocol)
+			fmt.Printf("			TxAssets Name Type: %d\n", asset.Name.Type)
+			fmt.Printf("			TxAssets Name Ticker: %d\n", asset.Name.Ticker)
+			fmt.Printf("			TxAssets Amount: %d\n", asset.Amount)
+			fmt.Printf("			TxAssets BindingSat: %d\n", asset.BindingSat)
 		}
 		fmt.Println("    ----------------------------------------------------------: ")
 	}
@@ -1350,7 +1357,7 @@ func restoreutxos(spentOutputs []*utxo) {
 type utxo struct {
 	pkScript       []byte
 	value          btcutil.Amount
-	satsRanges     wire.TxRanges // sats index range for the output
+	txAssets       wire.TxAssets // sats index range for the output
 	keyIndex       uint32
 	maturityHeight int32
 	isLocked       bool
@@ -1432,7 +1439,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 			return nil, nil, err
 		}
 		prevOutFetcher.AddPrevOut(
-			outPoint, &wire.TxOut{Value: int64(utxo.value), SatsRanges: utxo.satsRanges, PkScript: utxo.pkScript},
+			outPoint, &wire.TxOut{Value: int64(utxo.value), Assets: utxo.txAssets, PkScript: utxo.pkScript},
 		)
 	}
 
@@ -1487,7 +1494,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 			fmt.Println("The pkScript IsPayToWitnessPubKeyHash: P2WKH")
 
 			err := spendWitnessKeyHash(
-				txIn, pkScript, int64(utxo.value), utxo.satsRanges,
+				txIn, pkScript, int64(utxo.value), utxo.txAssets,
 				NetParams, privateKey, tx, hashCache, i,
 				prevOutFetcher)
 			if err != nil {
@@ -1498,7 +1505,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 		case txscript.IsPayToWitnessScriptHash(pkScript):
 			fmt.Println("The pkScript IsPayToWitnessScriptHash:P2WSH")
 			err := spendWitnessScriptHash(
-				txIn, pkScript, int64(utxo.value), utxo.satsRanges,
+				txIn, pkScript, int64(utxo.value), utxo.txAssets,
 				NetParams, privateKey, tx, hashCache, i,
 				prevOutFetcher)
 			if err != nil {
@@ -1509,7 +1516,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 		case txscript.IsPayToTaproot(pkScript):
 			fmt.Println("The pkScript IsTaprootKeyHash: Taproot")
 			err := spendTaprootKey(
-				txIn, pkScript, int64(utxo.value), utxo.satsRanges,
+				txIn, pkScript, int64(utxo.value), utxo.txAssets,
 				NetParams, privateKey, tx, hashCache, i,
 				prevOutFetcher)
 			if err != nil {
@@ -1539,7 +1546,7 @@ func (wallet *BTCWallet) signTx(paymentAddresses []string, tx *wire.MsgTx) (*wir
 		// input fails the transaction has failed. (some of the
 		// test txns have good inputs, too..
 		vm, err := txscript.NewEngine(prevOut.PkScript, tx, i,
-			txscript.StandardVerifyFlags, nil, hashCache, prevOut.Value, prevOut.SatsRanges, prevOutFetcher)
+			txscript.StandardVerifyFlags, nil, hashCache, prevOut.Value, prevOut.Assets, prevOutFetcher)
 		if err != nil {
 			fmt.Printf("NewEngine failed: %v\n", err)
 			return nil, nil, err
@@ -1604,7 +1611,7 @@ func (wallet *BTCWallet) fundTx(paymentAddresses []string, tx *wire.MsgTx, amt b
 		return err
 	}
 	//}
-	InputTxRanges := wire.TxRanges{}
+	inputTxAssets := wire.TxAssets{}
 
 	for outPoint, utxo := range utxos {
 		// Skip any outputs that are still currently immature or are
@@ -1623,9 +1630,10 @@ func (wallet *BTCWallet) fundTx(paymentAddresses []string, tx *wire.MsgTx, amt b
 		tx.AddTxIn(wire.NewTxIn(&outPoint, nil, nil))
 		txSize = tx.SerializeSize() + spendSize*len(tx.TxIn)
 
-		logTxRanges("fundtx txin", utxo.satsRanges)
+		logTxAssets("fundtx txin", utxo.txAssets)
 
-		InputTxRanges = wire.TxRangesAppend(InputTxRanges, utxo.satsRanges)
+		//InputTxRanges = wire.TxRangesAppend(InputTxRanges, utxo.satsRanges)
+		inputTxAssets.Merge(&utxo.txAssets)
 
 		// Calculate the fee required for the txn at this point
 		// observing the specified fee rate. If we don't have enough
@@ -1668,18 +1676,18 @@ func (wallet *BTCWallet) fundTx(paymentAddresses []string, tx *wire.MsgTx, amt b
 		}
 
 		// Fill output TxRanges
-		logTxRanges("fundtx all txin ranges", InputTxRanges)
+		logTxAssets("fundtx all txin ranges", inputTxAssets)
 
-		rangeOffset := int64(0)
-		for _, txoutItem := range tx.TxOut {
-			itemRanges, err := InputTxRanges.Pickup(rangeOffset, txoutItem.Value)
-			if err != nil {
-				fmt.Println("Set output sats ranges failed: error: " + err.Error())
-				return err
-			}
-			txoutItem.SatsRanges = itemRanges
-			rangeOffset += int64(txoutItem.Value)
-		}
+		// rangeOffset := int64(0)
+		// for _, txoutItem := range tx.TxOut {
+		// 	itemRanges, err := logTxAssets.Pickup(rangeOffset, txoutItem.Value)
+		// 	if err != nil {
+		// 		fmt.Println("Set output sats ranges failed: error: " + err.Error())
+		// 		return err
+		// 	}
+		// 	txoutItem.SatsRanges = itemRanges
+		// 	rangeOffset += int64(txoutItem.Value)
+		// }
 
 		return nil
 	}
@@ -1694,16 +1702,16 @@ func (wallet *BTCWallet) fundTx(paymentAddresses []string, tx *wire.MsgTx, amt b
 		}
 
 		// Fill output TxRanges
-		rangeOffset := int64(0)
-		for _, txoutItem := range tx.TxOut {
-			itemRanges, err := InputTxRanges.Pickup(rangeOffset, txoutItem.Value)
-			if err != nil {
-				fmt.Println("Set output sats ranges failed: error: " + err.Error())
-				return err
-			}
-			txoutItem.SatsRanges = itemRanges
-			rangeOffset += int64(txoutItem.Value)
-		}
+		// rangeOffset := int64(0)
+		// for _, txoutItem := range tx.TxOut {
+		// 	itemRanges, err := InputTxRanges.Pickup(rangeOffset, txoutItem.Value)
+		// 	if err != nil {
+		// 		fmt.Println("Set output sats ranges failed: error: " + err.Error())
+		// 		return err
+		// 	}
+		// 	txoutItem.SatsRanges = itemRanges
+		// 	rangeOffset += int64(txoutItem.Value)
+		// }
 
 		return nil
 	}
@@ -1844,7 +1852,7 @@ func (wallet *BTCWallet) fundOrdxTx(paymentAddresses []string, ordxUtxo string, 
 // will fail since the new sighash digest algorithm defined in BIP0143 includes
 // the input value in the sighash.
 func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
-	inputValue int64, satsRanges wire.TxRanges, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
+	inputValue int64, txAssets wire.TxAssets, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
 	tx *wire.MsgTx, hashCache *txscript.TxSigHashes, idx int,
 	inputFetcher txscript.PrevOutputFetcher) error {
 
@@ -1890,7 +1898,7 @@ func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
 
 	fmt.Printf("witnessProgram: [%x]\n", witnessProgram)
 	witnessScript, err := txscript.WitnessSignature(tx, hashCache, idx,
-		inputValue, satsRanges, witnessProgram, txscript.SigHashAll, privateKey, true)
+		inputValue, txAssets, witnessProgram, txscript.SigHashAll, privateKey, true)
 	if err != nil {
 		return err
 	}
@@ -1921,7 +1929,7 @@ func spendWitnessKeyHash(txIn *wire.TxIn, pkScript []byte,
 // will fail since the new sighash digest algorithm defined in BIP0143 includes
 // the input value in the sighash.
 func spendWitnessScriptHash(txIn *wire.TxIn, pkScript []byte,
-	inputValue int64, satsRanges wire.TxRanges, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
+	inputValue int64, txAssets wire.TxAssets, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
 	tx *wire.MsgTx, hashCache *txscript.TxSigHashes, idx int,
 	inputFetcher txscript.PrevOutputFetcher) error {
 
@@ -1999,7 +2007,7 @@ func spendWitnessScriptHash(txIn *wire.TxIn, pkScript []byte,
 		}
 	*/
 
-	sig, err := txscript.RawTxInWitnessSignature(tx, hashCache, idx, inputValue, satsRanges, witnessScript,
+	sig, err := txscript.RawTxInWitnessSignature(tx, hashCache, idx, inputValue, txAssets, witnessScript,
 		txscript.SigHashAll, privateKey)
 	if err != nil {
 		return err
@@ -2031,7 +2039,7 @@ func spendWitnessScriptHash(txIn *wire.TxIn, pkScript []byte,
 // will fail since the new sighash digest algorithm defined in BIP0341 includes
 // the input value in the sighash.
 func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
-	inputValue int64, satsRanges wire.TxRanges, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
+	inputValue int64, txAssets wire.TxAssets, chainParams *chaincfg.Params, privateKey *btcec.PrivateKey,
 	tx *wire.MsgTx, hashCache *txscript.TxSigHashes, idx int,
 	inputFetcher txscript.PrevOutputFetcher) error {
 
@@ -2072,7 +2080,7 @@ func spendTaprootKey(txIn *wire.TxIn, pkScript []byte,
 	// We can now generate a valid witness which will allow us to spend this
 	// output.
 	witnessScript, err := txscript.TaprootWitnessSignature(
-		tx, hashCache, idx, inputValue, satsRanges, witnessProgram,
+		tx, hashCache, idx, inputValue, txAssets, witnessProgram,
 		txscript.SigHashDefault, privateKey,
 	)
 	if err != nil {
@@ -2692,7 +2700,7 @@ func LogMsgTx(tx *wire.MsgTx) {
 			}
 		}
 		logLine("		txout value: %d", txout.Value)
-		logTxRanges("", txout.SatsRanges)
+		logTxAssets("", txout.Assets)
 		logLine("		---------------------------------")
 	}
 }
@@ -2750,16 +2758,19 @@ func logpbOutout(pboutput *psbt.POutput) {
 
 }
 
-func logTxRanges(desc string, tr wire.TxRanges) {
+func logTxAssets(desc string, assets wire.TxAssets) {
 	if desc != "" {
-		logLine("       	SatsRangs desc: %s", desc)
+		logLine("       	TxAssets desc: %s", desc)
 	}
-	logLine("       	SatsRangs count: %d", len(tr))
-	for index, satsRange := range tr {
+	logLine("       	TxAssets count: %d", len(assets))
+	for index, asset := range assets {
 		logLine("		---------------------------------")
-		logLine("			satsRange index: %d", index)
-		logLine("			satsRange Start: %d", satsRange.Start)
-		logLine("			satsRange Size: %d", satsRange.Size)
+		logLine("			TxAssets index: %d", index)
+		logLine("			TxAssets Name Protocol: %d", asset.Name.Protocol)
+		logLine("			TxAssets Name Type: %d", asset.Name.Type)
+		logLine("			TxAssets Name Ticker: %d", asset.Name.Ticker)
+		logLine("			TxAssets Amount: %d", asset.Amount)
+		logLine("			TxAssets BindingSat: %d", asset.BindingSat)
 	}
 
 }

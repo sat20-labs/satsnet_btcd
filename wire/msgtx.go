@@ -333,32 +333,42 @@ func (t TxWitness) ToHexStrings() []string {
 
 // TxOut defines a bitcoin transaction output.
 type TxOut struct {
-	Value      int64
-	SatsRanges TxRanges // sats index range for the output
-	PkScript   []byte
+	Value int64
+	//	SatsRanges TxRanges // sats index range for the output
+	Assets   TxAssets // TxOut.Value必须大于等于Assets的GetBindingSatAmout
+	PkScript []byte
 }
 
 // SerializeSize returns the number of bytes it would take to serialize the
 // the transaction output.
 func (t *TxOut) SerializeSize() int {
-	// Value 8 bytes + serialized varint size for the length of PkScript +
-	// PkScript bytes.
-	lenSatsRange := VarIntSerializeSize(uint64(len(t.SatsRanges)))
-	for _, r := range t.SatsRanges {
-		lenSatsRange += VarIntSerializeSize(uint64(r.Start))
-		lenSatsRange += VarIntSerializeSize(uint64(r.Size))
+	// Value 8 bytes +
+	// serialized varint size for the TxAssets count + serialized TxAssets bytes.
+	// serialized varint size for the length of PkScript + PkScript bytes.
+
+	// Assets count
+	lenTxAssets := VarIntSerializeSize(uint64(len(t.Assets)))
+	for _, asset := range t.Assets {
+		// Asset Name (Protocol, Type, Ticker), Assets amount, flag for BindingSat
+		lenTxAssets += VarIntSerializeSize(uint64(len(asset.Name.Protocol))) + len(asset.Name.Protocol)
+		lenTxAssets += VarIntSerializeSize(uint64(len(asset.Name.Type))) + len(asset.Name.Type)
+		lenTxAssets += VarIntSerializeSize(uint64(len(asset.Name.Protocol))) + len(asset.Name.Protocol)
+		lenTxAssets += VarIntSerializeSize(uint64(asset.Amount))
+		lenTxAssets += VarIntSerializeSize(uint64(asset.BindingSat))
 	}
+
+	// pkscript
 	lenpkScript := VarIntSerializeSize(uint64(len(t.PkScript))) + len(t.PkScript)
-	return 8 + lenSatsRange + lenpkScript
+	return 8 + lenTxAssets + lenpkScript
 }
 
 // NewTxOut returns a new bitcoin transaction output with the provided
 // transaction value and public key script.
-func NewTxOut(value int64, satsRange []SatsRange, pkScript []byte) *TxOut {
+func NewTxOut(value int64, assets TxAssets, pkScript []byte) *TxOut {
 	return &TxOut{
-		Value:      value,
-		SatsRanges: satsRange,
-		PkScript:   pkScript,
+		Value:    value,
+		Assets:   assets,
+		PkScript: pkScript,
 	}
 }
 
@@ -471,21 +481,22 @@ func (msg *MsgTx) Copy() *MsgTx {
 			copy(newScript, oldScript[:oldScriptLen])
 		}
 
-		newSatsRanges := make([]SatsRange, 0)
+		newTxAssets := make(TxAssets, 0)
 
-		for _, satsRange := range oldTxOut.SatsRanges {
-			newRange := SatsRange{
-				Start: satsRange.Start,
-				Size:  satsRange.Size,
+		for _, asset := range oldTxOut.Assets {
+			newAsset := AssetInfo{
+				Name:       asset.Name,
+				Amount:     asset.Amount,
+				BindingSat: asset.BindingSat,
 			}
-			newSatsRanges = append(newSatsRanges, newRange)
+			newTxAssets = append(newTxAssets, newAsset)
 		}
 		// Create new txOut with the deep copied data and append it to
 		// new Tx.
 		newTxOut := TxOut{
-			Value:      oldTxOut.Value,
-			SatsRanges: newSatsRanges,
-			PkScript:   newScript,
+			Value:    oldTxOut.Value,
+			Assets:   newTxAssets,
+			PkScript: newScript,
 		}
 		newTx.TxOut = append(newTx.TxOut, &newTxOut)
 	}
@@ -1064,6 +1075,39 @@ func readScriptBuf(r io.Reader, pver uint32, buf, s []byte,
 	return s[:count], nil
 }
 
+// readString reads a variable length string that represents a transaction
+// script.  It is encoded as a varInt containing the length of the array
+// followed by the bytes themselves.  An error is returned if the length is
+// greater than the passed maxAllowed parameter which helps protect against
+// memory exhaustion attacks and forced panics through malformed messages.  The
+// fieldName parameter is only used for the error message so it provides more
+// context in the error.
+//
+// If b is non-nil, the provided buffer will be used for serializing small
+// values.  Otherwise a buffer will be drawn from the binarySerializer's pool
+// and return when the method finishes.
+//
+// NOTE: b MUST either be nil or at least an 8-byte slice.
+func readString(r io.Reader, pver uint32, buf, s []byte,
+	fieldName string) (string, error) {
+
+	count, err := ReadVarIntBuf(r, pver, buf)
+	if err != nil {
+		return "", err
+	}
+
+	if count == 0 {
+		// Empty string
+		return "", nil
+	}
+
+	_, err = io.ReadFull(r, s[:count])
+	if err != nil {
+		return "", err
+	}
+	return string(s[:count]), nil
+}
+
 // readTxInBuf reads the next sequence of bytes from r as a transaction input
 // (TxIn).
 //
@@ -1152,22 +1196,33 @@ func readTxOutBuf(r io.Reader, pver uint32, version int32, to *TxOut,
 		return err
 	}
 
-	to.SatsRanges = make([]SatsRange, 0)
+	to.Assets = make(TxAssets, 0)
 	for i := uint64(0); i < count; i++ {
+		newAsset := AssetInfo{}
 		// Get sats start and size
-		start, err := ReadVarIntBuf(r, pver, buf)
+		newAsset.Name.Protocol, err = readString(r, pver, buf, s, "asset protocol")
 		if err != nil {
 			return err
 		}
-		size, err := ReadVarIntBuf(r, pver, buf)
+		newAsset.Name.Type, err = readString(r, pver, buf, s, "asset type")
 		if err != nil {
 			return err
 		}
-		satsRange := SatsRange{
-			Start: int64(start),
-			Size:  int64(size),
+		newAsset.Name.Ticker, err = readString(r, pver, buf, s, "asset ticker")
+		if err != nil {
+			return err
 		}
-		to.SatsRanges = append(to.SatsRanges, satsRange)
+		amount, err := ReadVarIntBuf(r, pver, buf)
+		if err != nil {
+			return err
+		}
+		newAsset.Amount = int64(amount)
+		bindingSat, err := ReadVarIntBuf(r, pver, buf)
+		if err != nil {
+			return err
+		}
+		newAsset.BindingSat = uint16(bindingSat)
+		to.Assets = append(to.Assets, newAsset)
 	}
 
 	to.PkScript, err = readScriptBuf(
@@ -1206,22 +1261,31 @@ func WriteTxOutBuf(w io.Writer, pver uint32, version int32, to *TxOut,
 	}
 
 	// get count for sats range, and write to w
-	count := uint64(len(to.SatsRanges))
-	err = WriteVarIntBuf(w, pver, count, buf)
+	assetsCount := uint64(len(to.Assets))
+	err = WriteVarIntBuf(w, pver, assetsCount, buf)
 	if err != nil {
 		return err
 	}
 
-	for _, satsRange := range to.SatsRanges {
-		// Write sats start and size
-		start := uint64(satsRange.Start)
-		err = WriteVarIntBuf(w, pver, start, buf)
+	for _, asset := range to.Assets {
+		// Write asset, Name（Protocol，Type，Ticker）, Amount, BindingSat
+		err = WriteVarBytesBuf(w, pver, []byte(asset.Name.Protocol), buf)
 		if err != nil {
 			return err
 		}
-
-		size := uint64(satsRange.Size)
-		err = WriteVarIntBuf(w, pver, size, buf)
+		err = WriteVarBytesBuf(w, pver, []byte(asset.Name.Type), buf)
+		if err != nil {
+			return err
+		}
+		err = WriteVarBytesBuf(w, pver, []byte(asset.Name.Ticker), buf)
+		if err != nil {
+			return err
+		}
+		err = WriteVarIntBuf(w, pver, uint64(asset.Amount), buf)
+		if err != nil {
+			return err
+		}
+		err = WriteVarIntBuf(w, pver, uint64(asset.BindingSat), buf)
 		if err != nil {
 			return err
 		}

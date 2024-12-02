@@ -102,10 +102,11 @@ func TestTx(t *testing.T) {
 		0xa6, // 65-byte signature
 		0xac, // OP_CHECKSIG
 	}
-	satsRanges := []SatsRange{
+	satsRanges := []AssetInfo{
 		{
-			Start: 0,
-			Size:  5000000000,
+			Name:       AssetName{Protocol: "ordx", Type: "nft", Ticker: "pizza"},
+			Amount:     5000000000,
+			BindingSat: 1,
 		},
 	}
 	txOut := NewTxOut(txValue, satsRanges, pkScript)

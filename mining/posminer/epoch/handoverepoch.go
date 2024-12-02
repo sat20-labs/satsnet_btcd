@@ -31,7 +31,7 @@ func (he *HandOverEpoch) GetNextEpochTokenData() []byte {
 func (he *HandOverEpoch) VerifyToken(pubKey []byte) bool {
 	signatureBytes, err := base64.StdEncoding.DecodeString(he.Token)
 	if err != nil {
-		log.Debugf("OnGeneratorUpdated: Invalid generator token, ignore it.")
+		log.Debugf("[HandOverEpoch]VerifyToken: Invalid generator token, ignore it.")
 		return false
 	}
 
@@ -50,10 +50,10 @@ func (he *HandOverEpoch) VerifyToken(pubKey []byte) bool {
 	// 使用公钥验证签名
 	valid := signature.Verify(tokenData, publicKey)
 	if valid {
-		log.Debugf("Signature is valid.")
+		log.Debugf("[HandOverEpoch]VerifyToken:Signature is valid.")
 		return true
 	} else {
-		log.Debugf("Signature is invalid.")
+		log.Debugf("[HandOverEpoch]VerifyToken:Signature is invalid.")
 		return false
 	}
 

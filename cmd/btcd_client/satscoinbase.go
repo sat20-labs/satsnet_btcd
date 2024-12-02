@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
-	"time"
 
 	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
@@ -47,7 +46,7 @@ func CreateCoinbaseTx(blockHeight int32, miningAddr string, feeAmount int64) *wi
 }
 
 // CreateAnchorTx
-func CreateAnchorTx(txid string, addr string, amount int64, satsRanges []wire.SatsRange) *wire.MsgTx {
+func CreateAnchorTx(txid string, addr string, amount int64, txAssets wire.TxAssets) *wire.MsgTx {
 	pkScript, err := AddrToPkScript(addr, currentNetwork)
 	anchorScript, err := StandardAnchorScript(txid, pkScript, amount)
 	if err != nil {
@@ -66,9 +65,9 @@ func CreateAnchorTx(txid string, addr string, amount int64, satsRanges []wire.Sa
 		SignatureScript: anchorScript,
 	})
 	tx.AddTxOut(&wire.TxOut{
-		PkScript:   pkScript, // output to specified address
-		Value:      amount,
-		SatsRanges: satsRanges,
+		PkScript: pkScript, // output to specified address
+		Value:    amount,
+		Assets:   txAssets,
 	})
 	return tx
 }
@@ -158,11 +157,11 @@ func testAnchorTx(lockedTxid string, address string, amount int64) {
 	//address := "tb1prm9fflqhtezag25s06t740e7ca4rydm9x5mucrc3lt6dlkxquyqq02k2cf"
 	//amount := int64(1000000)
 	//satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
-	satsRanges := make([]wire.SatsRange, 0)
+	//satsRanges := make([]wire.SatsRange, 0)
 
-	Start := time.Now().UnixMicro()
-	Size := amount
-	satsRanges = append(satsRanges, wire.SatsRange{Start: Start, Size: Size})
+	//Start := time.Now().UnixMicro()
+	//Size := amount
+	//satsRanges = append(satsRanges, wire.SatsRange{Start: Start, Size: Size})
 
 	walletManager := btcwallet.GetWalletInst()
 	if walletManager == nil {
@@ -184,7 +183,7 @@ func testAnchorTx(lockedTxid string, address string, amount int64) {
 
 	fmt.Printf("Anchor tx address is : %s.\n", address)
 
-	anchorTx := CreateAnchorTx(lockedTxid, address, amount, satsRanges)
+	anchorTx := CreateAnchorTx(lockedTxid, address, amount, wire.TxAssets{})
 
 	btcwallet.LogMsgTx(anchorTx)
 
@@ -206,7 +205,7 @@ func testrpcAnchorTx(lockedTxid string, address string) {
 	TxidDefault := "b274b49e885fdd87ea2870930297d2c6ecee7cc62fe8e67b21b452fb348c441e"
 	//address := "tb1prm9fflqhtezag25s06t740e7ca4rydm9x5mucrc3lt6dlkxquyqq02k2cf"
 	amount := int64(1000000)
-	satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
+	//satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
 
 	walletManager := btcwallet.GetWalletInst()
 	if walletManager == nil {
@@ -228,7 +227,7 @@ func testrpcAnchorTx(lockedTxid string, address string) {
 
 	fmt.Printf("Anchor tx address is : %s.\n", address)
 
-	anchorTx := CreateAnchorTx(lockedTxid, address, amount, satsRanges)
+	anchorTx := CreateAnchorTx(lockedTxid, address, amount, wire.TxAssets{})
 
 	btcwallet.LogMsgTx(anchorTx)
 

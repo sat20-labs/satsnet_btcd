@@ -150,7 +150,7 @@ func (nem *NewEpochManager) handleNewEpoch() {
 			epochConfirmed := &epoch.Epoch{
 				EpochIndex:      validItem.epoch.EpochIndex,
 				CreateTime:      time.Now(), // epoch confirmed time
-				CurGeneratorPos: validItem.epoch.CurGeneratorPos,
+				CurGeneratorPos: epoch.Pos_Epoch_NotStarted,
 				ItemList:        validItem.epoch.ItemList,
 			}
 

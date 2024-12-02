@@ -15,9 +15,9 @@ const (
 )
 
 type UtxoAssets struct {
-	Utxo       string
-	Value      int64
-	SatsRanges wire.TxRanges
+	Utxo   string
+	Value  int64
+	Assets wire.TxAssets
 }
 
 var (
@@ -83,9 +83,9 @@ func parseBlock(height int64) error {
 			utxo := fmt.Sprintf("%s:%d", txid, index)
 
 			assets := UtxoAssets{
-				Utxo:       utxo,
-				Value:      out.Value,
-				SatsRanges: out.SatsRanges}
+				Utxo:   utxo,
+				Value:  out.Value,
+				Assets: out.Assets}
 
 			NewUtxo(out.PkScript, assets)
 		}
@@ -170,8 +170,15 @@ func NewUtxo(pkScript []byte, assets UtxoAssets) {
 		log.Debugf("address: %s", address)
 	}
 	log.Debugf("utxo:%s, Value:%d", assets.Utxo, assets.Value)
-	for _, satsRange := range assets.SatsRanges {
-		log.Debugf("    Sats Range: [%d-%d]", satsRange.Start, satsRange.Start+satsRange.Size-1)
+	log.Debugf("TxAssets count: %d", len(assets.Assets))
+	for index, asset := range assets.Assets {
+		log.Debugf("		---------------------------------")
+		log.Debugf("			TxAssets index: %d", index)
+		log.Debugf("			TxAssets Name Protocol: %d", asset.Name.Protocol)
+		log.Debugf("			TxAssets Name Type: %d", asset.Name.Type)
+		log.Debugf("			TxAssets Name Ticker: %d", asset.Name.Ticker)
+		log.Debugf("			TxAssets Amount: %d", asset.Amount)
+		log.Debugf("			TxAssets BindingSat: %d", asset.BindingSat)
 	}
 	log.Debugf("----------------------------------")
 }

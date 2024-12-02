@@ -1321,7 +1321,7 @@ func (sm *SyncManager) handleInvMsg(imsg *invMsg) {
 		requestQueue[0] = nil
 		requestQueue = requestQueue[1:]
 
-		log.Debugf("Start to process iv maeeage %s %v", iv.Type.String(), iv.Hash)
+		log.Debugf("Start to process iv message %s %v", iv.Type.String(), iv.Hash)
 
 		switch iv.Type {
 		case wire.InvTypeWitnessBlock:

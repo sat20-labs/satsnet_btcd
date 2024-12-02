@@ -32,25 +32,29 @@ const MaxCommandPayload = (1024 * 1024 * 32) // 32MB
 
 // Commands used in satsnet posminer message headers which describe the type of message.
 const (
-	CmdGetInfo       = "getinfo"      // command for get remote peer info
-	CmdPeerInfo      = "peerinfo"     // Ack current peer info to requester
-	CmdGetValidators = "getvalidors"  // command for get validators list
-	CmdValidators    = "validators"   // send validators list in local peer to remote peer
-	CmdGetEpoch      = "getepoch"     // command for get epoch info， if exist next epoch，return next epoch together
-	CmdEpoch         = "epoch"        // send epoch info for epoch in local peer to remote peer， if exist next epoch，return next epoch together
-	CmdReqEpoch      = "reqepoch"     // Req a new epoch for next epoch, in normal, it will be senbt by last validator in current epoch, it will be response newepoch command
-	CmdNewEpoch      = "newepoch"     // Create a new epoch for next epoch
-	CmdConfirmEpoch  = "cfmepoch"     // Confirm a new epoch for next epoch
-	CmdNextEpoch     = "nextepoch"    // Turn to next epoch, in normal, it will be senbt by last validator in current epoch
-	CmdGetGenerator  = "getgenerator" // command for get generator
-	CmdGenerator     = "generator"    // declare generator by new generator
-	CmdHandOver      = "handover"     // handover generator by prev generator or voter (Epoch member)
-	CmdPing          = "ping"         // send ping to remote peer
-	CmdPong          = "pong"         // Ack pong to remote peer for response of ping
-	CmdReject        = "reject"       // send reject to remote peer
-	CmdVoteReq       = "votereq"      // send vote request to remote peer
-	CmdVoteResp      = "voteresp"     // response vote resp from local peer
-	CmdVoteResult    = "voteresult"   // send vote result to remote peer
+	CmdGetInfo         = "getinfo"      // command for get remote peer info
+	CmdPeerInfo        = "peerinfo"     // Ack current peer info to requester
+	CmdGetValidators   = "getvalidors"  // command for get validators list
+	CmdValidators      = "validators"   // send validators list in local peer to remote peer
+	CmdGetEpoch        = "getepoch"     // command for get epoch info， if exist next epoch，return next epoch together
+	CmdEpoch           = "epoch"        // send epoch info for epoch in local peer to remote peer， if exist next epoch，return next epoch together
+	CmdUpdateEpoch     = "updateepoch"  // send updateepoch info for currentepoch when current epoch is updated (handover generator)
+	CmdReqEpoch        = "reqepoch"     // Req a new epoch for next epoch, in normal, it will be senbt by last validator in current epoch, it will be response newepoch command
+	CmdNewEpoch        = "newepoch"     // Create a new epoch for next epoch
+	CmdConfirmEpoch    = "cfmepoch"     // Confirm a new epoch for next epoch
+	CmdNextEpoch       = "nextepoch"    // Turn to next epoch, in normal, it will be sent by last validator in current epoch
+	CmdDelEpochMem     = "delepochmem"  // Req for del epoch member if the member is disconnected
+	CmdConfirmDelEpoch = "cfmdelepoch"  // Confirm for del epoch member if the member is disconnected
+	CmdGetGenerator    = "getgenerator" // command for get generator
+	CmdGenerator       = "generator"    // declare generator by new generator
+	CmdHandOver        = "handover"     // handover generator by prev generator or voter (Epoch member)
+	CmdNotifyHandOver  = "ntyhandover"  // notify generator to handover
+	CmdPing            = "ping"         // send ping to remote peer
+	CmdPong            = "pong"         // Ack pong to remote peer for response of ping
+	CmdReject          = "reject"       // send reject to remote peer
+	CmdVoteReq         = "votereq"      // send vote request to remote peer
+	CmdVoteResp        = "voteresp"     // response vote resp from local peer
+	CmdVoteResult      = "voteresult"   // send vote result to remote peer
 )
 
 // ErrUnknownMessage is the error returned when decoding an unknown message.
@@ -109,6 +113,15 @@ func makeEmptyMessage(command string) (Message, error) {
 
 	case CmdNextEpoch:
 		msg = &MsgNextEpoch{}
+
+	case CmdUpdateEpoch:
+		msg = &MsgUpdateEpoch{}
+
+	case CmdDelEpochMem:
+		msg = &MsgReqDelEpochMember{}
+
+	case CmdConfirmDelEpoch:
+		msg = &MsgConfirmDelEpoch{}
 
 	case CmdGetGenerator:
 		msg = &MsgGetGenerator{}

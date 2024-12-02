@@ -53,15 +53,15 @@ func (mp *TxPool) CheckAnchorTxValid(tx *wire.MsgTx) error {
 		return err
 	}
 
-	for _, out := range tx.TxOut {
-		// Get the range size of the out
-		rangeSize := out.SatsRanges.GetSize()
-		if rangeSize != out.Value {
-			err = fmt.Errorf("the txOut TxRanges of anchor tx  is invalid")
-			return err
-		}
+	// for _, out := range tx.TxOut {
+	// 	// Get the range size of the out
+	// 	rangeSize := out.SatsRanges.GetSize()
+	// 	if rangeSize != out.Value {
+	// 		err = fmt.Errorf("the txOut TxRanges of anchor tx  is invalid")
+	// 		return err
+	// 	}
 
-	}
+	// }
 
 	// Check the locked tx has completed, all the assets is locked in lnd will be mapped to sats net only one times
 

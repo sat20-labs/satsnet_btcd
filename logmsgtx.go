@@ -46,20 +46,23 @@ func LogMsgTx(title string, msg *wire.MsgTx) {
 			}
 		}
 		rpcsLog.Debugf("		txout value: %d", txout.Value)
-		logTxRanges("", txout.SatsRanges)
+		logTxAssets("", txout.Assets)
 		rpcsLog.Debugf("		---------------------------------")
 	}
 }
-func logTxRanges(desc string, tr wire.TxRanges) {
+func logTxAssets(desc string, assets wire.TxAssets) {
 	if desc != "" {
-		rpcsLog.Debugf("       	SatsRangs desc: %s", desc)
+		rpcsLog.Debugf("       	TxAssets desc: %s", desc)
 	}
-	rpcsLog.Debugf("       	SatsRangs count: %d", len(tr))
-	for index, satsRange := range tr {
+	rpcsLog.Debugf("       	TxAssets count: %d", len(assets))
+	for index, asset := range assets {
 		rpcsLog.Debugf("		---------------------------------")
-		rpcsLog.Debugf("			satsRange index: %d", index)
-		rpcsLog.Debugf("			satsRange Start: %d", satsRange.Start)
-		rpcsLog.Debugf("			satsRange Size: %d", satsRange.Size)
+		rpcsLog.Debugf("			TxAssets index: %d", index)
+		rpcsLog.Debugf("			TxAssets Name Protocol: %d", asset.Name.Protocol)
+		rpcsLog.Debugf("			TxAssets Name Type: %d", asset.Name.Type)
+		rpcsLog.Debugf("			TxAssets Name Ticker: %d", asset.Name.Ticker)
+		rpcsLog.Debugf("			TxAssets Amount: %d", asset.Amount)
+		rpcsLog.Debugf("			TxAssets BindingSat: %d", asset.BindingSat)
 	}
 
 }

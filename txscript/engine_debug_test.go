@@ -58,17 +58,17 @@ func TestDebugEngine(t *testing.T) {
 		},
 	})
 	txOut := &wire.TxOut{
-		Value: 1e8, SatsRanges: wire.TxRanges{{Start: 100000000, Size: 100000000}}, PkScript: p2trScript,
+		Value: 1e8, Assets: wire.TxAssets{}, PkScript: p2trScript,
 	}
 	testTx.AddTxOut(txOut)
 
 	prevFetcher := NewCannedPrevOutputFetcher(
-		txOut.PkScript, txOut.Value, txOut.SatsRanges,
+		txOut.PkScript, txOut.Value, txOut.Assets,
 	)
 	sigHashes := NewTxSigHashes(testTx, prevFetcher)
 
 	sig, err := RawTxInTapscriptSignature(
-		testTx, sigHashes, 0, txOut.Value, txOut.SatsRanges,
+		testTx, sigHashes, 0, txOut.Value, txOut.Assets,
 		txOut.PkScript, tapLeaf,
 		SigHashDefault, privKey,
 	)
@@ -170,7 +170,7 @@ func TestDebugEngine(t *testing.T) {
 	// Run the debug engine.
 	vm, err := NewDebugEngine(
 		txOut.PkScript, txCopy, 0, StandardVerifyFlags,
-		nil, sigHashes, txOut.Value, txOut.SatsRanges, prevFetcher,
+		nil, sigHashes, txOut.Value, txOut.Assets, prevFetcher,
 		callback,
 	)
 	require.NoError(t, err)

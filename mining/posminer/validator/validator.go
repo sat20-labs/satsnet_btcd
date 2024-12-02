@@ -36,7 +36,7 @@ type ValidatorListener interface {
 	GetValidatorList(uint64) []*validatorinfo.ValidatorInfo
 
 	// Current Epoch is updated
-	OnEpochUpdated(*epoch.Epoch, *epoch.Epoch, net.Addr)
+	OnEpochSynced(*epoch.Epoch, *epoch.Epoch, net.Addr)
 
 	// Get current epoch info in record this peer
 	GetLocalEpoch(uint64) (*epoch.Epoch, *epoch.Epoch, error)
@@ -46,6 +46,9 @@ type ValidatorListener interface {
 
 	// OnNextEpoch from remote peer
 	OnNextEpoch(*epoch.HandOverEpoch)
+
+	// Current epoch is updated
+	OnUpdateEpoch(*epoch.Epoch)
 
 	// Current generator is updated
 	OnGeneratorUpdated(*generator.Generator, uint64)
@@ -67,6 +70,15 @@ type ValidatorListener interface {
 
 	// OnConfirmEpoch is invoke when received a confirm epoch command
 	OnConfirmEpoch(*epoch.Epoch, net.Addr)
+
+	// Received a Del epoch member command
+	ConfirmDelEpochMember(*validatorcommand.MsgReqDelEpochMember, net.Addr) *epoch.DelEpochMember
+
+	// Received a confirmed del epoch member command
+	OnConfirmedDelEpochMember(*epoch.DelEpochMember)
+
+	// Received a notify handover command
+	OnNotifyHandover(uint64)
 }
 
 // Config is the struct to hold configuration options useful to Validator.
@@ -215,22 +227,33 @@ func (v *Validator) RequestAllValidatorsInfo() error {
 	return nil
 }
 
-func (v *Validator) Reconnected() {
-	log.Debugf("Received a reconnected notify")
-	// CHeck current peer is connected
-	if v.peer == nil {
-		// No any activie peer,cannot be reconnected
-		return
-	}
+// func (v *Validator) Reconnect() bool {
+// 	log.Debugf("Received a reconnected notify")
+// 	// CHeck current peer is connected
+// 	if v.peer == nil {
+// 		// No any activie peer,cannot be reconnected
+// 		return false
+// 	}
 
-	if v.peer.Connected() == false {
-		// current peer is not connected, will connect it
-		log.Debugf("Will connect to the validator: %v", v.peer.Addr())
-		v.peer.Connect()
-	}
-}
+// 	if v.peer.Connected() == false {
+// 		// current peer is not connected, will connect it
+// 		log.Debugf("Will connect to the validator: %v", v.peer.Addr())
+// 		err := v.peer.Connect()
+// 		if err != nil {
+// 			log.Errorf("Connect failed: %v", err)
+// 			return false
+// 		}
+// 	}
+// 	if v.Cfg.RemoteValidatorInfo == nil {
+// 		// Not get remote validator id
+// 		log.Debugf("The validator Id is invalid, will request validator info from the remote peer")
+// 		validatorInfo := v.GetLocalValidatorInfo(0)
+// 		v.peer.RequestValidatorId(validatorInfo)
+// 	}
+// 	return true
+// }
 
-func (v *Validator) Start() error {
+func (v *Validator) Connect() error {
 	if v.peer == nil {
 		err := errors.New("invalid peer for the validator")
 		log.Errorf("Start validator [%s] failed: %v", v.String(), err)
@@ -240,10 +263,14 @@ func (v *Validator) Start() error {
 	log.Debugf("Will Connect to the validator: %v", v.peer.Addr())
 
 	if v.peer.Connected() == false {
-		v.peer.Connect()
+		err := v.peer.Connect()
+		if err != nil {
+			log.Errorf("Connect failed: %v", err)
+			return err
+		}
 	}
 
-	if v.Cfg.RemoteValidatorInfo == nil {
+	if v.isValidInfo() == false {
 		// Not get remote validator id
 		log.Debugf("The validator Id is invalid, will request validator info from the remote peer")
 		validatorInfo := v.GetLocalValidatorInfo(0)
@@ -258,6 +285,20 @@ func (v *Validator) Stop() {
 		return
 	}
 	v.peer.Disconnect()
+}
+
+func (v *Validator) isValidInfo() bool {
+
+	if v.ValidatorInfo.ValidatorId == 0 {
+		return false
+	}
+	if v.ValidatorInfo.CreateTime.IsZero() {
+		return false
+	}
+	if v.ValidatorInfo.Host == "" {
+		return false
+	}
+	return true
 }
 
 // This function is safe for concurrent access.
@@ -332,6 +373,11 @@ func (v *Validator) SetLocalValidator() {
 	v.isLocalValidator = true
 }
 
+// This function is safe for concurrent access.
+func (v *Validator) GetValidatorId() uint64 {
+	return v.ValidatorInfo.ValidatorId
+}
+
 // Addr returns the peer address.
 //
 // This function is safe for concurrent access.
@@ -357,6 +403,13 @@ func (v *Validator) SendCommand(command validatorcommand.Message) error {
 
 	log.Debugf("Will send command to the validator: %s", v.peer.Addr())
 	return v.peer.SendCommand(command)
+}
+
+func (v *Validator) GetLastReceived() time.Time {
+	if v.peer == nil {
+		return time.Time{}
+	}
+	return v.peer.LastRecv()
 }
 
 // OnPeerDisconnected is invoked when a remote peer connects to the local peer .
@@ -451,7 +504,7 @@ func (v *Validator) OnAllValidatorsResponse(validatorList []validatorinfo.Valida
 // OnEpochResponse is invoked when a remote peer response epoch list.
 func (v *Validator) OnEpochResponse(currentEpoch *epoch.Epoch, nextEpoch *epoch.Epoch) {
 
-	v.Cfg.Listener.OnEpochUpdated(currentEpoch, nextEpoch, v.peer.GetPeerAddr())
+	v.Cfg.Listener.OnEpochSynced(currentEpoch, nextEpoch, v.peer.GetPeerAddr())
 }
 
 func (v *Validator) OnGeneratorResponse(generatorInfo *generator.Generator) {
@@ -460,4 +513,9 @@ func (v *Validator) OnGeneratorResponse(generatorInfo *generator.Generator) {
 
 func (v *Validator) OnNewEpoch(validatorId uint64, epoch *epoch.Epoch) {
 	v.Cfg.Listener.OnNewEpoch(validatorId, epoch)
+}
+
+func (v *Validator) OnConfirmedDelEpochMember(delEpochMember *epoch.DelEpochMember) {
+
+	v.Cfg.Listener.OnConfirmedDelEpochMember(delEpochMember)
 }

@@ -2320,8 +2320,10 @@ func (b *BlockChain) ShowAllUtxo() {
 			hash := outpoint.Hash.String()
 			log.Debugf("Utxo: %s:%d", hash, outpoint.Index)
 			log.Debugf("Amount: %d", entry.amount)
-			for _, satsRange := range entry.satsRanges {
-				log.Debugf("Sats Range: [%d-%d]", satsRange.Start, satsRange.Start+satsRange.Size-1)
+			for _, asset := range entry.txAssets {
+				log.Debugf("Assets Name: [%s,%s,%s]", asset.Name.Protocol, asset.Name.Type, asset.Name.Ticker)
+				log.Debugf("Assets Amount: [%d]", asset.Amount)
+				log.Debugf("Assets BindingSat: [%d]", asset.BindingSat)
 			}
 			log.Debugf("pkScript: %x", entry.pkScript)
 			log.Debugf("blockHeight: %x", entry.blockHeight)

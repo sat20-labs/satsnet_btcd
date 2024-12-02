@@ -55,10 +55,10 @@ func mkGetScript(scripts map[string][]byte) ScriptDB {
 	})
 }
 
-func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, satsRanges wire.TxRanges, sigScript, pkScript []byte) error {
+func checkScripts(msg string, tx *wire.MsgTx, idx int, inputAmt int64, assets wire.TxAssets, sigScript, pkScript []byte) error {
 	tx.TxIn[idx].SignatureScript = sigScript
 	vm, err := NewEngine(pkScript, tx, idx,
-		ScriptBip16|ScriptVerifyDERSignatures, nil, nil, inputAmt, satsRanges, nil)
+		ScriptBip16|ScriptVerifyDERSignatures, nil, nil, inputAmt, assets, nil)
 	if err != nil {
 		return fmt.Errorf("failed to make script engine for %s: %v",
 			msg, err)
@@ -83,7 +83,7 @@ func signAndCheck(msg string, tx *wire.MsgTx, idx int, inputAmt int64, pkScript 
 		return fmt.Errorf("failed to sign output %s: %v", msg, err)
 	}
 
-	return checkScripts(msg, tx, idx, inputAmt, wire.TxRanges{}, sigScript, pkScript)
+	return checkScripts(msg, tx, idx, inputAmt, wire.TxAssets{}, sigScript, pkScript)
 }
 
 func TestSignTxOutput(t *testing.T) {
@@ -227,7 +227,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript, pkScript)
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{}, sigScript, pkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
 					"%s: %v", msg, err)
@@ -325,7 +325,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{},
 				sigScript, pkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -424,7 +424,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript, pkScript)
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{}, sigScript, pkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
 					"%s: %v", msg, err)
@@ -522,7 +522,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{},
 				sigScript, pkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -660,7 +660,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -797,7 +797,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -933,7 +933,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -1068,7 +1068,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("twice signed script invalid for "+
@@ -1226,7 +1226,7 @@ func TestSignTxOutput(t *testing.T) {
 			}
 
 			// Only 1 out of 2 signed, this *should* fail.
-			if checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript,
+			if checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{}, sigScript,
 				scriptPkScript) == nil {
 				t.Errorf("part signed script valid for %s", msg)
 				break
@@ -1245,7 +1245,7 @@ func TestSignTxOutput(t *testing.T) {
 				break
 			}
 
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript,
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{}, sigScript,
 				scriptPkScript)
 			if err != nil {
 				t.Errorf("fully signed script invalid for "+
@@ -1330,7 +1330,7 @@ func TestSignTxOutput(t *testing.T) {
 			}
 
 			// Only 1 out of 2 signed, this *should* fail.
-			if checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{}, sigScript,
+			if checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{}, sigScript,
 				scriptPkScript) == nil {
 				t.Errorf("part signed script valid for %s", msg)
 				break
@@ -1351,7 +1351,7 @@ func TestSignTxOutput(t *testing.T) {
 			}
 
 			// Now we should pass.
-			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxRanges{},
+			err = checkScripts(msg, tx, i, inputAmounts[i], wire.TxAssets{},
 				sigScript, scriptPkScript)
 			if err != nil {
 				t.Errorf("fully signed script invalid for "+
@@ -1418,7 +1418,7 @@ var sigScriptTests = []tstSigScript{
 		name: "one input uncompressed",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1432,13 +1432,13 @@ var sigScriptTests = []tstSigScript{
 		name: "two inputs uncompressed",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
 			},
 			{
-				txout:              wire.NewTxOut(coinbaseVal+fee, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal+fee, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1452,7 +1452,7 @@ var sigScriptTests = []tstSigScript{
 		name: "one input compressed",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, compressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, compressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1466,13 +1466,13 @@ var sigScriptTests = []tstSigScript{
 		name: "two inputs compressed",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, compressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, compressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
 			},
 			{
-				txout:              wire.NewTxOut(coinbaseVal+fee, []wire.SatsRange{}, compressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal+fee, wire.TxAssets{}, compressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1486,7 +1486,7 @@ var sigScriptTests = []tstSigScript{
 		name: "hashType SigHashNone",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1500,7 +1500,7 @@ var sigScriptTests = []tstSigScript{
 		name: "hashType SigHashSingle",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1514,7 +1514,7 @@ var sigScriptTests = []tstSigScript{
 		name: "hashType SigHashAnyoneCanPay",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1528,7 +1528,7 @@ var sigScriptTests = []tstSigScript{
 		name: "hashType non-standard",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1542,7 +1542,7 @@ var sigScriptTests = []tstSigScript{
 		name: "invalid compression",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     false,
 				indexOutOfRange:    false,
@@ -1556,7 +1556,7 @@ var sigScriptTests = []tstSigScript{
 		name: "short PkScript",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, shortPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, shortPkScript),
 				sigscriptGenerates: false,
 				indexOutOfRange:    false,
 			},
@@ -1569,13 +1569,13 @@ var sigScriptTests = []tstSigScript{
 		name: "valid script at wrong index",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
 			},
 			{
-				txout:              wire.NewTxOut(coinbaseVal+fee, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal+fee, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1589,13 +1589,13 @@ var sigScriptTests = []tstSigScript{
 		name: "index out of range",
 		inputs: []tstInput{
 			{
-				txout:              wire.NewTxOut(coinbaseVal, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
 			},
 			{
-				txout:              wire.NewTxOut(coinbaseVal+fee, []wire.SatsRange{}, uncompressedPkScript),
+				txout:              wire.NewTxOut(coinbaseVal+fee, wire.TxAssets{}, uncompressedPkScript),
 				sigscriptGenerates: true,
 				inputValidates:     true,
 				indexOutOfRange:    false,
@@ -1621,7 +1621,7 @@ nexttest:
 	for i := range sigScriptTests {
 		tx := wire.NewMsgTx(wire.TxVersion)
 
-		output := wire.NewTxOut(500, []wire.SatsRange{}, []byte{OP_RETURN})
+		output := wire.NewTxOut(500, wire.TxAssets{}, []byte{OP_RETURN})
 		tx.AddTxOut(output)
 
 		for range sigScriptTests[i].inputs {
@@ -1674,7 +1674,7 @@ nexttest:
 		scriptFlags := ScriptBip16 | ScriptVerifyDERSignatures
 		for j := range tx.TxIn {
 			vm, err := NewEngine(sigScriptTests[i].
-				inputs[j].txout.PkScript, tx, j, scriptFlags, nil, nil, 0, wire.TxRanges{}, nil)
+				inputs[j].txout.PkScript, tx, j, scriptFlags, nil, nil, 0, wire.TxAssets{}, nil)
 			if err != nil {
 				t.Errorf("cannot create script vm for test %v: %v",
 					sigScriptTests[i].name, err)
@@ -1717,7 +1717,7 @@ func TestRawTxInTaprootSignature(t *testing.T) {
 		},
 	})
 	txOut := &wire.TxOut{
-		Value: 1e8, SatsRanges: wire.TxRanges{{Start: 100000000, Size: 100000000}}, PkScript: pkScript,
+		Value: 1e8, Assets: wire.TxAssets{}, PkScript: pkScript,
 	}
 	testTx.AddTxOut(txOut)
 
@@ -1750,12 +1750,12 @@ func TestRawTxInTaprootSignature(t *testing.T) {
 		name := fmt.Sprintf("sighash=%v", test.sigHashType)
 		t.Run(name, func(t *testing.T) {
 			prevFetcher := NewCannedPrevOutputFetcher(
-				txOut.PkScript, txOut.Value, txOut.SatsRanges,
+				txOut.PkScript, txOut.Value, txOut.Assets,
 			)
 			sigHashes := NewTxSigHashes(testTx, prevFetcher)
 
 			sig, err := RawTxInTaprootSignature(
-				testTx, sigHashes, 0, txOut.Value, txOut.SatsRanges, txOut.PkScript,
+				testTx, sigHashes, 0, txOut.Value, txOut.Assets, txOut.PkScript,
 				nil, test.sigHashType, privKey,
 			)
 			require.NoError(t, err)
@@ -1773,7 +1773,7 @@ func TestRawTxInTaprootSignature(t *testing.T) {
 			txCopy.TxIn[0].Witness = wire.TxWitness{sig}
 			vm, err := NewEngine(
 				txOut.PkScript, txCopy, 0, StandardVerifyFlags,
-				nil, sigHashes, txOut.Value, txOut.SatsRanges, prevFetcher,
+				nil, sigHashes, txOut.Value, txOut.Assets, prevFetcher,
 			)
 			require.NoError(t, err)
 
@@ -1824,7 +1824,7 @@ func TestRawTxInTapscriptSignature(t *testing.T) {
 		},
 	})
 	txOut := &wire.TxOut{
-		Value: 1e8, SatsRanges: wire.TxRanges{{Start: 100000000, Size: 100000000}}, PkScript: p2trScript,
+		Value: 1e8, Assets: wire.TxAssets{}, PkScript: p2trScript,
 	}
 	testTx.AddTxOut(txOut)
 
@@ -1857,12 +1857,12 @@ func TestRawTxInTapscriptSignature(t *testing.T) {
 		name := fmt.Sprintf("sighash=%v", test.sigHashType)
 		t.Run(name, func(t *testing.T) {
 			prevFetcher := NewCannedPrevOutputFetcher(
-				txOut.PkScript, txOut.Value, txOut.SatsRanges,
+				txOut.PkScript, txOut.Value, txOut.Assets,
 			)
 			sigHashes := NewTxSigHashes(testTx, prevFetcher)
 
 			sig, err := RawTxInTapscriptSignature(
-				testTx, sigHashes, 0, txOut.Value, txOut.SatsRanges,
+				testTx, sigHashes, 0, txOut.Value, txOut.Assets,
 				txOut.PkScript, tapLeaf, test.sigHashType,
 				privKey,
 			)
@@ -1888,7 +1888,7 @@ func TestRawTxInTapscriptSignature(t *testing.T) {
 			// Finally, ensure that the signature produced is valid.
 			vm, err := NewEngine(
 				txOut.PkScript, txCopy, 0, StandardVerifyFlags,
-				nil, sigHashes, txOut.Value, txOut.SatsRanges, prevFetcher,
+				nil, sigHashes, txOut.Value, txOut.Assets, prevFetcher,
 			)
 			require.NoError(t, err)
 

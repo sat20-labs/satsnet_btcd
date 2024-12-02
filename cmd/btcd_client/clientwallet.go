@@ -268,24 +268,24 @@ func testSampleTx() {
 		Witness: Witness,
 	})
 
-	satsRanges0 := wire.TxRanges{
-		{Start: 133474737439951, Size: 18797},
-		{Start: 133474737458768, Size: 1183},
-	}
+	// satsRanges0 := wire.TxRanges{
+	// 	{Start: 133474737439951, Size: 18797},
+	// 	{Start: 133474737458768, Size: 1183},
+	// }
 	pkScript1, _ := hex.DecodeString("0020650c7b012cd5aa9201251bb1bedefc62aa84548a73bb259595959029e2011616")
 	tx.AddTxOut(&wire.TxOut{
-		PkScript:   pkScript1, // output to specified address
-		Value:      19980,
-		SatsRanges: satsRanges0,
+		PkScript: pkScript1, // output to specified address
+		Value:    19980,
+		Assets:   wire.TxAssets{},
 	})
-	satsRanges1 := wire.TxRanges{
-		{Start: 133474737458748, Size: 10},
-	}
+	// satsRanges1 := wire.TxRanges{
+	// 	{Start: 133474737458748, Size: 10},
+	// }
 	pkScript2, _ := hex.DecodeString("51208be89118321c458463a3f3404d626559dc4adeccb4017846e920b32d32e374d9")
 	tx.AddTxOut(&wire.TxOut{
-		PkScript:   pkScript2, // output to specified address
-		Value:      10,
-		SatsRanges: satsRanges1,
+		PkScript: pkScript2, // output to specified address
+		Value:    10,
+		Assets:   wire.TxAssets{},
 	})
 
 	fmt.Printf("Sample tx is %v.\n", tx)

@@ -342,28 +342,28 @@ func TestCompressedTxOut(t *testing.T) {
 	tests := []struct {
 		name       string
 		amount     uint64
-		satsRanges []wire.SatsRange
+		Assets     wire.TxAssets
 		pkScript   []byte
 		compressed []byte
 	}{
 		{
 			name:       "nulldata with 0 BTC",
 			amount:     0,
-			satsRanges: []wire.SatsRange{},
+			Assets:     wire.TxAssets{},
 			pkScript:   hexToBytes("6a200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"),
 			compressed: hexToBytes("00286a200102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"),
 		},
 		{
 			name:       "pay-to-pubkey-hash dust",
 			amount:     546,
-			satsRanges: []wire.SatsRange{{Start: 0, Size: 546}},
+			Assets:     wire.TxAssets{},
 			pkScript:   hexToBytes("76a9141018853670f9f3b0582c5b9ee8ce93764ac32b9388ac"),
 			compressed: hexToBytes("a52f001018853670f9f3b0582c5b9ee8ce93764ac32b93"),
 		},
 		{
 			name:       "pay-to-pubkey uncompressed 1 BTC",
 			amount:     100000000,
-			satsRanges: []wire.SatsRange{{Start: 100000000, Size: 100000000}},
+			Assets:     wire.TxAssets{},
 			pkScript:   hexToBytes("4104192d74d0cb94344c9569c2e77901573d8d7903c3ebec3a957724895dca52c6b40d45264838c0bd96852662ce6a847b197376830160c6d2eb5e6a4c44d33f453eac"),
 			compressed: hexToBytes("0904192d74d0cb94344c9569c2e77901573d8d7903c3ebec3a957724895dca52c6b4"),
 		},
@@ -372,7 +372,7 @@ func TestCompressedTxOut(t *testing.T) {
 	for _, test := range tests {
 		// Ensure the function to calculate the serialized size without
 		// actually serializing the txout is calculated properly.
-		gotSize := compressedTxOutSize(test.amount, test.satsRanges, test.pkScript)
+		gotSize := compressedTxOutSize(test.amount, test.Assets, test.pkScript)
 		if gotSize != len(test.compressed) {
 			t.Errorf("compressedTxOutSize (%s): did not get "+
 				"expected size - got %d, want %d", test.name,
@@ -383,7 +383,7 @@ func TestCompressedTxOut(t *testing.T) {
 		// Ensure the txout compresses to the expected value.
 		gotCompressed := make([]byte, gotSize)
 		gotBytesWritten := putCompressedTxOut(gotCompressed,
-			test.amount, test.satsRanges, test.pkScript)
+			test.amount, test.Assets, test.pkScript)
 		if !bytes.Equal(gotCompressed, test.compressed) {
 			t.Errorf("compressTxOut (%s): did not get expected "+
 				"bytes - got %x, want %x", test.name,
@@ -413,7 +413,7 @@ func TestCompressedTxOut(t *testing.T) {
 				test.name, gotAmount, test.amount)
 			continue
 		}
-		if len(gotSatsRanges) != len(test.satsRanges) {
+		if len(gotSatsRanges) != len(test.Assets) {
 			t.Errorf("decodeCompressedTxOut (%s): did not get "+
 				"expected sats ranges - got %d, want %d",
 				test.name, gotAmount, test.amount)

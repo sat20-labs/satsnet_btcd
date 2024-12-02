@@ -195,7 +195,7 @@ func calcSignatureHash(sigScript []byte, hashType SigHashType, tx *wire.MsgTx, i
 // wallet if fed an invalid input amount, the real sighash will differ causing
 // the produced signature to be invalid.
 func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
-	hashType SigHashType, tx *wire.MsgTx, idx int, amt int64, satsRanges wire.TxRanges) ([]byte, error) {
+	hashType SigHashType, tx *wire.MsgTx, idx int, amt int64, assets wire.TxAssets) ([]byte, error) {
 
 	// As a sanity check, ensure the passed input index for the transaction
 	// is valid.
@@ -273,15 +273,19 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 		binary.LittleEndian.PutUint64(scratch[:], uint64(amt))
 		w.Write(scratch[:])
 
-		satsRangesLen := len(satsRanges)
-		binary.LittleEndian.PutUint64(scratch[:], uint64(satsRangesLen))
+		countAssets := len(assets)
+		binary.LittleEndian.PutUint64(scratch[:], uint64(countAssets))
 		w.Write(scratch[:])
 
-		for _, satsRange := range satsRanges {
-			binary.LittleEndian.PutUint64(scratch[:], uint64(satsRange.Start))
+		for _, asset := range assets {
+
+			w.Write([]byte(asset.Name.Protocol))
+			w.Write([]byte(asset.Name.Type))
+			w.Write([]byte(asset.Name.Ticker))
+			binary.LittleEndian.PutUint64(scratch[:], uint64(asset.Amount))
 			w.Write(scratch[:])
-			binary.LittleEndian.PutUint64(scratch[:], uint64(satsRange.Size))
-			w.Write(scratch[:])
+			binary.LittleEndian.PutUint16(scratch[:], asset.BindingSat)
+			w.Write(scratch[:2])
 		}
 
 		binary.LittleEndian.PutUint64(scratch[:], uint64(amt))
@@ -326,14 +330,14 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 // CalcWitnessSigHash computes the sighash digest for the specified input of
 // the target transaction observing the desired sig hash type.
 func CalcWitnessSigHash(script []byte, sigHashes *TxSigHashes, hType SigHashType,
-	tx *wire.MsgTx, idx int, amt int64, satsRanges wire.TxRanges) ([]byte, error) {
+	tx *wire.MsgTx, idx int, amt int64, assets wire.TxAssets) ([]byte, error) {
 
 	const scriptVersion = 0
 	if err := checkScriptParses(scriptVersion, script); err != nil {
 		return nil, err
 	}
 
-	return calcWitnessSignatureHashRaw(script, sigHashes, hType, tx, idx, amt, satsRanges)
+	return calcWitnessSignatureHashRaw(script, sigHashes, hType, tx, idx, amt, assets)
 }
 
 // sigHashExtFlag represents the sig hash extension flag as defined in BIP 341.

@@ -955,7 +955,7 @@ func (b *BlockChain) checkBIP0030(node *blockNode, block *btcutil.Block, view *U
 //
 // NOTE: The transaction MUST have already been sanity checked with the
 // CheckTransactionSanity function prior to calling this function.
-func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpoint, chainParams *chaincfg.Params) (int64, []wire.SatsRange, error) {
+func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpoint, chainParams *chaincfg.Params) (int64, wire.TxAssets, error) {
 	// Coinbase transactions have no inputs.
 	msgTx := tx.MsgTx()
 	if IsCoinBaseTx(msgTx) {
@@ -975,7 +975,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	}
 
 	var totalSatoshiIn int64
-	var totalInSatsRange wire.TxRanges
+	var totalInTxAssets wire.TxAssets
 	for txInIndex, txIn := range msgTx.TxIn {
 		// Ensure the referenced input transaction is available.
 		utxo := utxoView.LookupEntry(txIn.PreviousOutPoint)
@@ -1011,7 +1011,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		// bitcoin is a quantity of satoshi as defined by the
 		// SatoshiPerBitcoin constant.
 		originTxSatoshi := utxo.Amount()
-		utxoSatsRanges := utxo.SatsRanges()
+		utxoTxAssets := utxo.TxAssets()
 		if originTxSatoshi < 0 {
 			str := fmt.Sprintf("transaction output has negative "+
 				"value of %v", btcutil.Amount(originTxSatoshi))
@@ -1032,7 +1032,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		totalSatoshiIn += originTxSatoshi
 		//totalInSatsRange = append(totalInSatsRange, utxoSatsRanges...)
 		//totalInSatsRange = wire.TxRangesAppend(totalInSatsRange, utxoSatsRanges)
-		totalInSatsRange = totalInSatsRange.Merge(utxoSatsRanges)
+		totalInTxAssets.Merge(&utxoTxAssets)
 		if totalSatoshiIn < lastSatoshiIn ||
 			totalSatoshiIn > btcutil.MaxSatoshi {
 			str := fmt.Sprintf("total value of all transaction "+
@@ -1058,7 +1058,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		//	totalSatoshiOut, txOut.Value)
 		//logTxRanges("txOut.SatsRanges", txOut.SatsRanges)
 
-		totalInSatsRange, err = totalInSatsRange.Subtract(txOut.SatsRanges)
+		err = totalInTxAssets.Split(&txOut.Assets)
 
 		if err != nil {
 			str := fmt.Sprintf("invalid TxOut sats range with index %d, (%s)", index, err.Error())
@@ -1095,27 +1095,31 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	// 	re
 
 	// feeRanges 是totalInSatsRange减去所有的out后剩余的sats范围
-	feeRanges := totalInSatsRange
-	rangeSize := RangesSize(feeRanges)
-	if txFeeInSatoshi != rangeSize {
-		str := fmt.Sprintf("total fee is not match with fee ranges "+
-			"transaction %v fee is %v , the fee ranges is %v", tx.Hash(), txFeeInSatoshi, feeRanges)
-		return 0, nil, ruleError(ErrBadFees, str)
-	}
-	return txFeeInSatoshi, feeRanges, nil
+	feeTxAssets := totalInTxAssets
+	// rangeSize := RangesSize(feeRanges)
+	// if txFeeInSatoshi != rangeSize {
+	// 	str := fmt.Sprintf("total fee is not match with fee ranges "+
+	// 		"transaction %v fee is %v , the fee ranges is %v", tx.Hash(), txFeeInSatoshi, feeRanges)
+	// 	return 0, nil, ruleError(ErrBadFees, str)
+	// }
+	return txFeeInSatoshi, feeTxAssets, nil
 }
 
-func logTxRanges(desc string, tr wire.TxRanges) {
+func logTxAssets(desc string, assets wire.TxAssets) {
 	if desc != "" {
-		log.Debugf("       	SatsRangs desc: %s", desc)
+		log.Debugf("       	TxAssets desc: %s", desc)
 	}
-	log.Debugf("       	SatsRangs count: %d", len(tr))
-	for index, satsRange := range tr {
+	log.Debugf("       	TxAssets count: %d", len(assets))
+	for index, asset := range assets {
 		log.Debugf("		---------------------------------")
-		log.Debugf("			satsRange index: %d", index)
-		log.Debugf("			satsRange Start: %d", satsRange.Start)
-		log.Debugf("			satsRange Size: %d", satsRange.Size)
+		log.Debugf("			TxAssets index: %d", index)
+		log.Debugf("			TxAssets Name Protocol: %d", asset.Name.Protocol)
+		log.Debugf("			TxAssets Name Type: %d", asset.Name.Type)
+		log.Debugf("			TxAssets Name Ticker: %d", asset.Name.Ticker)
+		log.Debugf("			TxAssets Amount: %d", asset.Amount)
+		log.Debugf("			TxAssets BindingSat: %d", asset.BindingSat)
 	}
+
 }
 
 // func RangesRemind(totalInSatsRange []wire.SatsRange, totalOutSatsRange []wire.SatsRange) []wire.SatsRange {
@@ -1129,14 +1133,14 @@ func logTxRanges(desc string, tr wire.TxRanges) {
 // 	return feeRanges
 // }
 
-func RangesSize(feeRanges []wire.SatsRange) int64 {
-	rangeSize := int64(0)
-	for i := range feeRanges {
-		rangeSize += int64(feeRanges[i].Size)
-	}
+// func RangesSize(feeRanges []wire.SatsRange) int64 {
+// 	rangeSize := int64(0)
+// 	for i := range feeRanges {
+// 		rangeSize += int64(feeRanges[i].Size)
+// 	}
 
-	return rangeSize
-}
+// 	return rangeSize
+// }
 
 // checkConnectBlock performs several checks to confirm connecting the passed
 // block to the chain represented by the passed view does not violate any rules.
@@ -1270,9 +1274,9 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *btcutil.Block, vi
 	// against all the inputs when the signature operations are out of
 	// bounds.
 	var totalFees int64
-	totalFeeRanges := make([]wire.SatsRange, 0)
+	totalFeeAssets := wire.TxAssets{}
 	for _, tx := range transactions {
-		txFee, feeRanges, err := CheckTransactionInputs(tx, node.height, view,
+		txFee, feeAssets, err := CheckTransactionInputs(tx, node.height, view,
 			b.chainParams)
 		if err != nil {
 			return err
@@ -1282,7 +1286,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *btcutil.Block, vi
 		// accumulator.
 		lastTotalFees := totalFees
 		totalFees += txFee
-		totalFeeRanges = append(totalFeeRanges, feeRanges...)
+		totalFeeAssets.Merge(&feeAssets)
 		if totalFees < lastTotalFees {
 			return ruleError(ErrBadFees, "total fees for block "+
 				"overflows accumulator")

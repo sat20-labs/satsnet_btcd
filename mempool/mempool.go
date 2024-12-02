@@ -548,7 +548,7 @@ func (mp *TxPool) RemoveDoubleSpends(tx *btcutil.Tx) {
 // helper for maybeAcceptTransaction.
 //
 // This function MUST be called with the mempool lock held (for writes).
-func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil.Tx, height int32, fee int64, feeRanges []wire.SatsRange) *TxDesc {
+func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil.Tx, height int32, fee int64, feeAssets wire.TxAssets) *TxDesc {
 	// Add the transaction to the pool and mark the referenced outpoints
 	// as spent by the pool.
 	txD := &TxDesc{
@@ -557,7 +557,7 @@ func (mp *TxPool) addTransaction(utxoView *blockchain.UtxoViewpoint, tx *btcutil
 			Added:     time.Now(),
 			Height:    height,
 			Fee:       fee,
-			FeeRanges: feeRanges,
+			FeeAssets: feeAssets,
 			FeePerKB:  fee * 1000 / GetTxVirtualSize(tx),
 		},
 		StartingPriority: mining.CalcPriority(tx.MsgTx(), utxoView, height),
@@ -972,7 +972,7 @@ func (mp *TxPool) maybeAcceptTransaction(tx *btcutil.Tx, isNew, rateLimit,
 		// this call as they'll be removed eventually.
 		mp.removeTransaction(conflict, false)
 	}
-	txD := mp.addTransaction(r.utxoView, tx, r.bestHeight, int64(r.TxFee), r.FeeRanges)
+	txD := mp.addTransaction(r.utxoView, tx, r.bestHeight, int64(r.TxFee), r.FeeAssets)
 
 	log.Debugf("Accepted transaction %v (pool size: %v)", txHash,
 		len(mp.pool))
@@ -1293,7 +1293,7 @@ type MempoolAcceptResult struct {
 	TxFee btcutil.Amount
 
 	// The sats ranges for the fee
-	FeeRanges []wire.SatsRange
+	FeeAssets wire.TxAssets
 
 	// TxSize is the virtual size(vb) of the tx.
 	TxSize int64
@@ -1446,7 +1446,7 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 
 		result := &MempoolAcceptResult{
 			TxFee:      btcutil.Amount(0),
-			FeeRanges:  []wire.SatsRange{},
+			FeeAssets:  wire.TxAssets{},
 			TxSize:     txSize,
 			Conflicts:  conflicts,
 			utxoView:   utxoView,
@@ -1533,7 +1533,7 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 	//
 	// NOTE: this check must be performed before `validateStandardness` to
 	// make sure a nil entry is not returned from `utxoView.LookupEntry`.
-	txFee, feeRanges, err := blockchain.CheckTransactionInputs(
+	txFee, feeAssets, err := blockchain.CheckTransactionInputs(
 		tx, nextBlockHeight, utxoView, mp.cfg.ChainParams,
 	)
 	if err != nil {
@@ -1614,7 +1614,7 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 
 	result := &MempoolAcceptResult{
 		TxFee:      btcutil.Amount(txFee),
-		FeeRanges:  feeRanges,
+		FeeAssets:  feeAssets,
 		TxSize:     txSize,
 		Conflicts:  conflicts,
 		utxoView:   utxoView,

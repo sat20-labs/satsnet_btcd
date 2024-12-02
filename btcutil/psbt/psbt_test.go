@@ -387,9 +387,8 @@ func TestPsbtCreator(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error: %v", err)
 	}
-	satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
-	out1 := wire.NewTxOut(CUTestAmountData["amount1"], satsRanges, spkOut1)
-	out2 := wire.NewTxOut(CUTestAmountData["amount2"], satsRanges, spkOut2)
+	out1 := wire.NewTxOut(CUTestAmountData["amount1"], wire.TxAssets{}, spkOut1)
+	out2 := wire.NewTxOut(CUTestAmountData["amount2"], wire.TxAssets{}, spkOut2)
 	outputs := []*wire.TxOut{out1, out2}
 	hash1, err := chainhash.NewHashFromStr(CUTestHexData["txid1"])
 	if err != nil {
@@ -1063,9 +1062,8 @@ func TestImportFromCore2(t *testing.T) {
 	}
 	fakevalSerialized := binary.LittleEndian.Uint64(fakeTxOutSerialized[:8])
 	fakeScriptPubKey := fakeTxOutSerialized[9:]
-	satsRanges := []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}}
 
-	txFund2Out := wire.NewTxOut(int64(fakevalSerialized), satsRanges, fakeScriptPubKey)
+	txFund2Out := wire.NewTxOut(int64(fakevalSerialized), wire.TxAssets{}, fakeScriptPubKey)
 	psbt2, err := NewFromRawBytes(bytes.NewReader([]byte(expectedPsbtPartialB64)), true)
 	if err != nil {
 		t.Fatalf("Failed to load partial PSBT: %v", err)

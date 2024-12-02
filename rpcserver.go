@@ -557,7 +557,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		mtx.AddTxIn(txIn)
 	}
 
-	satsRanges, err := s.cfg.Chain.FetchTxSatsRanges(mtx)
+	txAssets, err := s.cfg.Chain.FetchTxAssets(mtx)
 
 	// Add all transaction outputs to the transaction after performing
 	// some validity checks.
@@ -614,7 +614,7 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 			return nil, internalRPCError(err.Error(), context)
 		}
 
-		txOut := wire.NewTxOut(int64(satoshi), satsRanges, pkScript)
+		txOut := wire.NewTxOut(int64(satoshi), txAssets, pkScript)
 		mtx.AddTxOut(txOut)
 	}
 

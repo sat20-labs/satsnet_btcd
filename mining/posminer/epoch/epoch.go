@@ -9,6 +9,10 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 )
 
+const (
+	Pos_Epoch_NotStarted = -1
+)
+
 type EpochItem struct {
 	ValidatorId uint64
 	Host        string
@@ -32,7 +36,7 @@ func NewEpoch() *Epoch {
 		CreateTime:      time.Now(),
 		CreateHeight:    0,
 		Generator:       nil,
-		CurGeneratorPos: -1, // -1 表示没有还没有Generator
+		CurGeneratorPos: Pos_Epoch_NotStarted, // -1 表示没有还没有Generator
 	}
 }
 
@@ -107,7 +111,7 @@ func (e *Epoch) IsValidEpochValidator(validatorInfo *validatorinfo.ValidatorInfo
 	return true
 }
 
-func (e *Epoch) RemoveValidatorFromEpoch(validatorId uint64) error {
+func (e *Epoch) DelEpochMember(validatorId uint64) error {
 	for i := 0; i < len(e.ItemList); i++ {
 		if e.ItemList[i].ValidatorId == validatorId {
 			// The validator is found, remove it
@@ -130,12 +134,56 @@ func (e *Epoch) GetCurGeneratorPos() int32 {
 	return e.CurGeneratorPos
 }
 
+func (e *Epoch) GetMemberCount() int32 {
+	return int32(len(e.ItemList))
+}
+
+func (e *Epoch) GetMemberValidatorId(pos int32) uint64 {
+	if pos < 0 || pos >= int32(len(e.ItemList)) {
+		return uint64(0)
+	}
+	return e.ItemList[pos].ValidatorId
+}
+
 func (e *Epoch) GetCreateTime() time.Time {
 	return e.CreateTime
 }
 
 func (e *Epoch) UpdateGenerator(generator *generator.Generator) {
 	e.Generator = generator
+}
+func (e *Epoch) ToNextGenerator(generator *generator.Generator) error {
+	var nextPos int32
+	if e.CurGeneratorPos == Pos_Epoch_NotStarted {
+		nextPos = 0
+	} else {
+		nextPos = e.CurGeneratorPos + 1
+	}
+	if nextPos >= int32(len(e.ItemList)) {
+		err := fmt.Errorf("Exceed epoch item list length: NextPos= %d, Total = %d ", nextPos, len(e.ItemList))
+		return err
+	}
+	epochItem := e.ItemList[nextPos]
+	if epochItem == nil {
+		err := fmt.Errorf("Invalid epoch item in NextPos= %d ", e.CurGeneratorPos)
+		return err
+	}
+	if epochItem.ValidatorId != generator.GeneratorId {
+		err := fmt.Errorf("The generator is not valid: NextPos EpochItem ID = %d, Generator ID = %d ", epochItem.ValidatorId, generator.GeneratorId)
+		return err
+	}
+
+	e.CurGeneratorPos = nextPos
+	e.Generator = generator
+
+	return nil
+}
+
+func (e *Epoch) IsLastGenerator() bool {
+	if e.CurGeneratorPos == int32(len(e.ItemList)-1) {
+		return true
+	}
+	return false
 }
 
 func (e *Epoch) VoteGenerator() *EpochItem {
@@ -147,41 +195,43 @@ func (e *Epoch) VoteGenerator() *EpochItem {
 	return e.ItemList[0]
 }
 
-func (e *Epoch) GetNextValidatorsByEpochOrder(validatorId uint64, count int) []*EpochItem {
-	orders := make([]*EpochItem, 0)
-	if e.ItemList == nil {
+func (e *Epoch) GetNextValidatorByEpochOrder() *EpochItem {
+	var nextPos int32
+	if e.CurGeneratorPos == Pos_Epoch_NotStarted {
+		nextPos = 0
+	} else {
+		nextPos = e.CurGeneratorPos + 1
+	}
+
+	if nextPos < 0 || nextPos >= int32(len(e.ItemList)) {
 		return nil
 	}
 
-	index := -1
-	for i := 0; i < len(e.ItemList); i++ {
-		if e.ItemList[i].ValidatorId == validatorId {
-			// The validator is found, remove it
-			index = i
-			break
-		}
-	}
-
-	if index == -1 {
-		return nil
-	}
-
-	index++ // get the validator from next index
-	for i := 0; i < count; i++ {
-		if index >= len(e.ItemList) {
-			index = 0
-		}
-		orders = append(orders, e.ItemList[index])
-	}
-
-	return orders
+	return e.ItemList[nextPos]
 }
 
 func (e *Epoch) GetNextValidator() *EpochItem {
 
-	nextPos := e.CurGeneratorPos + 1
+	var nextPos int32
+	if e.CurGeneratorPos == Pos_Epoch_NotStarted {
+		nextPos = 0
+	} else {
+		nextPos = e.CurGeneratorPos + 1
+	}
+
 	if nextPos < 0 || nextPos >= int32(len(e.ItemList)) {
 		return nil
 	}
 	return e.ItemList[nextPos]
+}
+
+func (e *Epoch) GetValidatorPos(validatorId uint64) int32 {
+	for i := 0; i < len(e.ItemList); i++ {
+		if e.ItemList[i].ValidatorId == validatorId {
+			// The validator is found, remove it
+			return int32(i)
+		}
+	}
+
+	return -1
 }

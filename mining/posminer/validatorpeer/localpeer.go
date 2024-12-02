@@ -50,6 +50,9 @@ type LocalPeerInterface interface {
 	// OnNextEpoch from local peer to manager to change epoch to next
 	OnNextEpoch(*epoch.HandOverEpoch)
 
+	// OnUpdatedEpoch from current epoch is updated from remote peer
+	OnUpdateEpoch(*epoch.Epoch)
+
 	// GetGenerator from local peer
 	GetGenerator(uint64) *generator.Generator
 
@@ -61,6 +64,12 @@ type LocalPeerInterface interface {
 
 	// Received a confirm epoch command
 	OnConfirmEpoch(*epoch.Epoch, net.Addr)
+
+	// Received a Del epoch member command
+	ConfirmDelEpochMember(*validatorcommand.MsgReqDelEpochMember, net.Addr) *epoch.DelEpochMember
+
+	// Received a notify handover command
+	OnNotifyHandover(uint64, net.Addr)
 }
 
 // Config is the struct to hold configuration options useful to localpeer.
@@ -336,11 +345,11 @@ func (p *LocalPeer) TimeConnected() time.Time {
 	return timeConnected
 }
 
-// OnConnDisonnected to be called when a connection is disconnected.
+// OnConnDisconnected to be called when a connection is disconnected.
 //
 // This function is safe for concurrent access.
-func (p *LocalPeer) OnConnDisonnected(connReq *ConnReq) {
-	log.Debugf("----------[LocalPeer]OnConnDisonnected conn[%d]: %s", connReq.id, connReq.RemoteAddr)
+func (p *LocalPeer) OnConnDisconnected(connReq *ConnReq) {
+	log.Debugf("----------[LocalPeer]OnConnDisconnected conn[%d]: %s", connReq.id, connReq.RemoteAddr)
 
 	p.connMapMtx.Lock()
 	delete(p.connMap, connReq.id)
@@ -348,7 +357,7 @@ func (p *LocalPeer) OnConnDisonnected(connReq *ConnReq) {
 
 	p.logCurrentConn()
 
-	log.Debugf("----------[LocalPeer]OnConnDisonnected End")
+	log.Debugf("----------[LocalPeer]OnConnDisconnected End")
 }
 
 // newPeerBase returns a new base bitcoin peer based on the inbound flag.  This
@@ -553,7 +562,10 @@ func (p *LocalPeer) listenHandler(listener net.Listener) {
 		if connReq != nil {
 			log.Debugf("----------[LocalPeer]The remote peer is reconnected, will remove the old connReq [%d: %s]", connReq.id, connReq.RemoteAddr)
 			// The remote peer has been connected to the local peer, the new connReq is reconnected, it will remove the old connReq
-			p.closeConn(connReq)
+			//p.closeConn(connReq)
+			p.connMapMtx.Lock()
+			delete(p.connMap, connReq.id)
+			p.connMapMtx.Unlock()
 		} else {
 			// The remote peer is new peer connected
 			p.SendGetInfoCommand(newConnReq)
@@ -637,6 +649,11 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 		//cmd.LogCommandInfo(log)
 		p.HandleNextEpoch(cmd, connReq)
 
+	case *validatorcommand.MsgUpdateEpoch:
+		log.Debugf("----------[LocalPeer]Receive MsgNextEpoch command, will notify validatorManager for change to next epoch. ")
+		//cmd.LogCommandInfo(log)
+		p.HandleUpdateEpoch(cmd, connReq)
+
 	case *validatorcommand.MsgGetGenerator:
 		log.Debugf("----------[LocalPeer]Receive MsgGetGetGenerator command, will response local generator list to remote peer with MsgGenerator command")
 		//cmd.LogCommandInfo(log)
@@ -656,6 +673,17 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 		log.Debugf("----------[LocalPeer]Receive MsgConfirmEpoch command, will notify validatorManager for the confirm epoch. ")
 		cmd.LogCommandInfo(log)
 		p.HandleConfirmEpoch(cmd, connReq)
+
+	case *validatorcommand.MsgReqDelEpochMember:
+		log.Debugf("----------[LocalPeer]Receive MsgReqDelEpochMember command, will notify validatorManager for delete epoch member. ")
+		cmd.LogCommandInfo(log)
+		p.handleDelEpochMember(cmd, connReq)
+
+	case *validatorcommand.MsgNotifyHandover:
+		log.Debugf("----------[LocalPeer]Receive MsgReqDelEpochMember command, will notify validatorManager for delete epoch member. ")
+		cmd.LogCommandInfo(log)
+		p.handleNotifyHandover(cmd, connReq)
+
 	default:
 		cmd.LogCommandInfo(log)
 		log.Errorf("----------[LocalPeer]Not to handle command [%v] from %d", command.Command(), connReq.id)
@@ -828,6 +856,10 @@ func (p *LocalPeer) HandleNextEpoch(nextEpochCmd *validatorcommand.MsgNextEpoch,
 	p.cfg.LocalValidator.OnNextEpoch(&nextEpochCmd.HandoverEpoch)
 }
 
+func (p *LocalPeer) HandleUpdateEpoch(updateEpochCmd *validatorcommand.MsgUpdateEpoch, connReq *ConnReq) {
+	p.cfg.LocalValidator.OnUpdateEpoch(updateEpochCmd.CurrentEpoch)
+}
+
 func (p *LocalPeer) HandleGetGenerator(getGeneratorCmd *validatorcommand.MsgGetGenerator, connReq *ConnReq) {
 	generator := p.cfg.LocalValidator.GetGenerator(getGeneratorCmd.ValidatorId)
 	respGeneratorCmd := validatorcommand.NewMsgGenerator(generator)
@@ -854,11 +886,13 @@ func (p *LocalPeer) HandleGeneratorResponse(generatorCmd *validatorcommand.MsgGe
 
 func (p *LocalPeer) HandleConfirmEpoch(confirmEpochCmd *validatorcommand.MsgConfirmEpoch, connReq *ConnReq) {
 	confirmEpoch := &epoch.Epoch{
-		EpochIndex:   confirmEpochCmd.EpochIndex,
-		ItemList:     make([]*epoch.EpochItem, 0),
-		CreateHeight: confirmEpochCmd.CreateHeight,
-		CreateTime:   confirmEpochCmd.CreateTime,
+		EpochIndex:      confirmEpochCmd.EpochIndex,
+		ItemList:        make([]*epoch.EpochItem, 0),
+		CreateHeight:    confirmEpochCmd.CreateHeight,
+		CreateTime:      confirmEpochCmd.CreateTime,
+		CurGeneratorPos: epoch.Pos_Epoch_NotStarted,
 	}
+
 	for _, epochItem := range confirmEpochCmd.ItemList {
 		validatorItem := &epoch.EpochItem{
 			ValidatorId: epochItem.ValidatorId,
@@ -868,5 +902,23 @@ func (p *LocalPeer) HandleConfirmEpoch(confirmEpochCmd *validatorcommand.MsgConf
 		}
 		confirmEpoch.ItemList = append(confirmEpoch.ItemList, validatorItem)
 	}
+
 	p.cfg.LocalValidator.OnConfirmEpoch(confirmEpoch, connReq.RemoteAddr)
+}
+
+// handleDelEpochMember is called when a peer sends a request to delete an epoch member from the epoch list.
+// It will notify the validator to confirm the epoch member deletion.
+func (p *LocalPeer) handleDelEpochMember(delEpochMember *validatorcommand.MsgReqDelEpochMember, connReq *ConnReq) {
+	cdmDelEpochMember := p.cfg.LocalValidator.ConfirmDelEpochMember(delEpochMember, connReq.RemoteAddr)
+
+	if cdmDelEpochMember != nil {
+		// Response the result for Del epoch memeber
+		cfmDelEpochMemCmd := validatorcommand.NewMsgConfirmDelEpoch(cdmDelEpochMember)
+		connReq.SendCommand(cfmDelEpochMemCmd)
+	}
+}
+
+func (p *LocalPeer) handleNotifyHandover(notifyHandover *validatorcommand.MsgNotifyHandover, connReq *ConnReq) {
+	p.cfg.LocalValidator.OnNotifyHandover(notifyHandover.ValidatorId, connReq.RemoteAddr)
+
 }

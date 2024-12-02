@@ -1145,10 +1145,11 @@ var SatsTestNetParams = Params{
 	Net:         wire.SatsTestNet,
 	DefaultPort: "14826",
 	DNSSeeds: []DNSSeed{
-		{"39.108.147.241", true},
+		//{"39.108.147.241", true},
 		{"192.168.10.20", true},
 		{"192.168.10.104", true},
-		{"192.168.10.103", true},
+		//{"192.168.10.103", true},
+		{"192.168.10.102", true},
 	},
 
 	// Chain parameters

@@ -288,33 +288,56 @@ func readTxOut(txout []byte) (*wire.TxOut, error) {
 	valueSer := binary.LittleEndian.Uint64(txout[:8])
 	offset := 8
 
-	// count fr sats range
+	// count fr assets
 	count, size, err := readVarIntBuf(txout[offset:])
 	if err != nil {
 		return nil, err
 	}
 	offset += size
 
-	satsRanges := make([]wire.SatsRange, 0)
+	assets := wire.TxAssets{}
 	for i := uint64(0); i < count; i++ {
-		// Get sats start and size
-		rangeStart, size, err := readVarIntBuf(txout[offset:])
+		// Get Assets
+		assetProtocol, size, err := readVarString(txout[offset:])
 		if err != nil {
 			return nil, err
 		}
 		offset += size
 
-		rangeSize, size, err := readVarIntBuf(txout[offset:])
+		assetType, size, err := readVarString(txout[offset:])
 		if err != nil {
 			return nil, err
 		}
 		offset += size
 
-		satsRange := wire.SatsRange{
-			Start: int64(rangeStart),
-			Size:  int64(rangeSize),
+		assetTicker, size, err := readVarString(txout[offset:])
+		if err != nil {
+			return nil, err
 		}
-		satsRanges = append(satsRanges, satsRange)
+		offset += size
+
+		assetAmount, size, err := readVarIntBuf(txout[offset:])
+		if err != nil {
+			return nil, err
+		}
+		offset += size
+
+		assetBindingSat, size, err := readVarIntBuf(txout[offset:])
+		if err != nil {
+			return nil, err
+		}
+		offset += size
+
+		asset := wire.AssetInfo{
+			Name: wire.AssetName{
+				Protocol: assetProtocol,
+				Type:     assetType,
+				Ticker:   assetTicker,
+			},
+			Amount:     int64(assetAmount),
+			BindingSat: uint16(assetBindingSat),
+		}
+		assets = append(assets, asset)
 	}
 
 	count, size, err = readVarIntBuf(txout[offset:])
@@ -325,7 +348,7 @@ func readTxOut(txout []byte) (*wire.TxOut, error) {
 
 	scriptPubKey := txout[offset:]
 
-	return wire.NewTxOut(int64(valueSer), satsRanges, scriptPubKey), nil
+	return wire.NewTxOut(int64(valueSer), assets, scriptPubKey), nil
 }
 
 // ReadVarIntBuf reads a variable length integer from r using a preallocated
@@ -383,6 +406,16 @@ func readVarIntBuf(buf []byte) (uint64, int, error) {
 	}
 
 	return rv, offset, nil
+}
+
+func readVarString(buf []byte) (string, int, error) {
+	stringLen, offset, err := readVarIntBuf(buf)
+	if err != nil {
+		return "", 0, err
+	}
+	content := buf[offset : offset+int(stringLen)]
+	offset += int(stringLen)
+	return string(content), offset, nil
 }
 
 // SumUtxoInputValues tries to extract the sum of all inputs specified in the

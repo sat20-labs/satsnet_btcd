@@ -106,9 +106,9 @@ func createGenesisTx(params *chaincfg.Params, timeStamp time.Time) (*wire.MsgTx,
 		Sequence:        wire.MaxTxInSequenceNum,
 	})
 	tx.AddTxOut(&wire.TxOut{
-		Value:      0, // For satoshinet, no award.
-		SatsRanges: make([]wire.SatsRange, 0),
-		PkScript:   pkScript,
+		Value:    0, // For satoshinet, no award.
+		Assets:   wire.TxAssets{},
+		PkScript: pkScript,
 	})
 	return tx, nil
 }

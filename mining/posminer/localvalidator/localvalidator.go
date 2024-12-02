@@ -10,6 +10,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorpeer"
 )
@@ -187,7 +188,7 @@ func (v *LocalValidator) BecomeGenerator(height int32, handOverTime time.Time) e
 
 	tokenData := myGenerator.GetTokenData()
 
-	log.Debugf("tokenData = %s", tokenData)
+	log.Debugf("tokenData = %x", tokenData)
 
 	token, err := v.CreateToken(tokenData)
 	if err != nil {
@@ -259,8 +260,27 @@ func (v *LocalValidator) OnConfirmEpoch(epoch *epoch.Epoch, remoteAddr net.Addr)
 	v.Cfg.Listener.OnConfirmEpoch(epoch, remoteAddr)
 }
 
-// Req new epoch from remote peer
+// Handover to next epoch
 func (v *LocalValidator) OnNextEpoch(handoverEpoch *epoch.HandOverEpoch) {
 
 	v.Cfg.Listener.OnNextEpoch(handoverEpoch)
+}
+
+// Notify current epoch is updated
+func (v *LocalValidator) OnUpdateEpoch(updatedEpoch *epoch.Epoch) {
+
+	v.Cfg.Listener.OnUpdateEpoch(updatedEpoch)
+}
+
+// Received a Del epoch member command
+func (v *LocalValidator) ConfirmDelEpochMember(reqDelEpochMember *validatorcommand.MsgReqDelEpochMember, remoteAddr net.Addr) *epoch.DelEpochMember {
+
+	return v.Cfg.Listener.ConfirmDelEpochMember(reqDelEpochMember, remoteAddr)
+}
+
+// Received a notify handover command
+func (v *LocalValidator) OnNotifyHandover(validatorId uint64, remoteAddr net.Addr) {
+	log.Debugf("[LocalValidator]OnNotifyHandover from %d", validatorId)
+
+	v.Cfg.Listener.OnNotifyHandover(validatorId)
 }

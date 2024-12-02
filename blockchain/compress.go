@@ -421,6 +421,59 @@ func decompressScript(compressedPkScript []byte) []byte {
 	return pkScript
 }
 
+// serializeSizeVLQ returns the number of bytes it would take to serialize the
+// passed number as a variable-length quantity according to the format described
+// above.
+func serializeSizeString(content string) int {
+	len := len(content)
+	size := serializeSizeVLQ(uint64(len))
+
+	return size + len
+}
+
+// putCompressedString compresses the passed script according to the domain
+// specific compression algorithm described above directly into the passed
+// target byte slice.  The target byte slice must be at least large enough to
+// handle the number of bytes returned by the compressedScriptSize function or
+// it will panic.
+func putString(target []byte, content string) int {
+	// When none of the above special cases apply, encode the unmodified
+	// script preceded by the sum of its size and the number of special
+	// cases encoded as a variable length quantity.
+	encodedSize := uint64(len(content))
+	vlqSizeLen := putVLQ(target, encodedSize)
+	copy(target[vlqSizeLen:], []byte(content))
+	return vlqSizeLen + len(content)
+}
+
+// decompressScript returns the original script obtained by decompressing the
+// passed compressed script according to the domain specific compression
+// algorithm described above.
+//
+// NOTE: The script parameter must already have been proven to be long enough
+// to contain the number of bytes returned by decodeCompressedScriptSize or it
+// will panic.  This is acceptable since it is only an internal function.
+func deserializeString(compressedString []byte) (string, int) {
+	// In practice this function will not be called with a zero-length or
+	// nil script since the nil script encoding includes the length, however
+	// the code below assumes the length exists, so just return nil now if
+	// the function ever ends up being called with a nil script in the
+	// future.
+	if len(compressedString) == 0 {
+		return "", 0
+	}
+
+	// Decode the script size and examine it for the special cases.
+	stringSize, bytesRead := deserializeVLQ(compressedString)
+
+	// When none of the special cases apply, the script was encoded using
+	// the general format, so reduce the script size by the number of
+	// special cases and return the unmodified script.
+	content := make([]byte, stringSize)
+	copy(content, compressedString[bytesRead:bytesRead+int(stringSize)])
+	return string(content), bytesRead + int(stringSize)
+}
+
 // -----------------------------------------------------------------------------
 // In order to reduce the size of stored amounts, a domain specific compression
 // algorithm is used which relies on there typically being a lot of zeroes at
@@ -535,28 +588,34 @@ func decompressTxOutAmount(amount uint64) uint64 {
 //
 // The serialized format is:
 //
-//   <compressed amount><<range length><range1 start><range1 size><range2 start><range2 size>...><compressed script>
+//   <compressed amount><<assets count><asset Name Protocol><asset Name Type><asset Name Ticker><asset Amount><asset BindingSat>...><compressed script>
 //
 //   Field                 Type     Size
 //     compressed amount   VLQ      variable
-//     range length        VLQ      variable
-//     range Start         VLQ      variable
-//     range Size          VLQ      variable
+//     assets count        VLQ      variable
+//     asset Name Protocol string   variable  loop
+//     asset Name Type 	   string   variable  loop
+//     asset Name Ticker   string   variable  loop
+//     asset Amount        VLQ      variable  loop
+//     asset BindingSat    VLQ      variable  loop
 //     compressed script   []byte   variable
 // -----------------------------------------------------------------------------
 
 // compressedTxOutSize returns the number of bytes the passed transaction output
 // fields would take when encoded with the format described above.
-func compressedTxOutSize(amount uint64, satsRanges []wire.SatsRange, pkScript []byte) int {
+func compressedTxOutSize(amount uint64, assets wire.TxAssets, pkScript []byte) int {
 	amountSize := serializeSizeVLQ(compressTxOutAmount(amount))
-	rangeSize := serializeSizeVLQ(uint64(len(satsRanges)))
-	for _, satsRange := range satsRanges {
-		rangeSize += serializeSizeVLQ(uint64(satsRange.Start))
-		rangeSize += serializeSizeVLQ(uint64(satsRange.Size))
+	assetsSize := serializeSizeVLQ(uint64(len(assets)))
+	for _, asset := range assets {
+		assetsSize += serializeSizeString(asset.Name.Protocol)
+		assetsSize += serializeSizeString(asset.Name.Type)
+		assetsSize += serializeSizeString(asset.Name.Ticker)
+		assetsSize += serializeSizeVLQ(uint64(asset.Amount))
+		assetsSize += serializeSizeVLQ(uint64(asset.BindingSat))
 	}
 	pkScriptSize := compressedScriptSize(pkScript)
 
-	return amountSize + rangeSize + pkScriptSize
+	return amountSize + assetsSize + pkScriptSize
 }
 
 // putCompressedTxOut compresses the passed amount and script according to their
@@ -564,12 +623,15 @@ func compressedTxOutSize(amount uint64, satsRanges []wire.SatsRange, pkScript []
 // passed target byte slice with the format described above.  The target byte
 // slice must be at least large enough to handle the number of bytes returned by
 // the compressedTxOutSize function or it will panic.
-func putCompressedTxOut(target []byte, amount uint64, satsRanges []wire.SatsRange, pkScript []byte) int {
+func putCompressedTxOut(target []byte, amount uint64, assets wire.TxAssets, pkScript []byte) int {
 	offset := putVLQ(target, compressTxOutAmount(amount))
-	offset += putVLQ(target[offset:], uint64(len(satsRanges)))
-	for _, satsRange := range satsRanges {
-		offset += putVLQ(target[offset:], uint64(satsRange.Start))
-		offset += putVLQ(target[offset:], uint64(satsRange.Size))
+	offset += putVLQ(target[offset:], uint64(len(assets)))
+	for _, asset := range assets {
+		offset += putString(target[offset:], asset.Name.Protocol)
+		offset += putString(target[offset:], asset.Name.Type)
+		offset += putString(target[offset:], asset.Name.Ticker)
+		offset += putVLQ(target[offset:], uint64(asset.Amount))
+		offset += putVLQ(target[offset:], uint64(asset.BindingSat))
 	}
 	offset += putCompressedScript(target[offset:], pkScript)
 	return offset
@@ -578,7 +640,7 @@ func putCompressedTxOut(target []byte, amount uint64, satsRanges []wire.SatsRang
 // decodeCompressedTxOut decodes the passed compressed txout, possibly followed
 // by other data, into its uncompressed amount and script and returns them along
 // with the number of bytes they occupied prior to decompression.
-func decodeCompressedTxOut(serialized []byte) (uint64, []wire.SatsRange, []byte, int, error) {
+func decodeCompressedTxOut(serialized []byte) (uint64, wire.TxAssets, []byte, int, error) {
 	// Deserialize the compressed amount and ensure there are bytes
 	// remaining for the compressed script.
 	compressedAmount, bytesRead := deserializeVLQ(serialized)
@@ -588,29 +650,59 @@ func decodeCompressedTxOut(serialized []byte) (uint64, []wire.SatsRange, []byte,
 	}
 	offset := bytesRead
 
-	satsRangesLength, bytesRead := deserializeVLQ(serialized[offset:])
+	assetsCount, bytesRead := deserializeVLQ(serialized[offset:])
 	offset += bytesRead
 	if offset >= len(serialized) {
 		return 0, nil, nil, offset, errDeserialize("unexpected end of " +
-			"data after sats ranges length")
+			"data after assets count")
 	}
-	satsRanges := make([]wire.SatsRange, 0)
-	for i := 0; i < int(satsRangesLength); i++ {
-		start, bytesRead := deserializeVLQ(serialized[offset:])
+	txAssets := wire.TxAssets{}
+	for i := 0; i < int(assetsCount); i++ {
+		assetProtocol, bytesRead := deserializeString(serialized[offset:])
 		offset += bytesRead
 		if offset >= len(serialized) {
 			return 0, nil, nil, offset, errDeserialize("unexpected end of " +
-				"data after sats range start")
+				"data after asset name protocol")
 		}
 
-		size, bytesRead := deserializeVLQ(serialized[offset:])
+		assetType, bytesRead := deserializeString(serialized[offset:])
 		offset += bytesRead
 		if offset >= len(serialized) {
 			return 0, nil, nil, offset, errDeserialize("unexpected end of " +
-				"data after sats range size")
+				"data after asset name type")
 		}
 
-		satsRanges = append(satsRanges, wire.SatsRange{Start: int64(start), Size: int64(size)})
+		assetTicker, bytesRead := deserializeString(serialized[offset:])
+		offset += bytesRead
+		if offset >= len(serialized) {
+			return 0, nil, nil, offset, errDeserialize("unexpected end of " +
+				"data after asset name ticker")
+		}
+
+		assetAmount, bytesRead := deserializeVLQ(serialized[offset:])
+		offset += bytesRead
+		if offset >= len(serialized) {
+			return 0, nil, nil, offset, errDeserialize("unexpected end of " +
+				"data after asset amount")
+		}
+
+		assetBindingSat, bytesRead := deserializeVLQ(serialized[offset:])
+		offset += bytesRead
+		if offset >= len(serialized) {
+			return 0, nil, nil, offset, errDeserialize("unexpected end of " +
+				"data after asset bindingsat")
+		}
+
+		asset := wire.AssetInfo{
+			Name: wire.AssetName{
+				Protocol: assetProtocol,
+				Type:     assetType,
+				Ticker:   assetTicker,
+			},
+			Amount:     int64(assetAmount),
+			BindingSat: uint16(assetBindingSat),
+		}
+		txAssets = append(txAssets, asset)
 	}
 
 	// Decode the compressed script size and ensure there are enough bytes
@@ -624,5 +716,5 @@ func decodeCompressedTxOut(serialized []byte) (uint64, []wire.SatsRange, []byte,
 	// Decompress and return the amount and script.
 	amount := decompressTxOutAmount(compressedAmount)
 	script := decompressScript(serialized[offset : offset+scriptSize])
-	return amount, satsRanges, script, offset + scriptSize, nil
+	return amount, txAssets, script, offset + scriptSize, nil
 }

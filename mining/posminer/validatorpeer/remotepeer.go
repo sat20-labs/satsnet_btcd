@@ -47,6 +47,9 @@ type RemotePeerInterface interface {
 
 	// GetLocalValidatorInfo invoke when local validator info.
 	GetLocalValidatorInfo(uint64) *validatorinfo.ValidatorInfo
+
+	// Notify when del epoch member is confirmed
+	OnConfirmedDelEpochMember(delEpochMember *epoch.DelEpochMember)
 }
 
 // Config is the struct to hold configuration options useful to localpeer.
@@ -125,7 +128,6 @@ type RemotePeer struct {
 	// The following variables must only be used atomically.
 	bytesReceived uint64
 	bytesSent     uint64
-	lastRecv      int64
 	lastSend      int64
 	connected     int32
 	disconnect    int32
@@ -288,7 +290,12 @@ func (p *RemotePeer) LastSend() time.Time {
 //
 // This function is safe for concurrent access.
 func (p *RemotePeer) LastRecv() time.Time {
-	return time.Unix(atomic.LoadInt64(&p.lastRecv), 0)
+	//return time.Unix(atomic.LoadInt64(&p.lastRecv), 0)
+	lastReceived := 0
+	if p.connReq != nil {
+		lastReceived = int(p.connReq.lastReceived)
+	}
+	return time.Unix(int64(lastReceived), 0)
 }
 
 // LocalAddr returns the local address of the connection.
@@ -316,23 +323,24 @@ func (p *RemotePeer) BytesReceived() uint64 {
 	return atomic.LoadUint64(&p.bytesReceived)
 }
 
-// OnConnDisonnected to be called when a connection is disconnected.
+// OnConnDisconnected to be called when a connection is disconnected.
 //
 // This function is safe for concurrent access.
-func (p *RemotePeer) OnConnDisonnected(connReq *ConnReq) {
-	log.Debugf("----------[RemotePeer]OnConnDisonnected conn[%d]: %s", connReq.id, connReq.RemoteAddr)
+func (p *RemotePeer) OnConnDisconnected(connReq *ConnReq) {
+	log.Debugf("----------[RemotePeer]OnConnDisconnected conn[%d]: %s", connReq.id, connReq.RemoteAddr)
 
 	// The connection is disconnected, set current connection to nil
 	atomic.StoreInt32(&p.connected, 0)
 	p.connReq = nil
 
-	// The connection is disconnected, will try to dail again
-	isSucceed := p.Connected()
-	if isSucceed == false {
+	// The connection is disconnected, will try to connect again
+	err := p.Connect()
+	if err != nil {
+		log.Debugf("----------[RemotePeer]Reconnect to validator peer failed: %v", err)
 		p.Disconnect()
 		p.cfg.RemoteValidatorListener.OnPeerDisconnected(p.addr)
 	}
-	log.Debugf("----------[RemotePeer]OnConnDisonnected End")
+	log.Debugf("----------[RemotePeer]OnConnDisconnected End")
 }
 
 // TimeConnected returns the time at which the peer connected.
@@ -347,54 +355,41 @@ func (p *RemotePeer) TimeConnected() time.Time {
 }
 
 func (p *RemotePeer) RequestValidatorId(validatorInfo *validatorinfo.ValidatorInfo) {
-	if p.connReq == nil || p.connReq.isInactive() {
-		return
-	}
-
-	p.connReq.SendCommand(validatorcommand.NewMsgGetInfo(validatorInfo))
+	p.SendCommand(validatorcommand.NewMsgGetInfo(validatorInfo))
 }
 
 func (p *RemotePeer) RequestGetValidators() error {
-	if p.connReq == nil || p.connReq.isInactive() {
-		err := errors.New("validator peer is inactive")
-		return err
-	}
-
-	p.connReq.SendCommand(validatorcommand.NewMsgGetValidators(p.cfg.LocalValidatorId))
+	p.SendCommand(validatorcommand.NewMsgGetValidators(p.cfg.LocalValidatorId))
 
 	return nil
 }
 
 func (p *RemotePeer) RequestGetEpoch() error {
-	if p.connReq == nil || p.connReq.isInactive() {
-		err := errors.New("validator peer is inactive")
-		return err
-	}
 
-	p.connReq.SendCommand(validatorcommand.NewMsgGetEpoch(p.cfg.LocalValidatorId))
+	p.SendCommand(validatorcommand.NewMsgGetEpoch(p.cfg.LocalValidatorId))
 
 	return nil
 }
 
 func (p *RemotePeer) RequestGetGenerator() error {
-	if p.connReq == nil || p.connReq.isInactive() {
-		err := errors.New("validator peer is inactive")
-		return err
-	}
 
-	p.connReq.SendCommand(validatorcommand.NewMsgGetGenerator(p.cfg.LocalValidatorId))
+	p.SendCommand(validatorcommand.NewMsgGetGenerator(p.cfg.LocalValidatorId))
 
 	return nil
 }
 
 func (p *RemotePeer) SendCommand(command validatorcommand.Message) error {
 	if p.connReq == nil || p.connReq.isInactive() {
-		err := errors.New("validator peer is inactive")
-		return err
+		log.Debugf("----------[RemotePeer]The peer is inactive, try to connect to validator: %s", p.String())
+		err := p.Connect()
+		if err != nil {
+			log.Debugf("----------[RemotePeer]Connect to validator peer failed: %v", err)
+			err = errors.New("validator peer is inactive")
+			return err
+		}
 	}
 
 	p.connReq.SendCommand(command)
-
 	return nil
 }
 
@@ -543,14 +538,15 @@ func (p *RemotePeer) Disconnect() error {
 
 // pingHandler periodically pings the peer.  It must be run as a goroutine.
 func (p *RemotePeer) pingHandler() {
-	pingTicker := time.NewTicker(pingInterval)
+	currentInterval := pingInterval
+	pingTicker := time.NewTicker(currentInterval)
 	defer pingTicker.Stop()
 
 out:
 	for {
 		select {
 		case <-pingTicker.C:
-			if p.connReq.isInactive() {
+			if p.Connected() == false {
 				// Current conn is inactive, will try to reconnect
 				p.reconnectTimes++
 
@@ -573,7 +569,48 @@ out:
 			}
 			log.Debugf("**********Sending \"ping\" to validator peer [%s] with nonce=%d", p, nonce)
 			//p.QueueMessage(validatorcommand.NewMsgPing(nonce), nil)
-			p.connReq.SendCommand(validatorcommand.NewMsgPing(nonce))
+			p.SendCommand(validatorcommand.NewMsgPing(nonce))
+			p.statsMtx.Lock()
+			p.lastPingNonce = nonce
+			p.lastPingTime = time.Now()
+			p.statsMtx.Unlock()
+
+			go func() {
+				// Wait for check pong after 1 second
+				time.Sleep(1 * time.Second)
+
+				p.statsMtx.RLock()
+				//lastpingMicros := p.lastPingMicros
+				nonce := p.lastPingNonce
+				p.statsMtx.RUnlock()
+
+				if nonce != 0 {
+					p.reconnectTimes++
+
+					if p.reconnectTimes > peerReconnectMaxTimes {
+						log.Errorf("***********Reconnect times too much, will disconnect the validator peer. %d", p.reconnectTimes)
+						p.Disconnect()
+						p.cfg.RemoteValidatorListener.OnPeerDisconnected(p.addr)
+						// The peer is disconnected, will exit ping handler
+						return
+					}
+
+					log.Errorf("**********last ping to validator peer [%s] with nonce=%d isnot received.", p, nonce)
+					if currentInterval != urgent_ping_interval {
+						currentInterval = urgent_ping_interval
+						// Last pong isnot received.
+						pingTicker.Reset(currentInterval)
+					}
+
+				} else {
+					log.Debugf("**********last ping to validator peer [%s] with nonce=%d has received.", p, nonce)
+					p.reconnectTimes = 0
+					if currentInterval != urgent_ping_interval {
+						currentInterval = pingInterval
+						pingTicker.Reset(currentInterval)
+					}
+				}
+			}()
 
 		case <-p.pingQuit:
 			break out
@@ -583,7 +620,7 @@ out:
 
 func (p *RemotePeer) listenCommand(connReq *ConnReq) {
 	for {
-		if connReq.isInactive() {
+		if connReq == nil || connReq.isInactive() {
 			// The connection is inactive, will exit listen handler
 			break
 		}
@@ -592,10 +629,11 @@ func (p *RemotePeer) listenCommand(connReq *ConnReq) {
 		if err != nil {
 			if err == io.EOF {
 				log.Errorf("----------[RemotePeer]conn[%d]: Connection closed by peer。", connReq.id)
-				connReq.Close()
 			} else {
 				log.Errorf("----------[RemotePeer]conn[%d]: Read message failed: %v", connReq.id, err)
 			}
+			// Read message error, disconnect conn.
+			connReq.Close()
 			return
 		}
 		log.Debugf("----------[RemotePeer]Received validator command [%v] from %d", command.Command(), connReq.id)
@@ -607,6 +645,10 @@ func (p *RemotePeer) listenCommand(connReq *ConnReq) {
 }
 
 func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Message) {
+	if connReq == nil {
+		// The connection is inactive, will exit listen handler
+		return
+	}
 	log.Debugf("----------[RemotePeer]handleCommand command [%v] from %s", command.Command(), connReq.RemoteAddr.String())
 	switch cmd := command.(type) {
 	case *validatorcommand.MsgGetInfo:
@@ -633,6 +675,13 @@ func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Me
 		cmdPong := validatorcommand.NewMsgPong(cmd.Nonce)
 		connReq.SendCommand(cmdPong)
 
+	case *validatorcommand.MsgPong:
+
+		log.Debugf("----------[RemotePeer]Receive pong command")
+		//cmd.LogCommandInfo(log)
+		// Handle command ping, it will response "pong" message
+		p.handlePongMsg(cmd, connReq)
+
 	case *validatorcommand.MsgGetValidators:
 		log.Debugf("----------[RemotePeer]Receive GetValidators command, it's invalid command for remote peer")
 		//cmd.LogCommandInfo(log)
@@ -649,17 +698,45 @@ func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Me
 
 	case *validatorcommand.MsgGenerator:
 		log.Debugf("----------[RemotePeer]Receive Generator command, will notify validatorManager for sync Generator")
-		cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo(log)
 		p.HandleGeneratorResponse(cmd, connReq)
 
 	case *validatorcommand.MsgNewEpoch:
-		log.Debugf("----------[LocalPeer]Receive MsgReqEpoch command, will response new epoch info to remote peer with MsgNewEpoch command")
+		log.Debugf("----------[RemotePeer]Receive MsgNewEpoch command, will  notify validatorManager for handle MsgNewEpoch command")
 		//cmd.LogCommandInfo(log)
 		p.HandleNewEpoch(cmd, connReq)
+
+	case *validatorcommand.MsgConfirmDelEpoch:
+		log.Debugf("----------[RemotePeer]Receive MsgConfirmDelEpoch command, will  notify validatorManager for handle MsgConfirmDelEpoch command")
+		//cmd.LogCommandInfo(log)
+		p.HandleConfirmDelEpoch(cmd, connReq)
 
 	default:
 		log.Errorf("----------[RemotePeer]Not to handle command [%v] from %d", command.Command(), connReq.id)
 	}
+}
+
+// handlePongMsg is invoked when a peer receives a pong bitcoin message.  It
+// updates the ping statistics as required for recent clients (protocol
+// version > BIP0031Version).  There is no effect for older clients or when a
+// ping was not previously sent.
+func (p *RemotePeer) handlePongMsg(msg *validatorcommand.MsgPong, connReq *ConnReq) {
+	// Arguably we could use a buffered channel here sending data
+	// in a fifo manner whenever we send a ping, or a list keeping track of
+	// the times of each ping. For now we just make a best effort and
+	// only record stats if it was for the last ping sent. Any preceding
+	// and overlapping pings will be ignored. It is unlikely to occur
+	// without large usage of the ping rpc call since we ping infrequently
+	// enough that if they overlap we would have timed out the peer.
+	p.statsMtx.Lock()
+	log.Debugf("----------[RemotePeer]The pong is response from %s, the nonce: %d, last ping nonce: %d", connReq.RemoteAddr.String(), msg.Nonce, p.lastPingNonce)
+
+	if p.lastPingNonce != 0 && msg.Nonce == p.lastPingNonce {
+		p.lastPingMicros = time.Since(p.lastPingTime).Nanoseconds()
+		p.lastPingMicros /= 1000 // convert to usec.
+		p.lastPingNonce = 0
+	}
+	p.statsMtx.Unlock()
 }
 
 func (p *RemotePeer) HandleRemotePeerInfo(peerInfo *validatorcommand.MsgPeerInfo, connReq *ConnReq) {
@@ -730,10 +807,11 @@ func (p *RemotePeer) HandleNewEpoch(newEpochCmd *validatorcommand.MsgNewEpoch, c
 	// 	First check the remote validator is valid, then notify the validator
 	log.Debugf("----------[RemotePeer]The epoch list is response from  validatorvalidator ID: %d", p.cfg.RemoteValidatorId)
 	newEpoch := &epoch.Epoch{
-		EpochIndex:   newEpochCmd.EpochIndex,
-		CreateHeight: newEpochCmd.CreateHeight,
-		CreateTime:   newEpochCmd.CreateTime,
-		ItemList:     make([]*epoch.EpochItem, 0),
+		EpochIndex:      newEpochCmd.EpochIndex,
+		CreateHeight:    newEpochCmd.CreateHeight,
+		CreateTime:      newEpochCmd.CreateTime,
+		ItemList:        make([]*epoch.EpochItem, 0),
+		CurGeneratorPos: epoch.Pos_Epoch_NotStarted,
 	}
 	for _, epochItem := range newEpochCmd.ItemList {
 		validatorItem := &epoch.EpochItem{
@@ -746,4 +824,8 @@ func (p *RemotePeer) HandleNewEpoch(newEpochCmd *validatorcommand.MsgNewEpoch, c
 	}
 
 	p.cfg.RemoteValidatorListener.OnNewEpoch(newEpochCmd.ValidatorId, newEpoch)
+}
+
+func (p *RemotePeer) HandleConfirmDelEpoch(confirmDelEpochMemCmd *validatorcommand.MsgConfirmDelEpoch, connReq *ConnReq) {
+	p.cfg.RemoteValidatorListener.OnConfirmedDelEpochMember(confirmDelEpochMemCmd.DelEpochMember)
 }

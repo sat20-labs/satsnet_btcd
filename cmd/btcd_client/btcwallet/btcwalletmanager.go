@@ -555,10 +555,10 @@ func getBTCUtoxs1(address string) (map[wire.OutPoint]*utxo, error) {
 	op.Hash = *Hash
 	op.Index = 0
 	utxo := &utxo{
-		value:      1000000,
-		keyIndex:   0,
-		pkScript:   selfAddrScript,
-		satsRanges: []wire.SatsRange{{Start: 2000000, Size: 500000}, {Start: 5000000, Size: 500000}},
+		value:    1000000,
+		keyIndex: 0,
+		pkScript: selfAddrScript,
+		txAssets: wire.TxAssets{},
 	}
 	utxos[*op] = utxo
 
@@ -670,7 +670,7 @@ func getUtxosFromBlock(pkScxript []byte, height uint32) (map[wire.OutPoint]*utxo
 					value:          btcutil.Amount(out.Value),
 					keyIndex:       uint32(index),
 					pkScript:       out.PkScript,
-					satsRanges:     out.SatsRanges,
+					txAssets:       out.Assets,
 					maturityHeight: int32(height),
 				}
 				utxos[*op] = utxo

@@ -1,0 +1,102 @@
+// Copyright (c) 2013-2016 The btcsuite developers
+// Use of this source code is governed by an ISC
+// license that can be found in the LICENSE file.
+
+package validatorcommand
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+
+	"github.com/btcsuite/btclog"
+)
+
+const (
+	CmdDelEpochMemberTarget_Consult = 1 // The command target is consult
+	CmdDelEpochMemberTarget_Confirm = 1 // The command target is notify for confirmed the epoch member is deleted
+)
+
+// MsgReqDelEpochMember implements the Message interface and get current generator
+// message. The remote peer must then respond with current generator
+// message of its own containing the negotiated values followed by a verack
+// message (MsgGenerator).
+type MsgReqDelEpochMember struct {
+	// Request validator id
+	ValidatorId    uint64
+	Target         uint32
+	DelValidatorId uint64 // The validator id to be deleted
+	DelCode        uint32 // The reason code for delete epoch member
+	EpochIndex     uint32 // The epoch index for confirm epoch member delete
+}
+
+// BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
+// The version message is special in that the protocol version hasn't been
+// negotiated yet.  As a result, the pver field is ignored and any fields which
+// are added in new versions are optional.  This also mean that r must be a
+// *bytes.Buffer so the number of remaining bytes can be ascertained.
+//
+// This is part of the Message interface implementation.
+func (msg *MsgReqDelEpochMember) BtcDecode(r io.Reader, pver uint32) error {
+	buf, ok := r.(*bytes.Buffer)
+	if !ok {
+		return fmt.Errorf("MsgReqDelEpochMember.BtcDecode reader is not a " +
+			"*bytes.Buffer")
+	}
+
+	err := readElements(buf, &msg.ValidatorId, &msg.Target, &msg.DelValidatorId, &msg.DelCode, &msg.EpochIndex)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
+// This is part of the Message interface implementation.
+func (msg *MsgReqDelEpochMember) BtcEncode(w io.Writer, pver uint32) error {
+	err := writeElements(w, msg.ValidatorId, msg.Target, msg.DelValidatorId, msg.DelCode, msg.EpochIndex)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Command returns the protocol command string for the message.  This is part
+// of the Message interface implementation.
+func (msg *MsgReqDelEpochMember) Command() string {
+	return CmdDelEpochMem
+}
+
+// MaxPayloadLength returns the maximum length the payload can be for the
+// receiver.  This is part of the Message interface implementation.
+func (msg *MsgReqDelEpochMember) MaxPayloadLength(pver uint32) uint32 {
+	// validatorId 8 bytes + DelValidatorId 8 bytes + DelCode 4 bytes + EpochIndex 4bytes
+	return 24
+}
+
+func (msg *MsgReqDelEpochMember) LogCommandInfo(log btclog.Logger) {
+	log.Debugf("Command MsgReqDelEpochMember:")
+	log.Debugf("ValidatorId: %d", msg.ValidatorId)
+	log.Debugf("DelValidatorId: %d", msg.DelValidatorId)
+	log.Debugf("DelCode: %d", msg.DelCode)
+	log.Debugf("EpochIndex: %d", msg.EpochIndex)
+}
+
+// NewMsgReqDelEpochMember returns a new bitcoin version message that conforms to the
+// Message interface using the passed parameters and defaults for the remaining
+// fields.
+func NewMsgReqDelEpochMember(validatorId uint64, target uint32, delValidatorId uint64, delCode uint32, epochIndex uint32) *MsgReqDelEpochMember {
+
+	// Limit the timestamp to one second precision since the protocol
+	// doesn't support better.
+	return &MsgReqDelEpochMember{
+		ValidatorId:    validatorId,
+		Target:         target,
+		DelValidatorId: delValidatorId,
+		DelCode:        delCode,
+		EpochIndex:     epochIndex,
+	}
+
+}

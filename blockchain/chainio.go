@@ -251,8 +251,8 @@ type SpentTxOut struct {
 	// Amount is the amount of the output.
 	Amount int64
 
-	// SatsRanges is the Sats Ranges of the output.
-	SatsRanges []wire.SatsRange
+	// Assets is the Tx Assets of the output.
+	Assets wire.TxAssets
 
 	// PkScript is the public key script for the output.
 	PkScript []byte
@@ -312,7 +312,7 @@ func spentTxOutSerializeSize(stxo *SpentTxOut) int {
 		// so this is required for backwards compat.
 		size += serializeSizeVLQ(0)
 	}
-	return size + compressedTxOutSize(uint64(stxo.Amount), stxo.SatsRanges, stxo.PkScript)
+	return size + compressedTxOutSize(uint64(stxo.Amount), stxo.Assets, stxo.PkScript)
 }
 
 // putSpentTxOut serializes the passed stxo according to the format described
@@ -328,7 +328,7 @@ func putSpentTxOut(target []byte, stxo *SpentTxOut) int {
 		// so this is required for backwards compat.
 		offset += putVLQ(target[offset:], 0)
 	}
-	return offset + putCompressedTxOut(target[offset:], uint64(stxo.Amount), stxo.SatsRanges,
+	return offset + putCompressedTxOut(target[offset:], uint64(stxo.Amount), stxo.Assets,
 		stxo.PkScript)
 }
 
@@ -367,7 +367,7 @@ func decodeSpentTxOut(serialized []byte, stxo *SpentTxOut) (int, error) {
 	}
 
 	// Decode the compressed txout.
-	amount, satsRanges, pkScript, bytesRead, err := decodeCompressedTxOut(
+	amount, assets, pkScript, bytesRead, err := decodeCompressedTxOut(
 		serialized[offset:])
 	offset += bytesRead
 	if err != nil {
@@ -375,7 +375,7 @@ func decodeSpentTxOut(serialized []byte, stxo *SpentTxOut) (int, error) {
 			"txout: %v", err))
 	}
 	stxo.Amount = int64(amount)
-	stxo.SatsRanges = satsRanges
+	stxo.Assets = assets
 	stxo.PkScript = pkScript
 	return offset, nil
 }
@@ -670,13 +670,13 @@ func serializeUtxoEntry(entry *UtxoEntry) ([]byte, error) {
 
 	// Calculate the size needed to serialize the entry.
 	size := serializeSizeVLQ(headerCode) +
-		compressedTxOutSize(uint64(entry.Amount()), entry.satsRanges, entry.PkScript())
+		compressedTxOutSize(uint64(entry.Amount()), entry.txAssets, entry.PkScript())
 
 	// Serialize the header code followed by the compressed unspent
 	// transaction output.
 	serialized := make([]byte, size)
 	offset := putVLQ(serialized, headerCode)
-	offset += putCompressedTxOut(serialized[offset:], uint64(entry.Amount()), entry.satsRanges,
+	offset += putCompressedTxOut(serialized[offset:], uint64(entry.Amount()), entry.txAssets,
 		entry.PkScript())
 
 	return serialized, nil
@@ -700,7 +700,7 @@ func deserializeUtxoEntry(serialized []byte) (*UtxoEntry, error) {
 	blockHeight := int32(code >> 1)
 
 	// Decode the compressed unspent transaction output.
-	amount, satsRanges, pkScript, _, err := decodeCompressedTxOut(serialized[offset:])
+	amount, txAssets, pkScript, _, err := decodeCompressedTxOut(serialized[offset:])
 	if err != nil {
 		return nil, errDeserialize(fmt.Sprintf("unable to decode "+
 			"utxo: %v", err))
@@ -708,7 +708,7 @@ func deserializeUtxoEntry(serialized []byte) (*UtxoEntry, error) {
 
 	entry := &UtxoEntry{
 		amount:      int64(amount),
-		satsRanges:  satsRanges,
+		txAssets:    txAssets,
 		pkScript:    pkScript,
 		blockHeight: blockHeight,
 		packedFlags: 0,
@@ -871,7 +871,7 @@ func dbPutUtxoEntry(utxoBucket database.Bucket, outpoint wire.OutPoint,
 	log.Debugf("utxoBucket Put: %x, %x", key, serialized)
 	log.Debugf("utxoBucket pkScript: %x", entry.pkScript)
 	log.Debugf("utxoBucket Amount: %d", entry.amount)
-	log.Debugf("utxoBucket RangesSize: %d", entry.satsRanges.GetSize())
+	log.Debugf("utxoBucket TxAssets: %x", entry.txAssets)
 	log.Debug("***********************************************")
 	err = utxoBucket.Put(*key, serialized)
 	if err != nil {

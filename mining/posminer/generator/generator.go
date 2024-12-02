@@ -3,7 +3,6 @@ package generator
 import (
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -79,7 +78,7 @@ func (g *Generator) SetToken(token string) {
 func (g *Generator) VerifyToken(pubKey []byte) bool {
 	signatureBytes, err := base64.StdEncoding.DecodeString(g.Token)
 	if err != nil {
-		log.Debugf("OnGeneratorUpdated: Invalid generator token, ignore it.")
+		log.Debugf("[Generator]VerifyToken: Invalid generator token, ignore it.")
 		return false
 	}
 
@@ -91,28 +90,20 @@ func (g *Generator) VerifyToken(pubKey []byte) bool {
 	// signature, err := btcec.ParseDERSignature(signatureBytes)
 	signature, err := ecdsa.ParseDERSignature(signatureBytes)
 	if err != nil {
-		log.Debugf("Failed to parse signature: %v", err)
+		log.Debugf("[Generator]VerifyToken:Failed to parse signature: %v", err)
 		return false
 	}
 
 	// 使用公钥验证签名
 	valid := signature.Verify(tokenData, publicKey)
 	if valid {
-		log.Debugf("Signature is valid.")
+		log.Debugf("[Generator]VerifyToken:Signature is valid.")
 		return true
 	} else {
-		log.Debugf("Signature is invalid.")
+		log.Debugf("[Generator]VerifyToken:Signature is invalid.")
 		return false
 	}
 
-}
-
-func (g *Generator) GetNextGeneratorTokenData(handover *GeneratorHandOver) string {
-
-	// Next Generator Token Data format: "satsnet:handovertype:validatorid:height:generatorid:timestamp"
-	tokenData := fmt.Sprintf("satsnet:%d:%d:%d:%d:%d", handover.HandOverType, handover.ValidatorId, handover.Height, handover.GeneratorId, handover.Timestamp)
-	tokenSource := sha256.Sum256([]byte(tokenData))
-	return hex.EncodeToString(tokenSource[:])
 }
 
 func (g *Generator) SetHandOverTime(handOverTime time.Time) error {
@@ -120,7 +111,8 @@ func (g *Generator) SetHandOverTime(handOverTime time.Time) error {
 	now := time.Now()
 	minerTime := handOverTime.Add(MinerInterval)
 	if minerTime.After(now) == false {
-		return fmt.Errorf("miner time is before now")
+		//		return fmt.Errorf("miner time is before now")
+		minerTime = now.Add(MinerInterval)
 	}
 	g.MinerTime = minerTime
 	go g.minerHandler()
@@ -173,4 +165,43 @@ func (g *Generator) minerHandler() {
 		log.Debugf("[Generator]minerHandler done .")
 		return
 	}
+}
+
+func (gho *GeneratorHandOver) GetTokenData() []byte {
+
+	// Next Generator Token Data format: "satsnet:handovertype:validatorid:height:generatorid:timestamp"
+	tokenData := fmt.Sprintf("satsnet:%d:%d:%d:%d:%d", gho.HandOverType, gho.ValidatorId, gho.Height, gho.GeneratorId, gho.Timestamp)
+	tokenSource := sha256.Sum256([]byte(tokenData))
+	return tokenSource[:]
+}
+
+func (gho *GeneratorHandOver) VerifyToken(pubKey []byte) bool {
+	signatureBytes, err := base64.StdEncoding.DecodeString(gho.Token)
+	if err != nil {
+		log.Debugf("[Generator]VerifyToken: Invalid generator token, ignore it.")
+		return false
+	}
+
+	tokenData := gho.GetTokenData()
+
+	publicKey, err := secp256k1.ParsePubKey(pubKey[:])
+
+	// 解析签名
+	// signature, err := btcec.ParseDERSignature(signatureBytes)
+	signature, err := ecdsa.ParseDERSignature(signatureBytes)
+	if err != nil {
+		log.Debugf("[Generator]VerifyToken:Failed to parse signature: %v", err)
+		return false
+	}
+
+	// 使用公钥验证签名
+	valid := signature.Verify(tokenData, publicKey)
+	if valid {
+		log.Debugf("[Generator]VerifyToken:Signature is valid.")
+		return true
+	} else {
+		log.Debugf("[Generator]VerifyToken:Signature is invalid.")
+		return false
+	}
+
 }

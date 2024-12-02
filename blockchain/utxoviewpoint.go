@@ -49,7 +49,7 @@ type UtxoEntry struct {
 	// lot of these in memory, so a few extra bytes of padding adds up.
 
 	amount      int64
-	satsRanges  wire.TxRanges
+	txAssets    wire.TxAssets
 	pkScript    []byte // The public key script for the output.
 	blockHeight int32  // Height of block containing tx.
 
@@ -116,8 +116,8 @@ func (entry *UtxoEntry) Amount() int64 {
 	return entry.amount
 }
 
-func (entry *UtxoEntry) SatsRanges() wire.TxRanges {
-	return entry.satsRanges
+func (entry *UtxoEntry) TxAssets() wire.TxAssets {
+	return entry.txAssets
 }
 
 // PkScript returns the public key script for the output.
@@ -136,7 +136,7 @@ func (entry *UtxoEntry) Clone() *UtxoEntry {
 		pkScript:    entry.pkScript,
 		blockHeight: entry.blockHeight,
 		packedFlags: entry.packedFlags,
-		satsRanges:  entry.satsRanges,
+		txAssets:    entry.txAssets,
 	}
 }
 
@@ -200,9 +200,9 @@ func (view *UtxoViewpoint) FetchPrevOutput(op wire.OutPoint) *wire.TxOut {
 	}
 
 	return &wire.TxOut{
-		Value:      prevOut.amount,
-		SatsRanges: prevOut.satsRanges,
-		PkScript:   prevOut.PkScript(),
+		Value:    prevOut.amount,
+		Assets:   prevOut.txAssets,
+		PkScript: prevOut.PkScript(),
 	}
 }
 
@@ -721,8 +721,8 @@ func (b *BlockChain) FetchUtxoEntry(outpoint wire.OutPoint) (*UtxoEntry, error) 
 // so the returned view can be examined for duplicate transactions.
 //
 // This function is safe for concurrent access however the returned view is NOT.
-func (b *BlockChain) FetchTxSatsRanges(msgTx *wire.MsgTx) ([]wire.SatsRange, error) {
-	satsRanges := make([]wire.SatsRange, 0)
+func (b *BlockChain) FetchTxAssets(msgTx *wire.MsgTx) (wire.TxAssets, error) {
+	txAssets := wire.TxAssets{}
 
-	return satsRanges, nil
+	return txAssets, nil
 }

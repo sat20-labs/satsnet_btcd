@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	// These constants are used by the DNS seed code
-	DefaultPort = 14829
+// These constants are used by the DNS seed code
+// DefaultPort = 14829
 )
 
 // SeedFromDNS uses DNS seeding to populate the address manager with peers.
@@ -34,6 +34,7 @@ func (vm *ValidatorManager) getSeed(chainParams *chaincfg.Params) ([]net.Addr, e
 func (vm *ValidatorManager) getLocalAddr() ([]net.Addr, error) {
 	localAddrsList := make([]net.Addr, 0)
 	addrs, _ := net.InterfaceAddrs()
+	port := vm.GetValidatorPort()
 
 	if addrs != nil && len(addrs) > 0 {
 		for _, addr := range addrs {
@@ -41,7 +42,7 @@ func (vm *ValidatorManager) getLocalAddr() ([]net.Addr, error) {
 				if ipnet.IP.To4() != nil {
 					newAddr := &net.TCPAddr{
 						IP:   ipnet.IP,
-						Port: DefaultPort,
+						Port: port,
 					}
 					localAddrsList = append(localAddrsList, newAddr)
 				}
@@ -53,7 +54,7 @@ func (vm *ValidatorManager) getLocalAddr() ([]net.Addr, error) {
 	addr := &net.TCPAddr{
 		IP: net.IP{
 			127, 0, 0, 1},
-		Port: DefaultPort,
+		Port: port,
 	}
 	localAddrsList = append(localAddrsList, addr)
 	return addrs, nil

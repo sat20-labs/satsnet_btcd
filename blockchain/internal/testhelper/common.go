@@ -34,13 +34,13 @@ func CreateSpendTx(spend *SpendableOut, fee btcutil.Amount) *wire.MsgTx {
 		Sequence:         wire.MaxTxInSequenceNum,
 		SignatureScript:  nil,
 	})
-	spendTx.AddTxOut(wire.NewTxOut(int64(spend.Amount-fee), []wire.SatsRange{},
+	spendTx.AddTxOut(wire.NewTxOut(int64(spend.Amount-fee), wire.TxAssets{},
 		OpTrueScript))
 	opRetScript, err := UniqueOpReturnScript()
 	if err != nil {
 		panic(err)
 	}
-	spendTx.AddTxOut(wire.NewTxOut(0, []wire.SatsRange{}, opRetScript))
+	spendTx.AddTxOut(wire.NewTxOut(0, wire.TxAssets{}, opRetScript))
 
 	return spendTx
 }
