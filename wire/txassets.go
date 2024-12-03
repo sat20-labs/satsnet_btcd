@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // //////////////////////////////////////////////////////////////
@@ -12,6 +13,18 @@ type AssetName struct {
 	Protocol string // 必填，比如ordx, ordinals, brc20，runes，eth，等等
 	Type     string // 可选，默认是ft，参考indexer的定义
 	Ticker   string // 如果Type是nft类型，ticker是合集名称#铭文序号（或者聪序号）
+}
+
+func NewAssetNameFromString(name string) *AssetName {
+	parts := strings.Split(name, ":")
+	if len(parts) != 3 {
+		return nil
+	}
+	return &AssetName{
+		Protocol: parts[0],
+		Type: parts[1],
+		Ticker: parts[2],
+	}
 }
 
 func (p *AssetName) String() string {
