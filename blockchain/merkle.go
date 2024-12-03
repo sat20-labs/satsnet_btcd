@@ -13,6 +13,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (
@@ -183,8 +184,54 @@ func BuildMerkleTreeStore(transactions []*btcutil.Tx, witness bool) []*chainhash
 // also presents an additional case wherein the wtxid of the coinbase transaction
 // is the zeroHash.
 func CalcMerkleRoot(transactions []*btcutil.Tx, witness bool) chainhash.Hash {
+	log.Debugf("CalcMerkleRoot: %d transactions, witness: %v", len(transactions), witness)
+	for i := range transactions {
+		tx := transactions[i]
+		logMsgTx(tx.MsgTx())
+
+		rawBytes := tx.GetRawBytes()
+		if rawBytes == nil {
+			log.Debugf("tx rawBytes is nil")
+		} else {
+			log.Debugf("tx rawBytes: %x", rawBytes)
+		}
+
+		log.Debugf("CalcMerkleRoot Tx (%d) hash: %s", i, tx.Hash().String())
+		log.Debugf("CalcMerkleRoot Tx (%d) witness hash: %s", i, tx.WitnessHash().String())
+	}
 	s := newRollingMerkleTreeStore(uint64(len(transactions)))
-	return s.calcMerkleRoot(transactions, witness)
+	merkleHash := s.calcMerkleRoot(transactions, witness)
+
+	log.Debugf("merkleHash: %s", merkleHash.String())
+	return merkleHash
+}
+
+func logMsgTx(tx *wire.MsgTx) {
+	log.Debugf("tx:%s", tx.TxHash().String())
+	log.Debugf("txin: %d", len(tx.TxIn))
+	for index, txin := range tx.TxIn {
+		log.Debugf("		txin index: %d", index)
+		log.Debugf("		txin utxo txid: %s", txin.PreviousOutPoint.Hash.String())
+		log.Debugf("		txin utxo index: %d", txin.PreviousOutPoint.Index)
+		log.Debugf("		txin utxo Wintness: ")
+		log.Debugf("		{")
+		for _, witness := range txin.Witness {
+			log.Debugf("		%x", witness)
+		}
+		log.Debugf("		}")
+		log.Debugf("		txin SignatureScript: %x", txin.SignatureScript)
+		log.Debugf("		---------------------------------")
+	}
+
+	log.Debugf("txout: %d", len(tx.TxOut))
+	for index, txout := range tx.TxOut {
+		log.Debugf("		txout index: %d", index)
+		log.Debugf("		txout pkscript: %x", txout.PkScript)
+		log.Debugf("		txout value: %d", txout.Value)
+		logTxAssets("       Tx Assets", txout.Assets)
+		log.Debugf("		---------------------------------")
+	}
+
 }
 
 // ExtractWitnessCommitment attempts to locate, and return the witness

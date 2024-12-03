@@ -494,17 +494,7 @@ func (wallet *BTCWallet) refreshBTCAddressDetails(details *BTCAddressDetails) er
 	for op, utxo := range utxos {
 		fmt.Println("    utxo: ", op.String())
 		fmt.Println("    Value: ", utxo.value)
-		fmt.Println("    SatsRanges: ")
-		fmt.Printf("TxAssets count: %d \n", len(utxo.txAssets))
-		for index, asset := range utxo.txAssets {
-			fmt.Println("		---------------------------------")
-			fmt.Printf("			TxAssets index: %d\n", index)
-			fmt.Printf("			TxAssets Name Protocol: %d\n", asset.Name.Protocol)
-			fmt.Printf("			TxAssets Name Type: %d\n", asset.Name.Type)
-			fmt.Printf("			TxAssets Name Ticker: %d\n", asset.Name.Ticker)
-			fmt.Printf("			TxAssets Amount: %d\n", asset.Amount)
-			fmt.Printf("			TxAssets BindingSat: %d\n", asset.BindingSat)
-		}
+		logTxAssets("    Utxo Assets ", utxo.txAssets)
 		fmt.Println("    ----------------------------------------------------------: ")
 	}
 
@@ -2766,9 +2756,9 @@ func logTxAssets(desc string, assets wire.TxAssets) {
 	for index, asset := range assets {
 		logLine("		---------------------------------")
 		logLine("			TxAssets index: %d", index)
-		logLine("			TxAssets Name Protocol: %d", asset.Name.Protocol)
-		logLine("			TxAssets Name Type: %d", asset.Name.Type)
-		logLine("			TxAssets Name Ticker: %d", asset.Name.Ticker)
+		logLine("			TxAssets Name Protocol: %s", asset.Name.Protocol)
+		logLine("			TxAssets Name Type: %s", asset.Name.Type)
+		logLine("			TxAssets Name Ticker: %s", asset.Name.Ticker)
 		logLine("			TxAssets Amount: %d", asset.Amount)
 		logLine("			TxAssets BindingSat: %d", asset.BindingSat)
 	}

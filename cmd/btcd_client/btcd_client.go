@@ -18,6 +18,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
+	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 const (
@@ -152,6 +153,7 @@ func main() {
 		} else if method == "anchortx" {
 			lockedTTxid := ""
 			address := ""
+			assets := wire.TxAssets{}
 			if length >= 2 {
 				lockedTTxid = words[1]
 			}
@@ -165,7 +167,29 @@ func main() {
 					amount = newAmout
 				}
 			}
-			testAnchorTx(lockedTTxid, address, amount)
+
+			if length >= 5 {
+				assetProtocol := "ordx"
+				assetsType := "ft"
+				assetsTicker := words[4]
+				assetAmount := amount
+				if length >= 6 {
+					newAssetsAmout, _ := strconv.ParseInt(words[5], 10, 64)
+					if newAssetsAmout != 0 {
+						assetAmount = newAssetsAmout
+					}
+				}
+				bindingsSats := uint16(0)
+				if length >= 7 {
+					newBindingsSats, _ := strconv.ParseInt(words[6], 10, 16)
+					if newBindingsSats != 0 {
+						bindingsSats = uint16(newBindingsSats)
+					}
+				}
+				asset := wire.AssetInfo{Name: wire.AssetName{Protocol: assetProtocol, Type: assetsType, Ticker: assetsTicker}, Amount: assetAmount, BindingSat: bindingsSats}
+				assets = append(assets, asset)
+			}
+			testAnchorTx(lockedTTxid, address, amount, assets)
 			continue
 		} else if method == "parseanchorscript" {
 			script := ""

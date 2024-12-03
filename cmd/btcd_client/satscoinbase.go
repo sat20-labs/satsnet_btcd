@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"math/rand"
 
@@ -53,7 +52,7 @@ func CreateAnchorTx(txid string, addr string, amount int64, txAssets wire.TxAsse
 		panic(err)
 	}
 
-	anchorScript, _ = hex.DecodeString("4034613439313566643336366137326531613830333535616438303336333131623539623761346539383632323965323863343534396137613833366231306139475221023c3a8c93daccdd35fd2687aa2fbe67eaabcb89fb9dea5062d19618e6b08be8f121030069982b2833b615c7b8d56c4ef85fb489ae76549a6251765ad4edae77298e2252ae02204e0813ba76fbd0dd7140")
+	//	anchorScript, _ = hex.DecodeString("4034613439313566643336366137326531613830333535616438303336333131623539623761346539383632323965323863343534396137613833366231306139475221023c3a8c93daccdd35fd2687aa2fbe67eaabcb89fb9dea5062d19618e6b08be8f121030069982b2833b615c7b8d56c4ef85fb489ae76549a6251765ad4edae77298e2252ae02204e0813ba76fbd0dd7140")
 
 	tx := wire.NewMsgTx(1)
 	tx.AddTxIn(&wire.TxIn{
@@ -151,7 +150,7 @@ func AddrToPkScript(addr string, netParams *chaincfg.Params) ([]byte, error) {
 	return txscript.PayToAddrScript(address)
 }
 
-func testAnchorTx(lockedTxid string, address string, amount int64) {
+func testAnchorTx(lockedTxid string, address string, amount int64, assets wire.TxAssets) {
 	fmt.Printf("testAnchorTx...\n")
 	TxidDefault := "b274b49e885fdd87ea2870930297d2c6ecee7cc62fe8e67b21b452fb348c441e"
 	//address := "tb1prm9fflqhtezag25s06t740e7ca4rydm9x5mucrc3lt6dlkxquyqq02k2cf"
@@ -183,7 +182,7 @@ func testAnchorTx(lockedTxid string, address string, amount int64) {
 
 	fmt.Printf("Anchor tx address is : %s.\n", address)
 
-	anchorTx := CreateAnchorTx(lockedTxid, address, amount, wire.TxAssets{})
+	anchorTx := CreateAnchorTx(lockedTxid, address, amount, assets)
 
 	btcwallet.LogMsgTx(anchorTx)
 

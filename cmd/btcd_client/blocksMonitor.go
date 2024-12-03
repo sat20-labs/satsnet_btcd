@@ -58,16 +58,19 @@ func parseBlock(height int64) error {
 	log.Debugf("    MerkleRoot Hash: %s", block.Header.MerkleRoot.String())
 	log.Debugf("    Block Time: %s", block.Header.Timestamp.Format(time.DateTime))
 	log.Debugf("    Block Bits: 0x%x", block.Header.Bits)
-	log.Debugf("    Block Nonce: 0x%x", block.Header.Nonce)
+	log.Debugf("    Block Nonce: %d", block.Header.Nonce)
 	log.Debugf("-------------------------  End  --------------------------")
 
 	transactions := block.Transactions
 	for index, tx := range transactions {
 
+		log.Debugf("-------------------------------------------------------")
+		log.Debugf("-------------------------------------------------------")
 		log.Debugf("tx: %d", index)
 		txid := tx.TxHash().String()
 		log.Debugf("txid: %s ", txid)
 
+		log.Debugf("-------------------------------------------------------")
 		//txInBlock(tx)
 		log.Debugf("------------TxIn-------------")
 		for _, in := range tx.TxIn {
@@ -89,6 +92,8 @@ func parseBlock(height int64) error {
 
 			NewUtxo(out.PkScript, assets)
 		}
+		log.Debugf("-------------------------------------------------------")
+		log.Debugf("")
 	}
 
 	log.Debugf("Parse Block done.")
@@ -134,6 +139,8 @@ func BlockMoniterThread() {
 			for {
 				blocks++
 				// Check the block height of btc is changed
+				log.Debugf("************************************************************************")
+				log.Debugf("************************************************************************")
 				log.Debugf("current Block: %d, Synced Block: %d", currentHeight, syncedBlock)
 				if currentHeight <= syncedBlock {
 					// no new block
@@ -151,6 +158,8 @@ func BlockMoniterThread() {
 					// max check 10 blocks in one time
 					break
 				}
+				log.Debugf("************************************************************************")
+				log.Debugf("")
 			}
 		}
 	}
@@ -172,13 +181,13 @@ func NewUtxo(pkScript []byte, assets UtxoAssets) {
 	log.Debugf("utxo:%s, Value:%d", assets.Utxo, assets.Value)
 	log.Debugf("TxAssets count: %d", len(assets.Assets))
 	for index, asset := range assets.Assets {
-		log.Debugf("		---------------------------------")
-		log.Debugf("			TxAssets index: %d", index)
-		log.Debugf("			TxAssets Name Protocol: %d", asset.Name.Protocol)
-		log.Debugf("			TxAssets Name Type: %d", asset.Name.Type)
-		log.Debugf("			TxAssets Name Ticker: %d", asset.Name.Ticker)
-		log.Debugf("			TxAssets Amount: %d", asset.Amount)
-		log.Debugf("			TxAssets BindingSat: %d", asset.BindingSat)
+		log.Debugf("---------------------------------")
+		log.Debugf("	TxAssets index: %d", index)
+		log.Debugf("	TxAssets Name Protocol: %s", asset.Name.Protocol)
+		log.Debugf("	TxAssets Name Type: %s", asset.Name.Type)
+		log.Debugf("	TxAssets Name Ticker: %s", asset.Name.Ticker)
+		log.Debugf("	TxAssets Amount: %d", asset.Amount)
+		log.Debugf("	TxAssets BindingSat: %d", asset.BindingSat)
 	}
 	log.Debugf("----------------------------------")
 }
@@ -199,7 +208,9 @@ func ShowBlocks(start, end int64) {
 
 	for block := start; block <= end; block++ {
 		// Check the block height of btc is changed
-		log.Debugf("current Block: %d, Shows Block: %d", currentHeight, block)
+		log.Debugf("************************************************************************")
+		log.Debugf("************************************************************************")
+		log.Debugf("Block height: %d,  Shows Block height: %d", currentHeight, block)
 		if block > currentHeight {
 			// no more block
 			break
@@ -209,8 +220,9 @@ func ShowBlocks(start, end int64) {
 			log.Errorf("parseBlock failed: %s", err)
 			break
 		}
-		log.Debugf("Show Block: %d completed.", block)
-		log.Debugf(" -----------------------------------------------------------------")
+		//log.Debugf("Show Block: %d completed.", block)
+		log.Debugf("************************************************************************")
+		log.Debugf("")
 	}
 }
 

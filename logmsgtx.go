@@ -58,9 +58,9 @@ func logTxAssets(desc string, assets wire.TxAssets) {
 	for index, asset := range assets {
 		rpcsLog.Debugf("		---------------------------------")
 		rpcsLog.Debugf("			TxAssets index: %d", index)
-		rpcsLog.Debugf("			TxAssets Name Protocol: %d", asset.Name.Protocol)
-		rpcsLog.Debugf("			TxAssets Name Type: %d", asset.Name.Type)
-		rpcsLog.Debugf("			TxAssets Name Ticker: %d", asset.Name.Ticker)
+		rpcsLog.Debugf("			TxAssets Name Protocol: %s", asset.Name.Protocol)
+		rpcsLog.Debugf("			TxAssets Name Type: %s", asset.Name.Type)
+		rpcsLog.Debugf("			TxAssets Name Ticker: %s", asset.Name.Ticker)
 		rpcsLog.Debugf("			TxAssets Amount: %d", asset.Amount)
 		rpcsLog.Debugf("			TxAssets BindingSat: %d", asset.BindingSat)
 	}

@@ -1113,9 +1113,9 @@ func logTxAssets(desc string, assets wire.TxAssets) {
 	for index, asset := range assets {
 		log.Debugf("		---------------------------------")
 		log.Debugf("			TxAssets index: %d", index)
-		log.Debugf("			TxAssets Name Protocol: %d", asset.Name.Protocol)
-		log.Debugf("			TxAssets Name Type: %d", asset.Name.Type)
-		log.Debugf("			TxAssets Name Ticker: %d", asset.Name.Ticker)
+		log.Debugf("			TxAssets Name Protocol: %s", asset.Name.Protocol)
+		log.Debugf("			TxAssets Name Type: %s", asset.Name.Type)
+		log.Debugf("			TxAssets Name Ticker: %s", asset.Name.Ticker)
 		log.Debugf("			TxAssets Amount: %d", asset.Amount)
 		log.Debugf("			TxAssets BindingSat: %d", asset.BindingSat)
 	}

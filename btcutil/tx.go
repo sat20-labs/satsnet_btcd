@@ -169,6 +169,10 @@ func (t *Tx) setBytes(bytes []byte) {
 	t.rawBytes = bytes
 }
 
+func (t *Tx) GetRawBytes() []byte {
+	return t.rawBytes
+}
+
 // NewTxFromBytes returns a new instance of a bitcoin transaction given the
 // serialized bytes.  See Tx.
 func NewTxFromBytes(serializedTx []byte) (*Tx, error) {

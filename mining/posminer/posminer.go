@@ -388,6 +388,7 @@ out:
 			// true a solution was found, so submit the solved block.
 			if m.solveBlock(template.Block, curHeight+1) {
 				log.Debugf("solveBlock ...")
+				log.Debugf("Block Header MerkleRoot is %s。", template.Block.Header.MerkleRoot.String())
 				block := btcutil.NewBlock(template.Block)
 				m.submitBlock(block)
 			}
