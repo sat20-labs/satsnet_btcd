@@ -225,7 +225,7 @@ func (p *TxAssets) Subtract(asset *AssetInfo) error {
 	return nil
 }
 
-// PickUp 从资产列表中提取指定名称和数量的资产
+// PickUp 从资产列表中提取指定名称和数量的资产，原资产不改变
 func (p *TxAssets) PickUp(asset *AssetName, amt int64) (*AssetInfo, error) {
 	if asset == nil {
 		return nil, fmt.Errorf("need a specific asset")
@@ -237,11 +237,8 @@ func (p *TxAssets) PickUp(asset *AssetName, amt int64) (*AssetInfo, error) {
 	if (*p)[index].Amount < amt {
 		return nil, errors.New("insufficient asset amount")
 	}
-	(*p)[index].Amount -= amt
+	
 	picked := AssetInfo{Name: *asset, Amount: amt, BindingSat: (*p)[index].BindingSat}
-	if (*p)[index].Amount == 0 {
-		*p = append((*p)[:index], (*p)[index+1:]...)
-	}
 	return &picked, nil
 }
 
