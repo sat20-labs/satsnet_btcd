@@ -183,6 +183,23 @@ func (p *TxAssets) Split(another *TxAssets) error {
 	return nil
 }
 
+// Align 数组中聪绑定的资产的数量不超过value
+func (p *TxAssets) Align(value int64) TxAssets {
+	var result TxAssets
+	for _, asset := range *p {
+		if asset.BindingSat > 0 && asset.Amount > value {
+			sub := AssetInfo{
+				Name: asset.Name,
+				Amount: asset.Amount - value,
+				BindingSat: asset.BindingSat,
+			}
+			result = append(result, sub)
+			asset.Amount = value
+		}
+	}
+	return result
+}
+
 // Add 将另一个资产列表合并到当前列表中
 func (p *TxAssets) Add(asset *AssetInfo) error {
 	if asset == nil {
@@ -225,7 +242,7 @@ func (p *TxAssets) Subtract(asset *AssetInfo) error {
 	return nil
 }
 
-// PickUp 从资产列表中提取指定名称和数量的资产
+// PickUp 从资产列表中提取指定名称和数量的资产，原资产不改变
 func (p *TxAssets) PickUp(asset *AssetName, amt int64) (*AssetInfo, error) {
 	if asset == nil {
 		return nil, fmt.Errorf("need a specific asset")
@@ -237,11 +254,8 @@ func (p *TxAssets) PickUp(asset *AssetName, amt int64) (*AssetInfo, error) {
 	if (*p)[index].Amount < amt {
 		return nil, errors.New("insufficient asset amount")
 	}
-	(*p)[index].Amount -= amt
+	
 	picked := AssetInfo{Name: *asset, Amount: amt, BindingSat: (*p)[index].BindingSat}
-	if (*p)[index].Amount == 0 {
-		*p = append((*p)[:index], (*p)[index+1:]...)
-	}
 	return &picked, nil
 }
 
