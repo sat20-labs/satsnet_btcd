@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 // MsgPong implements the Message interface and represents a bitcoin pong
@@ -24,8 +25,9 @@ type MsgPong struct {
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
 // This is part of the Message interface implementation.
 func (msg *MsgPong) BtcDecode(r io.Reader, version uint32) error {
-
-	nonce, err := binarySerializer.Uint64(r, littleEndian)
+	nonce := uint64(0)
+	err := utils.ReadElements(r, &nonce)
+	//nonce, err := binarySerializer.Uint64(r, littleEndian)
 	if err != nil {
 		return err
 	}
@@ -37,7 +39,9 @@ func (msg *MsgPong) BtcDecode(r io.Reader, version uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgPong) BtcEncode(w io.Writer, pver uint32) error {
-	return binarySerializer.PutUint64(w, littleEndian, msg.Nonce)
+	err := utils.WriteElements(w, msg.Nonce)
+	return err
+	//return binarySerializer.PutUint64(w, littleEndian, msg.Nonce)
 }
 
 // Command returns the protocol command string for the message.  This is part

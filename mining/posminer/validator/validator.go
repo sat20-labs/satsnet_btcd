@@ -79,6 +79,24 @@ type ValidatorListener interface {
 
 	// Received a notify handover command
 	OnNotifyHandover(uint64)
+
+	// Received get vc state command
+	GetVCState(uint64) (*validatorcommand.MsgGetVCState, error)
+
+	// Received a vc state command
+	OnVCState(*validatorcommand.MsgVCState, net.Addr)
+
+	// Received get vc list command
+	GetVCList(uint64, int64, int64) (*validatorcommand.MsgGetVCList, error)
+
+	// Received a vc list command
+	OnVCList(*validatorcommand.MsgVCList, net.Addr)
+
+	// Received get vc block command
+	GetVCBlock(uint64, uint32, chainhash.Hash) (*validatorcommand.MsgGetVCBlock, error)
+
+	// Received a vc block command
+	OnVCBlock(*validatorcommand.MsgVCBlock, net.Addr)
 }
 
 // Config is the struct to hold configuration options useful to Validator.
@@ -518,4 +536,19 @@ func (v *Validator) OnNewEpoch(validatorId uint64, epoch *epoch.Epoch) {
 func (v *Validator) OnConfirmedDelEpochMember(delEpochMember *epoch.DelEpochMember) {
 
 	v.Cfg.Listener.OnConfirmedDelEpochMember(delEpochMember)
+}
+
+// Received a vc state command
+func (v *Validator) OnVCState(vsState *validatorcommand.MsgVCState, remoteAddr net.Addr) {
+	v.Cfg.Listener.OnVCState(vsState, remoteAddr)
+}
+
+// Received a vc list command
+func (v *Validator) OnVCList(vclist *validatorcommand.MsgVCList, remoteAddr net.Addr) {
+	v.Cfg.Listener.OnVCList(vclist, remoteAddr)
+}
+
+// Received a vc block command
+func (v *Validator) OnVCBlock(vcblock *validatorcommand.MsgVCBlock, remoteAddr net.Addr) {
+	v.Cfg.Listener.OnVCBlock(vcblock, remoteAddr)
 }

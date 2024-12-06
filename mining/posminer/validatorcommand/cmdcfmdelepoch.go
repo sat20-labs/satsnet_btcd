@@ -12,6 +12,7 @@ import (
 
 	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 // MsgConfirmDelEpoch implements the Message interface and get current generator
@@ -38,7 +39,7 @@ func (msg *MsgConfirmDelEpoch) BtcDecode(r io.Reader, pver uint32) error {
 
 	msg.DelEpochMember = &epoch.DelEpochMember{}
 
-	err := readElements(buf, &msg.DelEpochMember.ValidatorId, &msg.DelEpochMember.DelValidatorId, &msg.DelEpochMember.DelCode, &msg.DelEpochMember.EpochIndex, &msg.DelEpochMember.Result, &msg.DelEpochMember.Timestamp, &msg.DelEpochMember.Token)
+	err := utils.ReadElements(buf, &msg.DelEpochMember.ValidatorId, &msg.DelEpochMember.DelValidatorId, &msg.DelEpochMember.DelCode, &msg.DelEpochMember.EpochIndex, &msg.DelEpochMember.Result, &msg.DelEpochMember.Timestamp, &msg.DelEpochMember.Token)
 	if err != nil {
 		return err
 	}
@@ -49,7 +50,7 @@ func (msg *MsgConfirmDelEpoch) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgConfirmDelEpoch) BtcEncode(w io.Writer, pver uint32) error {
-	err := writeElements(w, msg.DelEpochMember.ValidatorId, msg.DelEpochMember.DelValidatorId, msg.DelEpochMember.DelCode, msg.DelEpochMember.EpochIndex, msg.DelEpochMember.Result, msg.DelEpochMember.Timestamp, msg.DelEpochMember.Token)
+	err := utils.WriteElements(w, msg.DelEpochMember.ValidatorId, msg.DelEpochMember.DelValidatorId, msg.DelEpochMember.DelCode, msg.DelEpochMember.EpochIndex, msg.DelEpochMember.Result, msg.DelEpochMember.Timestamp, msg.DelEpochMember.Token)
 	if err != nil {
 		return err
 	}

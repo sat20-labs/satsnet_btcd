@@ -5,10 +5,12 @@
 package validatorcommand
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 // RejectCode represents a numeric value by which a remote peer indicates
@@ -71,29 +73,44 @@ type MsgReject struct {
 // This is part of the Message interface implementation.
 func (msg *MsgReject) BtcDecode(r io.Reader, pver uint32) error {
 
-	// Command that was rejected.
-	buf := binarySerializer.Borrow()
-	defer binarySerializer.Return(buf)
+	// // Command that was rejected.
+	// buf := binarySerializer.Borrow()
+	// defer binarySerializer.Return(buf)
 
-	cmd, err := readVarStringBuf(r, pver, buf)
+	// cmd, err := readVarStringBuf(r, pver, buf)
+	// if err != nil {
+	// 	return err
+	// }
+	// msg.Cmd = cmd
+
+	// // Code indicating why the command was rejected.
+	// if _, err := io.ReadFull(r, buf[:1]); err != nil {
+	// 	return err
+	// }
+	// msg.Code = RejectCode(buf[0])
+
+	// // Human readable string with specific details (over and above the
+	// // reject code above) about why the command was rejected.
+	// reason, err := readVarStringBuf(r, pver, buf)
+	// if err != nil {
+	// 	return err
+	// }
+	// msg.Reason = reason
+
+	buf, ok := r.(*bytes.Buffer)
+	if !ok {
+		return fmt.Errorf("MsgReject.BtcDecode reader is not a " +
+			"*bytes.Buffer")
+	}
+
+	err := utils.ReadElements(buf,
+		&msg.Cmd,
+		&msg.Code,
+		&msg.Reason,
+	)
 	if err != nil {
 		return err
 	}
-	msg.Cmd = cmd
-
-	// Code indicating why the command was rejected.
-	if _, err := io.ReadFull(r, buf[:1]); err != nil {
-		return err
-	}
-	msg.Code = RejectCode(buf[0])
-
-	// Human readable string with specific details (over and above the
-	// reject code above) about why the command was rejected.
-	reason, err := readVarStringBuf(r, pver, buf)
-	if err != nil {
-		return err
-	}
-	msg.Reason = reason
 
 	return nil
 }
@@ -103,27 +120,34 @@ func (msg *MsgReject) BtcDecode(r io.Reader, pver uint32) error {
 func (msg *MsgReject) BtcEncode(w io.Writer, pver uint32) error {
 
 	// Command that was rejected.
-	buf := binarySerializer.Borrow()
-	defer binarySerializer.Return(buf)
+	// buf := binarySerializer.Borrow()
+	// defer binarySerializer.Return(buf)
 
-	err := writeVarStringBuf(w, pver, msg.Cmd, buf)
+	// err := writeVarStringBuf(w, pver, msg.Cmd, buf)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // Code indicating why the command was rejected.
+	// buf[0] = byte(msg.Code)
+	// if _, err := w.Write(buf[:1]); err != nil {
+	// 	return err
+	// }
+
+	// // Human readable string with specific details (over and above the
+	// // reject code above) about why the command was rejected.
+	// err = writeVarStringBuf(w, pver, msg.Reason, buf)
+	// if err != nil {
+	// 	return err
+	// }
+
+	err := utils.WriteElements(w,
+		msg.Cmd,
+		msg.Code,
+		msg.Reason)
 	if err != nil {
 		return err
 	}
-
-	// Code indicating why the command was rejected.
-	buf[0] = byte(msg.Code)
-	if _, err := w.Write(buf[:1]); err != nil {
-		return err
-	}
-
-	// Human readable string with specific details (over and above the
-	// reject code above) about why the command was rejected.
-	err = writeVarStringBuf(w, pver, msg.Reason, buf)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

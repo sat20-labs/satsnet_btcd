@@ -13,13 +13,18 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
-// MsgNotifyHandover implements the Message interface and get current generator
+// MsgGetVCList implements the Message interface and get current generator
 // message. The remote peer must then respond with current generator
 // message of its own containing the negotiated values followed by a verack
 // message (MsgGenerator).
-type MsgNotifyHandover struct {
+type MsgGetVCList struct {
 	// Request validator id
 	ValidatorId uint64
+
+	// start and end height with validate chain, it begin from latest block height, so Start > End, and id end == -1,
+	// it means get all vc block list, Max size is 100, if size > 100, return 100 only
+	Start int64 // start height of validatechain
+	End   int64 // end height of validatechain
 }
 
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
@@ -29,10 +34,10 @@ type MsgNotifyHandover struct {
 // *bytes.Buffer so the number of remaining bytes can be ascertained.
 //
 // This is part of the Message interface implementation.
-func (msg *MsgNotifyHandover) BtcDecode(r io.Reader, pver uint32) error {
+func (msg *MsgGetVCList) BtcDecode(r io.Reader, pver uint32) error {
 	buf, ok := r.(*bytes.Buffer)
 	if !ok {
-		return fmt.Errorf("MsgNotifyHandover.BtcDecode reader is not a " +
+		return fmt.Errorf("MsgGetVCList.BtcDecode reader is not a " +
 			"*bytes.Buffer")
 	}
 
@@ -46,7 +51,7 @@ func (msg *MsgNotifyHandover) BtcDecode(r io.Reader, pver uint32) error {
 
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
-func (msg *MsgNotifyHandover) BtcEncode(w io.Writer, pver uint32) error {
+func (msg *MsgGetVCList) BtcEncode(w io.Writer, pver uint32) error {
 	err := utils.WriteElements(w, msg.ValidatorId)
 	if err != nil {
 		return err
@@ -57,31 +62,35 @@ func (msg *MsgNotifyHandover) BtcEncode(w io.Writer, pver uint32) error {
 
 // Command returns the protocol command string for the message.  This is part
 // of the Message interface implementation.
-func (msg *MsgNotifyHandover) Command() string {
-	return CmdNotifyHandOver
+func (msg *MsgGetVCList) Command() string {
+	return CmdGetVCList
 }
 
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
-func (msg *MsgNotifyHandover) MaxPayloadLength(pver uint32) uint32 {
-	// validatorId 8 bytes
-	return 8
+func (msg *MsgGetVCList) MaxPayloadLength(pver uint32) uint32 {
+	// validatorId 8 bytes + start 8 bytes + end 8 bytes
+	return 24
 }
 
-func (msg *MsgNotifyHandover) LogCommandInfo(log btclog.Logger) {
-	log.Debugf("Command MsgNotifyHandover:")
+func (msg *MsgGetVCList) LogCommandInfo(log btclog.Logger) {
+	log.Debugf("Command MsgGetVCList:")
 	log.Debugf("ValidatorId: %d", msg.ValidatorId)
+	log.Debugf("Start: %d", msg.Start)
+	log.Debugf("End: %d", msg.End)
 }
 
-// NewMsgNotifyHandover returns a new bitcoin version message that conforms to the
+// NewMsgGetVCList returns a new bitcoin version message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.
-func NewMsgNotifyHandover(validatorId uint64) *MsgNotifyHandover {
+func NewMsgGetVCList(validatorId uint64, start, end int64) *MsgGetVCList {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
-	return &MsgNotifyHandover{
+	return &MsgGetVCList{
 		ValidatorId: validatorId,
+		Start:       start,
+		End:         end,
 	}
 
 }

@@ -284,3 +284,23 @@ func (v *LocalValidator) OnNotifyHandover(validatorId uint64, remoteAddr net.Add
 
 	v.Cfg.Listener.OnNotifyHandover(validatorId)
 }
+
+// Received get vc state command
+func (v *LocalValidator) GetVCState(validatorId uint64) (*validatorcommand.MsgGetVCState, error) {
+	return v.Cfg.Listener.GetVCState(validatorId)
+}
+
+// Received get vc list command
+func (v *LocalValidator) GetVCList(validatorId uint64, start int64, end int64) (*validatorcommand.MsgGetVCList, error) {
+	return v.Cfg.Listener.GetVCList(validatorId, start, end)
+}
+
+// Received get vc block command
+func (v *LocalValidator) GetVCBlock(validatorId uint64, blockType uint32, hash chainhash.Hash) (*validatorcommand.MsgGetVCBlock, error) {
+	return v.Cfg.Listener.GetVCBlock(validatorId, blockType, hash)
+}
+
+// Received a vc block command
+func (v *LocalValidator) OnVCBlock(vcblock *validatorcommand.MsgVCBlock, remoteAddr net.Addr) {
+	v.Cfg.Listener.OnVCBlock(vcblock, remoteAddr)
+}

@@ -67,7 +67,8 @@ type ConnReq struct {
 	CheckNonce uint64
 	IsChecked  bool // if a peer connected , it should be checked the remote peer is valid validator peer
 
-	conn    net.Conn
+	conn net.Conn
+
 	version uint32
 	btcnet  wire.BitcoinNet
 

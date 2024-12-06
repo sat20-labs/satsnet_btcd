@@ -50,6 +50,15 @@ type RemotePeerInterface interface {
 
 	// Notify when del epoch member is confirmed
 	OnConfirmedDelEpochMember(delEpochMember *epoch.DelEpochMember)
+
+	// Received a vc state command
+	OnVCState(*validatorcommand.MsgVCState, net.Addr)
+
+	// Received a vc list command
+	OnVCList(*validatorcommand.MsgVCList, net.Addr)
+
+	// Received a vc block command
+	OnVCBlock(*validatorcommand.MsgVCBlock, net.Addr)
 }
 
 // Config is the struct to hold configuration options useful to localpeer.
@@ -132,8 +141,10 @@ type RemotePeer struct {
 	connected     int32
 	disconnect    int32
 
-	connReq        *ConnReq // map of all connections, key is conn id, value is conn req
-	reconnectTimes int64    // if the peer is disconnected, will reconnect again, reconnectTimes is recoed the times of reconnect
+	connReq  *ConnReq // map of all connections, key is conn id, value is conn req
+	connLock sync.RWMutex
+
+	reconnectTimes int64 // if the peer is disconnected, will reconnect again, reconnectTimes is recoed the times of reconnect
 	//conn net.Conn
 	//stop int32
 	//wg   sync.WaitGroup
@@ -292,6 +303,8 @@ func (p *RemotePeer) LastSend() time.Time {
 func (p *RemotePeer) LastRecv() time.Time {
 	//return time.Unix(atomic.LoadInt64(&p.lastRecv), 0)
 	lastReceived := 0
+	p.connLock.RLock()
+	defer p.connLock.RUnlock()
 	if p.connReq != nil {
 		lastReceived = int(p.connReq.lastReceived)
 	}
@@ -331,7 +344,9 @@ func (p *RemotePeer) OnConnDisconnected(connReq *ConnReq) {
 
 	// The connection is disconnected, set current connection to nil
 	atomic.StoreInt32(&p.connected, 0)
+	p.connLock.Lock()
 	p.connReq = nil
+	p.connLock.Unlock()
 
 	// The connection is disconnected, will try to connect again
 	err := p.Connect()
@@ -379,7 +394,10 @@ func (p *RemotePeer) RequestGetGenerator() error {
 }
 
 func (p *RemotePeer) SendCommand(command validatorcommand.Message) error {
-	if p.connReq == nil || p.connReq.isInactive() {
+	p.connLock.RLock()
+	connReq := p.connReq
+	p.connLock.RUnlock()
+	if connReq == nil || connReq.isInactive() {
 		log.Debugf("----------[RemotePeer]The peer is inactive, try to connect to validator: %s", p.String())
 		err := p.Connect()
 		if err != nil {
@@ -389,7 +407,7 @@ func (p *RemotePeer) SendCommand(command validatorcommand.Message) error {
 		}
 	}
 
-	p.connReq.SendCommand(command)
+	connReq.SendCommand(command)
 	return nil
 }
 
@@ -476,6 +494,9 @@ func (p *RemotePeer) Connected() bool {
 		return false
 	}
 
+	p.connLock.RLock()
+	defer p.connLock.RUnlock()
+
 	if p.connReq == nil || p.connReq.isInactive() {
 		return false
 	}
@@ -509,7 +530,10 @@ func (p *RemotePeer) Connect() error {
 
 	atomic.StoreInt32(&p.connected, 1)
 
+	p.connLock.Lock()
 	p.connReq = newConnReq
+	p.connLock.Unlock()
+
 	p.reconnectTimes = 0
 	go p.listenCommand(newConnReq)
 
@@ -528,6 +552,9 @@ func (p *RemotePeer) Disconnect() error {
 		close(p.pingQuit)
 		p.pingHandleStarted = false
 	}
+
+	p.connLock.RLock()
+	defer p.connLock.RUnlock()
 
 	if p.connReq == nil || p.connReq.isInactive() {
 		return nil
@@ -711,6 +738,21 @@ func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Me
 		//cmd.LogCommandInfo(log)
 		p.HandleConfirmDelEpoch(cmd, connReq)
 
+	case *validatorcommand.MsgVCState:
+		log.Debugf("----------[RemotePeer]Receive MsgVCState command, will  notify validatorManager for handle MsgVCState command")
+		//cmd.LogCommandInfo(log)
+		p.HandleVCState(cmd, connReq)
+
+	case *validatorcommand.MsgVCList:
+		log.Debugf("----------[RemotePeer]Receive MsgVCList command, will  notify validatorManager for handle MsgVCList command")
+		//cmd.LogCommandInfo(log)
+		p.HandleVCList(cmd, connReq)
+
+	case *validatorcommand.MsgVCBlock:
+		log.Debugf("----------[RemotePeer]Receive MsgVCBlock command, will  notify validatorManager for handle MsgVCBlock command")
+		//cmd.LogCommandInfo(log)
+		p.HandleVCBlock(cmd, connReq)
+
 	default:
 		log.Errorf("----------[RemotePeer]Not to handle command [%v] from %d", command.Command(), connReq.id)
 	}
@@ -828,4 +870,16 @@ func (p *RemotePeer) HandleNewEpoch(newEpochCmd *validatorcommand.MsgNewEpoch, c
 
 func (p *RemotePeer) HandleConfirmDelEpoch(confirmDelEpochMemCmd *validatorcommand.MsgConfirmDelEpoch, connReq *ConnReq) {
 	p.cfg.RemoteValidatorListener.OnConfirmedDelEpochMember(confirmDelEpochMemCmd.DelEpochMember)
+}
+
+func (p *RemotePeer) HandleVCState(vcState *validatorcommand.MsgVCState, connReq *ConnReq) {
+	p.cfg.RemoteValidatorListener.OnVCState(vcState, connReq.RemoteAddr)
+}
+
+func (p *RemotePeer) HandleVCList(vcList *validatorcommand.MsgVCList, connReq *ConnReq) {
+	p.cfg.RemoteValidatorListener.OnVCList(vcList, connReq.RemoteAddr)
+}
+
+func (p *RemotePeer) HandleVCBlock(vcBlock *validatorcommand.MsgVCBlock, connReq *ConnReq) {
+	p.cfg.RemoteValidatorListener.OnVCBlock(vcBlock, connReq.RemoteAddr)
 }

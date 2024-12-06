@@ -9,6 +9,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/localvalidator"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechaindb"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatormanager"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorpeer"
@@ -34,9 +35,10 @@ func DisableLog() {
 func UseLogger(logger btclog.Logger) {
 	log = logger
 	validatormanager.UseLogger(logger)
-	localvalidator.UseLogger(logger) // local validator
-	validator.UseLogger(logger)      // remote validator
-	validatorpeer.UseLogger(logger)  // validator peer
-	epoch.UseLogger(logger)          // epoch
-	generator.UseLogger(logger)      // generator
+	localvalidator.UseLogger(logger)   // local validator
+	validator.UseLogger(logger)        // remote validator
+	validatorpeer.UseLogger(logger)    // validator peer
+	epoch.UseLogger(logger)            // epoch
+	generator.UseLogger(logger)        // generator
+	validatechaindb.UseLogger(logger) // validatechaindb
 }

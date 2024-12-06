@@ -2,7 +2,7 @@
 // Use of this source code is governed by an ISC
 // license that can be found in the LICENSE file.
 
-package validatorcommand
+package utils
 
 import (
 	"crypto/rand"
@@ -23,6 +23,8 @@ const (
 	// binaryFreeListMaxItems is the number of buffers to keep in the free
 	// list to use for binary serialization and deserialization.
 	binaryFreeListMaxItems = 1024
+
+	CommandNameSize = 12
 )
 
 var (
@@ -189,15 +191,17 @@ var binarySerializer binaryFreeList = make(chan []byte, binaryFreeListMaxItems)
 var errNonCanonicalVarInt = "non-canonical varint %x - discriminant %x must " +
 	"encode a value greater than %x"
 
-// uint32Time represents a unix timestamp encoded with a uint32.  It is used as
+// Uint32Time represents a unix timestamp encoded with a uint32.  It is used as
 // a way to signal the readElement function how to decode a timestamp into a Go
 // time.Time since it is otherwise ambiguous.
-type uint32Time time.Time
+type Uint32Time time.Time
 
-// int64Time represents a unix timestamp encoded with an int64.  It is used as
+// Int64Time represents a unix timestamp encoded with an int64.  It is used as
 // a way to signal the readElement function how to decode a timestamp into a Go
 // time.Time since it is otherwise ambiguous.
-type int64Time time.Time
+type Int64Time time.Time
+
+type VarByte []byte
 
 // readElement reads the next sequence of bytes from r using little endian
 // depending on the concrete type of element pointed to.
@@ -250,21 +254,21 @@ func readElement(r io.Reader, element interface{}) error {
 		return nil
 
 	// Unix timestamp encoded as a uint32.
-	case *uint32Time:
+	case *Uint32Time:
 		rv, err := binarySerializer.Uint32(r, binary.LittleEndian)
 		if err != nil {
 			return err
 		}
-		*e = uint32Time(time.Unix(int64(rv), 0))
+		*e = Uint32Time(time.Unix(int64(rv), 0))
 		return nil
 
 	// Unix timestamp encoded as an int64.
-	case *int64Time:
+	case *Int64Time:
 		rv, err := binarySerializer.Uint64(r, binary.LittleEndian)
 		if err != nil {
 			return err
 		}
-		*e = int64Time(time.Unix(int64(rv), 0))
+		*e = Int64Time(time.Unix(int64(rv), 0))
 		return nil
 
 	// Message header checksum.
@@ -275,16 +279,31 @@ func readElement(r io.Reader, element interface{}) error {
 		}
 		return nil
 
-	// Message header command.
-	case *[CommandNameSize]uint8:
+	case *VarByte:
+		//varBuf := *e
+
+		len, err := binarySerializer.Uint32(r, binary.LittleEndian)
+		if err != nil {
+			return err
+		}
+		buf := make([]byte, len)
+		_, err = io.ReadFull(r, buf[:])
+		if err != nil {
+			return err
+		}
+		//copy(varBuf, buf)
+		*e = buf
+		return nil
+
+	// IP address.
+	case *[16]byte:
 		_, err := io.ReadFull(r, e[:])
 		if err != nil {
 			return err
 		}
 		return nil
 
-	// IP address.
-	case *[16]byte:
+	case *[CommandNameSize]byte:
 		_, err := io.ReadFull(r, e[:])
 		if err != nil {
 			return err
@@ -326,9 +345,9 @@ func readElement(r io.Reader, element interface{}) error {
 	return binary.Read(r, littleEndian, element)
 }
 
-// readElements reads multiple items from r.  It is equivalent to multiple
+// ReadElements reads multiple items from r.  It is equivalent to multiple
 // calls to readElement.
-func readElements(r io.Reader, elements ...interface{}) error {
+func ReadElements(r io.Reader, elements ...interface{}) error {
 	for _, element := range elements {
 		err := readElement(r, element)
 		if err != nil {
@@ -391,9 +410,14 @@ func writeElement(w io.Writer, element interface{}) error {
 		}
 		return nil
 
-	// Message header command.
-	case [CommandNameSize]uint8:
-		_, err := w.Write(e[:])
+	case VarByte:
+		len := len(e)
+		err := binarySerializer.PutUint32(w, littleEndian, uint32(len))
+		if err != nil {
+			return err
+		}
+
+		_, err = w.Write(e[:])
 		if err != nil {
 			return err
 		}
@@ -401,6 +425,13 @@ func writeElement(w io.Writer, element interface{}) error {
 
 	// IP address.
 	case [16]byte:
+		_, err := w.Write(e[:])
+		if err != nil {
+			return err
+		}
+		return nil
+
+	case [CommandNameSize]byte:
 		_, err := w.Write(e[:])
 		if err != nil {
 			return err
@@ -441,9 +472,9 @@ func writeElement(w io.Writer, element interface{}) error {
 	return binary.Write(w, littleEndian, element)
 }
 
-// writeElements writes multiple items to w.  It is equivalent to multiple
+// WriteElements writes multiple items to w.  It is equivalent to multiple
 // calls to writeElement.
-func writeElements(w io.Writer, elements ...interface{}) error {
+func WriteElements(w io.Writer, elements ...interface{}) error {
 	for _, element := range elements {
 		err := writeElement(w, element)
 		if err != nil {
@@ -454,11 +485,11 @@ func writeElements(w io.Writer, elements ...interface{}) error {
 }
 
 // ReadVarInt reads a variable length integer from r and returns it as a uint64.
-func ReadVarInt(r io.Reader, pver uint32) (uint64, error) {
+func ReadVarInt(r io.Reader) (uint64, error) {
 	buf := binarySerializer.Borrow()
 	defer binarySerializer.Return(buf)
 
-	n, err := ReadVarIntBuf(r, pver, buf)
+	n, err := ReadVarIntBuf(r, buf)
 	return n, err
 }
 
@@ -466,7 +497,7 @@ func ReadVarInt(r io.Reader, pver uint32) (uint64, error) {
 // scratch buffer and returns it as a uint64.
 //
 // NOTE: buf MUST at least an 8-byte slice.
-func ReadVarIntBuf(r io.Reader, pver uint32, buf []byte) (uint64, error) {
+func ReadVarIntBuf(r io.Reader, buf []byte) (uint64, error) {
 	if _, err := io.ReadFull(r, buf[:1]); err != nil {
 		return 0, err
 	}
@@ -525,11 +556,11 @@ func ReadVarIntBuf(r io.Reader, pver uint32, buf []byte) (uint64, error) {
 
 // WriteVarInt serializes val to w using a variable number of bytes depending
 // on its value.
-func WriteVarInt(w io.Writer, pver uint32, val uint64) error {
+func WriteVarInt(w io.Writer, val uint64) error {
 	buf := binarySerializer.Borrow()
 	defer binarySerializer.Return(buf)
 
-	err := WriteVarIntBuf(w, pver, val, buf)
+	err := WriteVarIntBuf(w, val, buf)
 	return err
 }
 
@@ -537,7 +568,7 @@ func WriteVarInt(w io.Writer, pver uint32, val uint64) error {
 // on its value using a preallocated scratch buffer.
 //
 // NOTE: buf MUST at least an 8-byte slice.
-func WriteVarIntBuf(w io.Writer, pver uint32, val uint64, buf []byte) error {
+func WriteVarIntBuf(w io.Writer, val uint64, buf []byte) error {
 	switch {
 	case val < 0xfd:
 		buf[0] = uint8(val)
@@ -597,11 +628,11 @@ func VarIntSerializeSize(val uint64) int {
 // string itself.  An error is returned if the length is greater than the
 // maximum block payload size since it helps protect against memory exhaustion
 // attacks and forced panics through malformed messages.
-func ReadVarString(r io.Reader, pver uint32) (string, error) {
+func ReadVarString(r io.Reader, maxAllowed uint64) (string, error) {
 	buf := binarySerializer.Borrow()
 	defer binarySerializer.Return(buf)
 
-	str, err := readVarStringBuf(r, pver, buf)
+	str, err := readVarStringBuf(r, buf, maxAllowed)
 	return str, err
 }
 
@@ -617,8 +648,8 @@ func ReadVarString(r io.Reader, pver uint32) (string, error) {
 // and return when the method finishes.
 //
 // NOTE: b MUST either be nil or at least an 8-byte slice.
-func readVarStringBuf(r io.Reader, pver uint32, buf []byte) (string, error) {
-	count, err := ReadVarIntBuf(r, pver, buf)
+func readVarStringBuf(r io.Reader, buf []byte, maxAllowed uint64) (string, error) {
+	count, err := ReadVarIntBuf(r, buf)
 	if err != nil {
 		return "", err
 	}
@@ -626,9 +657,9 @@ func readVarStringBuf(r io.Reader, pver uint32, buf []byte) (string, error) {
 	// Prevent variable length strings that are larger than the maximum
 	// message size.  It would be possible to cause memory exhaustion and
 	// panics without a sane upper bound on this count.
-	if count > MaxCommandPayload {
+	if count > maxAllowed {
 		err := fmt.Errorf("ReadVarString:variable length string is too long "+
-			"[count %d, max %d]", count, MaxCommandPayload)
+			"[count %d, max %d]", count, maxAllowed)
 
 		return "", err
 	}
@@ -644,11 +675,11 @@ func readVarStringBuf(r io.Reader, pver uint32, buf []byte) (string, error) {
 // WriteVarString serializes str to w as a variable length integer containing
 // the length of the string followed by the bytes that represent the string
 // itself.
-func WriteVarString(w io.Writer, pver uint32, str string) error {
+func WriteVarString(w io.Writer, str string) error {
 	buf := binarySerializer.Borrow()
 	defer binarySerializer.Return(buf)
 
-	err := writeVarStringBuf(w, pver, str, buf)
+	err := writeVarStringBuf(w, str, buf)
 	return err
 }
 
@@ -661,8 +692,8 @@ func WriteVarString(w io.Writer, pver uint32, str string) error {
 // and return when the method finishes.
 //
 // NOTE: b MUST either be nil or at least an 8-byte slice.
-func writeVarStringBuf(w io.Writer, pver uint32, str string, buf []byte) error {
-	err := WriteVarIntBuf(w, pver, uint64(len(str)), buf)
+func writeVarStringBuf(w io.Writer, str string, buf []byte) error {
+	err := WriteVarIntBuf(w, uint64(len(str)), buf)
 	if err != nil {
 		return err
 	}
@@ -678,13 +709,13 @@ func writeVarStringBuf(w io.Writer, pver uint32, str string, buf []byte) error {
 // attacks and forced panics through malformed messages.  The fieldName
 // parameter is only used for the error message so it provides more context in
 // the error.
-func ReadVarBytes(r io.Reader, pver uint32, maxAllowed uint32,
+func ReadVarBytes(r io.Reader, maxAllowed uint32,
 	fieldName string) ([]byte, error) {
 
 	buf := binarySerializer.Borrow()
 	defer binarySerializer.Return(buf)
 
-	b, err := ReadVarBytesBuf(r, pver, buf, maxAllowed, fieldName)
+	b, err := ReadVarBytesBuf(r, buf, maxAllowed, fieldName)
 	return b, err
 }
 
@@ -697,10 +728,10 @@ func ReadVarBytes(r io.Reader, pver uint32, maxAllowed uint32,
 // the error. If b is non-nil, the provided buffer will be used for serializing
 // small values. Otherwise a buffer will be drawn from the binarySerializer's
 // pool and return when the method finishes.
-func ReadVarBytesBuf(r io.Reader, pver uint32, buf []byte, maxAllowed uint32,
+func ReadVarBytesBuf(r io.Reader, buf []byte, maxAllowed uint32,
 	fieldName string) ([]byte, error) {
 
-	count, err := ReadVarIntBuf(r, pver, buf)
+	count, err := ReadVarIntBuf(r, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -724,11 +755,11 @@ func ReadVarBytesBuf(r io.Reader, pver uint32, buf []byte, maxAllowed uint32,
 
 // WriteVarBytes serializes a variable length byte array to w as a varInt
 // containing the number of bytes, followed by the bytes themselves.
-func WriteVarBytes(w io.Writer, pver uint32, bytes []byte) error {
+func WriteVarBytes(w io.Writer, bytes []byte) error {
 	buf := binarySerializer.Borrow()
 	defer binarySerializer.Return(buf)
 
-	err := WriteVarBytesBuf(w, pver, bytes, buf)
+	err := WriteVarBytesBuf(w, bytes, buf)
 	return err
 }
 
@@ -737,10 +768,10 @@ func WriteVarBytes(w io.Writer, pver uint32, bytes []byte) error {
 // non-nil, the provided buffer will be used for serializing small values.
 // Otherwise a buffer will be drawn from the binarySerializer's pool and return
 // when the method finishes.
-func WriteVarBytesBuf(w io.Writer, pver uint32, bytes, buf []byte) error {
+func WriteVarBytesBuf(w io.Writer, bytes, buf []byte) error {
 	slen := uint64(len(bytes))
 
-	err := WriteVarIntBuf(w, pver, slen, buf)
+	err := WriteVarIntBuf(w, slen, buf)
 	if err != nil {
 		return err
 	}

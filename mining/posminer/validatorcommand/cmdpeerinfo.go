@@ -12,6 +12,7 @@ import (
 
 	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/btcec"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 )
 
@@ -46,8 +47,8 @@ func (msg *MsgPeerInfo) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf, &msg.ProtocolVersion, &msg.ValidatorId, &msg.PublicKey, &msg.Host,
-		(*int64Time)(&msg.CreateTime))
+	err := utils.ReadElements(buf, &msg.ProtocolVersion, &msg.ValidatorId, &msg.PublicKey, &msg.Host,
+		(*utils.Int64Time)(&msg.CreateTime))
 	if err != nil {
 		return err
 	}
@@ -58,7 +59,7 @@ func (msg *MsgPeerInfo) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgPeerInfo) BtcEncode(w io.Writer, pver uint32) error {
-	err := writeElements(w, msg.ProtocolVersion, msg.ValidatorId, msg.PublicKey, msg.Host,
+	err := utils.WriteElements(w, msg.ProtocolVersion, msg.ValidatorId, msg.PublicKey, msg.Host,
 		msg.CreateTime.Unix())
 	if err != nil {
 		return err

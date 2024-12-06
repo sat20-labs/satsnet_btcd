@@ -5,10 +5,10 @@
 package validatorcommand
 
 import (
-	"encoding/binary"
 	"io"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 // MsgPing implements the Message interface and represents a bitcoin ping
@@ -31,7 +31,8 @@ type MsgPing struct {
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
 // This is part of the Message interface implementation.
 func (msg *MsgPing) BtcDecode(r io.Reader, pver uint32) error {
-	nonce, err := binarySerializer.Uint64(r, binary.LittleEndian)
+	nonce := uint64(0)
+	err := utils.ReadElements(r, &nonce)
 	if err != nil {
 		return err
 	}
@@ -43,7 +44,7 @@ func (msg *MsgPing) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgPing) BtcEncode(w io.Writer, pver uint32) error {
-	err := binarySerializer.PutUint64(w, littleEndian, msg.Nonce)
+	err := utils.WriteElements(w, msg.Nonce)
 	if err != nil {
 		return err
 	}

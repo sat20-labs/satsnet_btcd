@@ -15,6 +15,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tyler-smith/go-bip39 v1.1.0
+	go.etcd.io/bbolt v1.3.11
 	golang.org/x/crypto v0.22.0
 	golang.org/x/sys v0.27.0
 )
@@ -74,6 +75,6 @@ retract (
 	v0.13.0-beta
 )
 
-go 1.21
+go 1.22
 
-toolchain go1.21.7
+toolchain go1.22.10

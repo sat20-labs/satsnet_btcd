@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 const (
@@ -50,7 +51,7 @@ func (msg *MsgVoteResp) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf,
+	err := utils.ReadElements(buf,
 		&msg.VoteInfo.ValidatorId,
 		&msg.VoteInfo.VoteType,
 		&msg.VoteInfo.VoteId,
@@ -68,7 +69,7 @@ func (msg *MsgVoteResp) BtcDecode(r io.Reader, pver uint32) error {
 // This is part of the Message interface implementation.
 func (msg *MsgVoteResp) BtcEncode(w io.Writer, pver uint32) error {
 
-	err := writeElements(w,
+	err := utils.WriteElements(w,
 		msg.VoteInfo.ValidatorId,
 		msg.VoteInfo.VoteType,
 		msg.VoteInfo.VoteId,

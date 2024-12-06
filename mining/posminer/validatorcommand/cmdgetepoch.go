@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 // MsgGetEpoch implements the Message interface and get current generator
@@ -35,7 +36,7 @@ func (msg *MsgGetEpoch) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf, &msg.ValidatorId)
+	err := utils.ReadElements(buf, &msg.ValidatorId)
 	if err != nil {
 		return err
 	}
@@ -46,7 +47,7 @@ func (msg *MsgGetEpoch) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgGetEpoch) BtcEncode(w io.Writer, pver uint32) error {
-	err := writeElements(w, msg.ValidatorId)
+	err := utils.WriteElements(w, msg.ValidatorId)
 	if err != nil {
 		return err
 	}

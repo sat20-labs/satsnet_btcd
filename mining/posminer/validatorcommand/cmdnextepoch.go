@@ -12,6 +12,7 @@ import (
 
 	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 // MsgNextEpoch implements the Message interface and get current generator
@@ -36,7 +37,7 @@ func (msg *MsgNextEpoch) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf, &msg.HandoverEpoch.ValidatorId, &msg.HandoverEpoch.Timestamp, &msg.HandoverEpoch.Token, &msg.HandoverEpoch.NextEpochIndex, &msg.HandoverEpoch.NextHeight)
+	err := utils.ReadElements(buf, &msg.HandoverEpoch.ValidatorId, &msg.HandoverEpoch.Timestamp, &msg.HandoverEpoch.Token, &msg.HandoverEpoch.NextEpochIndex, &msg.HandoverEpoch.NextHeight)
 	if err != nil {
 		return err
 	}
@@ -47,7 +48,7 @@ func (msg *MsgNextEpoch) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgNextEpoch) BtcEncode(w io.Writer, pver uint32) error {
-	err := writeElements(w, msg.HandoverEpoch.ValidatorId, msg.HandoverEpoch.Timestamp, msg.HandoverEpoch.Token, msg.HandoverEpoch.NextEpochIndex, msg.HandoverEpoch.NextHeight)
+	err := utils.WriteElements(w, msg.HandoverEpoch.ValidatorId, msg.HandoverEpoch.Timestamp, msg.HandoverEpoch.Token, msg.HandoverEpoch.NextEpochIndex, msg.HandoverEpoch.NextHeight)
 	if err != nil {
 		return err
 	}

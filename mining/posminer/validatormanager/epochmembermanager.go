@@ -32,9 +32,11 @@ type DelEpochMemberResult struct {
 }
 
 type EpochMemberManager struct {
-	ValidatorMgr        *ValidatorManager
-	CurrentEpoch        *epoch.Epoch
-	ConnectedList       map[uint64]*validator.Validator
+	ValidatorMgr     *ValidatorManager
+	CurrentEpoch     *epoch.Epoch
+	ConnectedList    map[uint64]*validator.Validator
+	connectedListMtx sync.RWMutex
+
 	DisconnectedList    map[uint64]*DisconnectEpochMember
 	disconnectedListMtx sync.RWMutex
 
@@ -45,6 +47,7 @@ func CreateEpochMemberManager(validatorMgr *ValidatorManager) *EpochMemberManage
 	return &EpochMemberManager{
 		ValidatorMgr:                 validatorMgr,
 		disconnectedListMtx:          sync.RWMutex{},
+		connectedListMtx:             sync.RWMutex{},
 		receivedDelEpochMemberResult: make(map[uint64]*DelEpochMemberResult),
 	}
 }
@@ -57,12 +60,19 @@ func (em *EpochMemberManager) UpdateCurrentEpoch(currentEpoch *epoch.Epoch) {
 
 func (em *EpochMemberManager) GetEpochMember(validatorID uint64) (*validator.Validator, bool) {
 
+	em.connectedListMtx.RLock()
+	defer em.connectedListMtx.RUnlock()
+
 	if em.ConnectedList != nil {
 		validatorItem, ok := em.ConnectedList[validatorID]
 		if ok {
 			return validatorItem, true
 		}
 	}
+
+	em.disconnectedListMtx.RLock()
+	defer em.disconnectedListMtx.RUnlock()
+
 	if em.DisconnectedList != nil {
 		disconnectItem, ok := em.DisconnectedList[validatorID]
 		if ok {
@@ -76,10 +86,14 @@ func (em *EpochMemberManager) GetEpochMember(validatorID uint64) (*validator.Val
 func (em *EpochMemberManager) updateValidatorsList() {
 
 	// 将原来的数据清空
-	em.ConnectedList = make(map[uint64]*validator.Validator)
-	em.DisconnectedList = make(map[uint64]*DisconnectEpochMember)
+	em.connectedListMtx.Lock()
+	defer em.connectedListMtx.Unlock()
+
 	em.disconnectedListMtx.Lock()
 	defer em.disconnectedListMtx.Unlock()
+
+	em.ConnectedList = make(map[uint64]*validator.Validator)
+	em.DisconnectedList = make(map[uint64]*DisconnectEpochMember)
 
 	if em.CurrentEpoch == nil {
 		// 当前没有需要管理的epoch
@@ -124,6 +138,9 @@ func (em *EpochMemberManager) updateValidatorsList() {
 func (em *EpochMemberManager) OnValidatorDisconnected(validatorID uint64) {
 
 	log.Debugf("[EpochMemberManager]A epoch member is disconnected: %d", validatorID)
+
+	em.connectedListMtx.Lock()
+	defer em.connectedListMtx.Unlock()
 
 	if em.ConnectedList == nil || em.DisconnectedList == nil {
 		log.Errorf("[EpochMemberManager]Invalid epoch manager for em.ConnectedList = %v or em.DisconnectedList = %v", em.ConnectedList, em.DisconnectedList)
@@ -263,6 +280,9 @@ func (em *EpochMemberManager) ReqDelEpochMember(delValidatorID uint64) {
 
 	em.receivedDelEpochMemberResult[delValidatorID] = delValidatorResult
 
+	em.connectedListMtx.Lock()
+	defer em.connectedListMtx.Unlock()
+
 	log.Debugf("Will broadcast ReqEpoch command from all connected validators...")
 	for validatorId, validator := range em.ConnectedList {
 		delValidatorResult.ResultList[validatorId] = epoch.DelEpochMemberResult_NotConfirm
@@ -281,6 +301,9 @@ func (em *EpochMemberManager) OnConfirmedDelEpochMember(delEpochMember *epoch.De
 	}
 
 	confirmedValidatorId := delEpochMember.ValidatorId
+
+	em.connectedListMtx.Lock()
+	defer em.connectedListMtx.Unlock()
 
 	confirmedValidator := em.ConnectedList[confirmedValidatorId]
 	if confirmedValidator == nil {
@@ -363,6 +386,10 @@ func (em *EpochMemberManager) NotifyEpochMemberDeleted(delValidatorID uint64) {
 		em.CurrentEpoch.EpochIndex)
 
 	log.Debugf("Will broadcast ReqEpoch command from all connected validators...")
+
+	em.connectedListMtx.Lock()
+	defer em.connectedListMtx.Unlock()
+
 	for _, validator := range em.ConnectedList {
 		validator.SendCommand(CmdConfirmDelEpochMember)
 	}

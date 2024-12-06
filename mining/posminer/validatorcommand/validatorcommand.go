@@ -12,6 +12,7 @@ import (
 
 	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
@@ -22,7 +23,7 @@ const VALIDATOR_VERION = 1
 // checksum 4 bytes.
 const CommandHeaderSize = 24
 
-// CommandSize is the fixed size of all commands in the common bitcoin message
+// CommandNameSize is the fixed size of all commands in the common bitcoin message
 // header.  Shorter commands must be zero padded.
 const CommandNameSize = 12
 
@@ -55,6 +56,14 @@ const (
 	CmdVoteReq         = "votereq"      // send vote request to remote peer
 	CmdVoteResp        = "voteresp"     // response vote resp from local peer
 	CmdVoteResult      = "voteresult"   // send vote result to remote peer
+
+	// validatechain  block commands
+	CmdGetVCState = "getvcstate" // request validatechain State
+	CmdVCState    = "vcstate"    // response validatechain State
+	CmdGetVCList  = "getvclist"  // request validatechain block list
+	CmdVCList     = "vclist"     // response validatechain block list
+	CmdGetVCBlock = "getvcblock" // request validatechain block
+	CmdVCBlock    = "vcblock"    // response validatechain block
 )
 
 // ErrUnknownMessage is the error returned when decoding an unknown message.
@@ -150,6 +159,24 @@ func makeEmptyMessage(command string) (Message, error) {
 	case CmdVoteResult:
 		msg = &MsgVoteResult{}
 
+	case CmdGetVCState:
+		msg = &MsgGetVCState{}
+
+	case CmdVCState:
+		msg = &MsgVCState{}
+
+	case CmdGetVCList:
+		msg = &MsgGetVCList{}
+
+	case CmdVCList:
+		msg = &MsgVCList{}
+
+	case CmdGetVCBlock:
+		msg = &MsgGetVCBlock{}
+
+	case CmdVCBlock:
+		msg = &MsgVCBlock{}
+
 	default:
 		return nil, ErrUnknownCommand
 	}
@@ -180,7 +207,7 @@ func readMessageHeader(r io.Reader) (int, *messageHeader, error) {
 	// Create and populate a messageHeader struct from the raw header bytes.
 	hdr := messageHeader{}
 	var command [CommandNameSize]byte
-	readElements(hr, &hdr.magic, &command, &hdr.length, &hdr.checksum)
+	utils.ReadElements(hr, &hdr.magic, &command, &hdr.length, &hdr.checksum)
 
 	// Strip trailing zeros from command string.
 	hdr.command = string(bytes.TrimRight(command[:], "\x00"))
@@ -279,10 +306,10 @@ func WriteMessageWithEncodingN(w io.Writer, msg Message, pver uint32,
 	copy(hdr.checksum[:], chainhash.DoubleHashB(payload)[0:4])
 
 	// Encode the header for the message.  This is done to a buffer
-	// rather than directly to the writer since writeElements doesn't
+	// rather than directly to the writer since WriteElements doesn't
 	// return the number of bytes written.
 	hw := bytes.NewBuffer(make([]byte, 0, CommandHeaderSize))
-	writeElements(hw, hdr.magic, command, hdr.length, hdr.checksum)
+	utils.WriteElements(hw, hdr.magic, command, hdr.length, hdr.checksum)
 
 	// Write header.
 	n, err := w.Write(hw.Bytes())

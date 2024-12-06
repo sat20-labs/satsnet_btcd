@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 const (
@@ -55,7 +56,7 @@ func (msg *MsgVoteResult) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf,
+	err := utils.ReadElements(buf,
 		&msg.VoteResultInfo.ValidatorId,
 		&msg.VoteResultInfo.VoteType,
 		&msg.VoteResultInfo.VoteId,
@@ -68,7 +69,7 @@ func (msg *MsgVoteResult) BtcDecode(r io.Reader, pver uint32) error {
 
 	for i := 0; i < int(msg.VoteResultInfo.VoteCount); i++ {
 		var voteItem VoteItem
-		err = readElements(buf, &voteItem.ValidatorId, &voteItem.Pass, &voteItem.GeneratorId, &voteItem.Token)
+		err = utils.ReadElements(buf, &voteItem.ValidatorId, &voteItem.Pass, &voteItem.GeneratorId, &voteItem.Token)
 		if err != nil {
 
 		}
@@ -84,7 +85,7 @@ func (msg *MsgVoteResult) BtcEncode(w io.Writer, pver uint32) error {
 		return fmt.Errorf("msg.VoteResultInfo.VoteList len is not equal to msg.VoteResultInfo.VoteCount")
 	}
 
-	err := writeElements(w,
+	err := utils.WriteElements(w,
 		msg.VoteResultInfo.ValidatorId,
 		msg.VoteResultInfo.VoteType,
 		msg.VoteResultInfo.VoteId,
@@ -97,7 +98,7 @@ func (msg *MsgVoteResult) BtcEncode(w io.Writer, pver uint32) error {
 
 	for i := 0; i < int(msg.VoteResultInfo.VoteCount); i++ {
 		voteItem := msg.VoteResultInfo.VoteList[i]
-		err = writeElements(w,
+		err = utils.WriteElements(w,
 			voteItem.ValidatorId,
 			voteItem.Pass,
 			voteItem.GeneratorId,

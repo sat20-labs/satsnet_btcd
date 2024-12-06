@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 const (
@@ -62,7 +63,7 @@ func (msg *MsgEpoch) BtcDecode(r io.Reader, pver uint32) error {
 
 func ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
 	var exist uint32
-	err := readElements(buf, &exist)
+	err := utils.ReadElements(buf, &exist)
 	if err != nil {
 		return nil, err
 	}
@@ -76,33 +77,33 @@ func ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
 	}
 
 	// Read EpochIndex, CreateHeight, CreateTime
-	err = readElements(buf, &receivedEpoch.EpochIndex, &receivedEpoch.CreateHeight, (*int64Time)(&receivedEpoch.CreateTime))
+	err = utils.ReadElements(buf, &receivedEpoch.EpochIndex, &receivedEpoch.CreateHeight, (*utils.Int64Time)(&receivedEpoch.CreateTime))
 	if err != nil {
 		return nil, err
 	}
 
 	// Read ItemList
 	itemCount := uint32(0)
-	err = readElements(buf, &itemCount)
+	err = utils.ReadElements(buf, &itemCount)
 	if err != nil {
 		return nil, err
 	}
 
 	for i := 0; i < int(itemCount); i++ {
 		var epochItem epoch.EpochItem
-		err = readElements(buf, &epochItem.ValidatorId)
+		err = utils.ReadElements(buf, &epochItem.ValidatorId)
 		if err != nil {
 			return nil, err
 		}
-		err = readElements(buf, &epochItem.Host)
+		err = utils.ReadElements(buf, &epochItem.Host)
 		if err != nil {
 			return nil, err
 		}
-		err = readElements(buf, &epochItem.PublicKey)
+		err = utils.ReadElements(buf, &epochItem.PublicKey)
 		if err != nil {
 			return nil, err
 		}
-		err = readElements(buf, &epochItem.Index)
+		err = utils.ReadElements(buf, &epochItem.Index)
 		if err != nil {
 			return nil, err
 		}
@@ -110,14 +111,14 @@ func ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
 	}
 
 	// read Generator
-	err = readElements(buf, &exist)
+	err = utils.ReadElements(buf, &exist)
 	if err != nil {
 		return nil, err
 	}
 	if exist != 0 {
 		// Generator exist, read Generator
 		var generator generator.Generator
-		err := readElements(buf,
+		err := utils.ReadElements(buf,
 			&generator.GeneratorId,
 			&generator.Timestamp,
 			&generator.Height,
@@ -129,7 +130,7 @@ func ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
 	}
 
 	// read CurGeneratorPos
-	err = readElements(buf, &receivedEpoch.CurGeneratorPos)
+	err = utils.ReadElements(buf, &receivedEpoch.CurGeneratorPos)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +162,7 @@ func WriteEpoch(w io.Writer, epoch *epoch.Epoch) error {
 	} else {
 		exist = 1
 	}
-	err := writeElements(w, exist)
+	err := utils.WriteElements(w, exist)
 	if err != nil {
 		return err
 	}
@@ -179,33 +180,33 @@ func WriteEpoch(w io.Writer, epoch *epoch.Epoch) error {
 	// CurGeneratorPos int32                // 当前Generator在ItemList中的位置
 
 	// Write EpochIndex, CreateHeight, CreateTime
-	err = writeElements(w, epoch.EpochIndex, epoch.CreateHeight, epoch.CreateTime.Unix())
+	err = utils.WriteElements(w, epoch.EpochIndex, epoch.CreateHeight, epoch.CreateTime.Unix())
 	if err != nil {
 		return err
 	}
 
 	// Write ItemList
 	itemCount := uint32(len(epoch.ItemList))
-	err = writeElements(w, &itemCount)
+	err = utils.WriteElements(w, &itemCount)
 	if err != nil {
 		return err
 	}
 
 	for i := 0; i < int(itemCount); i++ {
 		epochItem := epoch.ItemList[i]
-		err = writeElements(w, epochItem.ValidatorId)
+		err = utils.WriteElements(w, epochItem.ValidatorId)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, epochItem.Host)
+		err = utils.WriteElements(w, epochItem.Host)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, epochItem.PublicKey)
+		err = utils.WriteElements(w, epochItem.PublicKey)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, epochItem.Index)
+		err = utils.WriteElements(w, epochItem.Index)
 		if err != nil {
 			return err
 		}
@@ -217,13 +218,13 @@ func WriteEpoch(w io.Writer, epoch *epoch.Epoch) error {
 	} else {
 		exist = 1
 	}
-	err = writeElements(w, &exist)
+	err = utils.WriteElements(w, &exist)
 	if err != nil {
 		return err
 	}
 	if exist != 0 {
 		// Generator exist, write Generator
-		err := writeElements(w,
+		err := utils.WriteElements(w,
 			epoch.Generator.GeneratorId,
 			epoch.Generator.Timestamp,
 			epoch.Generator.Height,
@@ -234,7 +235,7 @@ func WriteEpoch(w io.Writer, epoch *epoch.Epoch) error {
 	}
 
 	// write CurGeneratorPos
-	err = writeElements(w, epoch.CurGeneratorPos)
+	err = utils.WriteElements(w, epoch.CurGeneratorPos)
 	if err != nil {
 		return err
 	}

@@ -14,6 +14,8 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/localvalidator"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechain"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechaindb"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
@@ -75,6 +77,10 @@ type ValidatorManager struct {
 
 	moniterGeneratorTicker *time.Ticker
 	lastHandOverTime       time.Time
+
+	// NewVCStore
+	vcStore       *validatechaindb.ValidateChainStore
+	validateChian *validatechain.ValidateChain
 }
 
 //var validatorMgr *ValidatorManager
@@ -96,18 +102,30 @@ func New(cfg *Config) *ValidatorManager {
 		quit: make(chan struct{}),
 	}
 
+	vcStore, err := validatechaindb.NewVCStore(cfg.BtcdDir)
+	if err != nil {
+		log.Errorf("NewVCStore failed: %v", err)
+		return nil
+	}
+	validatorMgr.vcStore = vcStore
+
+	validatorMgr.validateChian = validatechain.NewValidateChain(vcStore)
+
+	// For testing
+	//validatorMgr.Testing()
+
 	validatorMgr.epochMemberMgr = CreateEpochMemberManager(validatorMgr)
 
 	localAddrs, _ := validatorMgr.getLocalAddr()
 	//log.Debugf("Get local address: %s", localAddr.String())
 	validatorCfg := validatorMgr.newValidatorConfig(validatorMgr.Cfg.ValidatorId, nil) // No remote validator
 
-	var err error
-	validatorMgr.myValidator, err = localvalidator.NewValidator(validatorCfg, localAddrs)
+	myValidator, err := localvalidator.NewValidator(validatorCfg, localAddrs)
 	if err != nil {
 		log.Errorf("New LocalValidator failed: %v", err)
 		return nil
 	}
+	validatorMgr.myValidator = myValidator
 	validatorMgr.myValidator.Start()
 
 	// err = validatorMgr.CurrentEpoch.AddValidatorToEpoch(&validatorMgr.myValidator.ValidatorInfo)
@@ -1285,6 +1303,11 @@ func (vm *ValidatorManager) setCurrentEpoch(currentEpoch *epoch.Epoch) {
 		vm.isEpochMember = true
 	}
 
+	if vm.moniterGeneratorTicker == nil {
+		// Not start monitor
+		return
+	}
+
 	if vm.isEpochMember {
 		posGenerator := vm.CurrentEpoch.GetCurGeneratorPos()
 		memCount := vm.CurrentEpoch.GetMemberCount()
@@ -1450,7 +1473,7 @@ exit:
 	vm.moniterGeneratorTicker.Stop()
 	vm.moniterGeneratorTicker = nil
 
-	log.Debugf("[ValidatorManager]moniterHandler done.")
+	log.Debugf("[ValidatorManager]monitorGeneratorHandOverHandle done.")
 
 }
 
@@ -1555,5 +1578,35 @@ func (vm *ValidatorManager) monitorGeneratorHandOver() {
 	// 		}
 	// 	}
 	// }
+
+}
+
+// Received get vc state command
+func (vm *ValidatorManager) GetVCState(validatorId uint64) (*validatorcommand.MsgGetVCState, error) {
+	return nil, nil
+}
+
+// Received a vc state command
+func (vm *ValidatorManager) OnVCState(vsState *validatorcommand.MsgVCState, remoteAddr net.Addr) {
+
+}
+
+// Received get vc list command
+func (vm *ValidatorManager) GetVCList(validatorId uint64, start int64, end int64) (*validatorcommand.MsgGetVCList, error) {
+	return nil, nil
+}
+
+// Received a vc list command
+func (vm *ValidatorManager) OnVCList(vclist *validatorcommand.MsgVCList, remoteAddr net.Addr) {
+
+}
+
+// Received get vc block command
+func (vm *ValidatorManager) GetVCBlock(validatorId uint64, blockType uint32, hash chainhash.Hash) (*validatorcommand.MsgGetVCBlock, error) {
+	return nil, nil
+}
+
+// Received a vc block command
+func (vm *ValidatorManager) OnVCBlock(vcblock *validatorcommand.MsgVCBlock, remoteAddr net.Addr) {
 
 }

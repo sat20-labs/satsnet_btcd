@@ -12,6 +12,7 @@ import (
 
 	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 const (
@@ -43,7 +44,7 @@ func (msg *MsgGenerator) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf,
+	err := utils.ReadElements(buf,
 		&msg.GeneratorInfo.GeneratorId,
 		&msg.GeneratorInfo.Timestamp,
 		&msg.GeneratorInfo.Height,
@@ -59,7 +60,7 @@ func (msg *MsgGenerator) BtcDecode(r io.Reader, pver uint32) error {
 // This is part of the Message interface implementation.
 func (msg *MsgGenerator) BtcEncode(w io.Writer, pver uint32) error {
 
-	err := writeElements(w,
+	err := utils.WriteElements(w,
 		msg.GeneratorInfo.GeneratorId,
 		msg.GeneratorInfo.Timestamp,
 		msg.GeneratorInfo.Height,

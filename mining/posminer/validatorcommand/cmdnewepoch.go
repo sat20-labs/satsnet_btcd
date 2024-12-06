@@ -12,6 +12,7 @@ import (
 
 	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 const (
@@ -45,35 +46,35 @@ func (msg *MsgNewEpoch) BtcDecode(r io.Reader, pver uint32) error {
 		return fmt.Errorf("MsgNewEpoch.BtcDecode reader is not a " +
 			"*bytes.Buffer")
 	}
-	err := readElements(buf, &msg.ValidatorId)
+	err := utils.ReadElements(buf, &msg.ValidatorId)
 	if err != nil {
 		return err
 	}
 
-	err = readElements(buf, &msg.EpochIndex, &msg.CreateHeight, (*int64Time)(&msg.CreateTime))
+	err = utils.ReadElements(buf, &msg.EpochIndex, &msg.CreateHeight, (*utils.Int64Time)(&msg.CreateTime))
 	if err != nil {
 		return err
 	}
 	validatorCount := uint32(0)
-	err = readElements(buf, &validatorCount)
+	err = utils.ReadElements(buf, &validatorCount)
 	if err != nil {
 		return err
 	}
 	for i := 0; i < int(validatorCount); i++ {
 		epochItem := epoch.EpochItem{}
-		err = readElements(buf, &epochItem.ValidatorId)
+		err = utils.ReadElements(buf, &epochItem.ValidatorId)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &epochItem.Host)
+		err = utils.ReadElements(buf, &epochItem.Host)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &epochItem.PublicKey)
+		err = utils.ReadElements(buf, &epochItem.PublicKey)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &epochItem.Index)
+		err = utils.ReadElements(buf, &epochItem.Index)
 		if err != nil {
 			return err
 		}
@@ -86,36 +87,36 @@ func (msg *MsgNewEpoch) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgNewEpoch) BtcEncode(w io.Writer, pver uint32) error {
-	err := writeElements(w, msg.ValidatorId)
+	err := utils.WriteElements(w, msg.ValidatorId)
 	if err != nil {
 		return err
 	}
-	err = writeElements(w, msg.EpochIndex, msg.CreateHeight, msg.CreateTime.Unix())
+	err = utils.WriteElements(w, msg.EpochIndex, msg.CreateHeight, msg.CreateTime.Unix())
 	if err != nil {
 		return err
 	}
 
 	validatorCount := uint32(len(msg.ItemList))
-	err = writeElements(w, validatorCount)
+	err = utils.WriteElements(w, validatorCount)
 	if err != nil {
 		return err
 	}
 
 	for _, validator := range msg.ItemList {
-		err = writeElements(w, validator.ValidatorId)
+		err = utils.WriteElements(w, validator.ValidatorId)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, validator.Host)
+		err = utils.WriteElements(w, validator.Host)
 		if err != nil {
 			return err
 		}
 
-		err = writeElements(w, validator.PublicKey)
+		err = utils.WriteElements(w, validator.PublicKey)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, validator.Index)
+		err = utils.WriteElements(w, validator.Index)
 		if err != nil {
 			return err
 		}

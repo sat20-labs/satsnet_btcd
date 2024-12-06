@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 )
 
@@ -40,7 +41,7 @@ func (msg *MsgValidators) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := readElements(buf, &msg.ValidatorCount)
+	err := utils.ReadElements(buf, &msg.ValidatorCount)
 	if err != nil {
 		return err
 	}
@@ -56,39 +57,39 @@ func (msg *MsgValidators) BtcDecode(r io.Reader, pver uint32) error {
 		// DiscountCount   int32
 		// FaultCount      int32
 		// ValidatorScore  int32
-		err = readElements(buf, &validator.ValidatorId)
+		err = utils.ReadElements(buf, &validator.ValidatorId)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &validator.Host)
+		err = utils.ReadElements(buf, &validator.Host)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &validator.PublicKey)
+		err = utils.ReadElements(buf, &validator.PublicKey)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, (*int64Time)(&validator.CreateTime))
+		err = utils.ReadElements(buf, (*utils.Int64Time)(&validator.CreateTime))
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &validator.ActivitionCount)
+		err = utils.ReadElements(buf, &validator.ActivitionCount)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &validator.GeneratorCount)
+		err = utils.ReadElements(buf, &validator.GeneratorCount)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &validator.DiscountCount)
+		err = utils.ReadElements(buf, &validator.DiscountCount)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &validator.FaultCount)
+		err = utils.ReadElements(buf, &validator.FaultCount)
 		if err != nil {
 			return err
 		}
-		err = readElements(buf, &validator.ValidatorScore)
+		err = utils.ReadElements(buf, &validator.ValidatorScore)
 		if err != nil {
 			return err
 		}
@@ -102,7 +103,7 @@ func (msg *MsgValidators) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgValidators) BtcEncode(w io.Writer, pver uint32) error {
-	err := writeElements(w, msg.ValidatorCount)
+	err := utils.WriteElements(w, msg.ValidatorCount)
 	if err != nil {
 		return err
 	}
@@ -117,40 +118,40 @@ func (msg *MsgValidators) BtcEncode(w io.Writer, pver uint32) error {
 		// DiscountCount   int32
 		// FaultCount      int32
 		// ValidatorScore  int32
-		err = writeElements(w, validator.ValidatorId)
+		err = utils.WriteElements(w, validator.ValidatorId)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, validator.Host)
+		err = utils.WriteElements(w, validator.Host)
 		if err != nil {
 			return err
 		}
 
-		err = writeElements(w, validator.PublicKey)
+		err = utils.WriteElements(w, validator.PublicKey)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, validator.CreateTime.Unix())
+		err = utils.WriteElements(w, validator.CreateTime.Unix())
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, validator.ActivitionCount)
+		err = utils.WriteElements(w, validator.ActivitionCount)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, validator.GeneratorCount)
+		err = utils.WriteElements(w, validator.GeneratorCount)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, validator.DiscountCount)
+		err = utils.WriteElements(w, validator.DiscountCount)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, validator.FaultCount)
+		err = utils.WriteElements(w, validator.FaultCount)
 		if err != nil {
 			return err
 		}
-		err = writeElements(w, validator.ValidatorScore)
+		err = utils.WriteElements(w, validator.ValidatorScore)
 		if err != nil {
 			return err
 		}

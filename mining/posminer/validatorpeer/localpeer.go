@@ -70,6 +70,18 @@ type LocalPeerInterface interface {
 
 	// Received a notify handover command
 	OnNotifyHandover(uint64, net.Addr)
+
+	// Received get vc state command
+	GetVCState(uint64) (*validatorcommand.MsgGetVCState, error)
+
+	// Received get vc list command
+	GetVCList(uint64, int64, int64) (*validatorcommand.MsgGetVCList, error)
+
+	// Received get vc block command
+	GetVCBlock(uint64, uint32, chainhash.Hash) (*validatorcommand.MsgGetVCBlock, error)
+
+	// Received a vc block command
+	OnVCBlock(*validatorcommand.MsgVCBlock, net.Addr)
 }
 
 // Config is the struct to hold configuration options useful to localpeer.
@@ -593,11 +605,16 @@ func (p *LocalPeer) listenCommand(connReq *ConnReq) {
 		log.Debugf("----------[LocalPeer]Received validator command [%v] from %d", command.Command(), connReq.id)
 
 		connReq.setLastReceived()
-		// TODO: handle the command
+		// Handle the command
 		go p.handleCommand(connReq, command)
 	}
 }
 
+// handleCommand processes different types of validator commands received from a connection request.
+// It handles various commands such as MsgGetInfo, MsgPeerInfo, MsgPing, MsgGetValidators, and others.
+// For each command, it performs specific actions like sending appropriate responses or notifying
+// the validator manager. Logs are generated for each command received and processed. If a command
+// is not recognized, an error log is generated.
 func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Message) {
 	log.Debugf("----------[LocalPeer]handleCommand command [%v]:", command.Command())
 	switch cmd := command.(type) {
@@ -684,6 +701,26 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 		cmd.LogCommandInfo(log)
 		p.handleNotifyHandover(cmd, connReq)
 
+	case *validatorcommand.MsgGetVCState:
+		log.Debugf("----------[LocalPeer]Receive MsgGetVCState command, will response local vc state to remote peer with MsgVCState command")
+		//cmd.LogCommandInfo(log)
+		p.HandleGetVCState(cmd, connReq)
+
+	case *validatorcommand.MsgGetVCList:
+		log.Debugf("----------[LocalPeer]Receive MsgGetVCList command, will response local vc list to remote peer with MsgVCList command")
+		//cmd.LogCommandInfo(log)
+		p.HandleGetVCList(cmd, connReq)
+
+	case *validatorcommand.MsgGetVCBlock:
+		log.Debugf("----------[LocalPeer]Receive MsgGetVCBlock command, will response local vs block to remote peer with MsgVCBlock command")
+		//cmd.LogCommandInfo(log)
+		p.HandleGetVCBlock(cmd, connReq)
+
+	case *validatorcommand.MsgVCBlock:
+		log.Debugf("----------[LocalPeer]Receive MsgVCBlock broadcast command, will notify validatormanager to process vc block. ")
+		//cmd.LogCommandInfo(log)
+		p.HandleVCBlock(cmd, connReq)
+
 	default:
 		cmd.LogCommandInfo(log)
 		log.Errorf("----------[LocalPeer]Not to handle command [%v] from %d", command.Command(), connReq.id)
@@ -695,12 +732,17 @@ func (p *LocalPeer) trickleHandler() {
 	trickleTicker := time.NewTicker(p.cfg.TrickleInterval)
 	defer trickleTicker.Stop()
 
-	for {
-		select {
-		case <-trickleTicker.C:
+	// for {
+	// 	select {
+	// 	case <-trickleTicker.C:
+	// 		p.checkInactiveConn()
+	// 	}
+	// }
+	go func() {
+		for range trickleTicker.C { // 遍历 channel，直到 channel 关闭
 			p.checkInactiveConn()
 		}
-	}
+	}()
 }
 
 func (p *LocalPeer) checkInactiveConn() {
@@ -921,4 +963,41 @@ func (p *LocalPeer) handleDelEpochMember(delEpochMember *validatorcommand.MsgReq
 func (p *LocalPeer) handleNotifyHandover(notifyHandover *validatorcommand.MsgNotifyHandover, connReq *ConnReq) {
 	p.cfg.LocalValidator.OnNotifyHandover(notifyHandover.ValidatorId, connReq.RemoteAddr)
 
+}
+
+func (p *LocalPeer) HandleGetVCState(getVCState *validatorcommand.MsgGetVCState, connReq *ConnReq) {
+	vcStateCmd, err := p.cfg.LocalValidator.GetVCState(getVCState.ValidatorId)
+	if err != nil {
+		log.Errorf("----------[LocalPeer]GetVCState error: %s", err.Error())
+		return
+	}
+	log.Debugf("----------[LocalPeer]Send MsgVCState command")
+	vcStateCmd.LogCommandInfo(log)
+	connReq.SendCommand(vcStateCmd)
+}
+
+func (p *LocalPeer) HandleGetVCList(getVCList *validatorcommand.MsgGetVCList, connReq *ConnReq) {
+	vcListCmd, err := p.cfg.LocalValidator.GetVCList(getVCList.ValidatorId, getVCList.Start, getVCList.End)
+	if err != nil {
+		log.Errorf("----------[LocalPeer]GetVCList error: %s", err.Error())
+		return
+	}
+	log.Debugf("----------[LocalPeer]Send MsgVCList command")
+	vcListCmd.LogCommandInfo(log)
+	connReq.SendCommand(vcListCmd)
+}
+
+func (p *LocalPeer) HandleGetVCBlock(getVCBlock *validatorcommand.MsgGetVCBlock, connReq *ConnReq) {
+	vcBlockCmd, err := p.cfg.LocalValidator.GetVCBlock(getVCBlock.ValidatorId, getVCBlock.BlockType, getVCBlock.BlockHash)
+	if err != nil {
+		log.Errorf("----------[LocalPeer]GetVCBlock error: %s", err.Error())
+		return
+	}
+	log.Debugf("----------[LocalPeer]Send MsgVCBlock command")
+	vcBlockCmd.LogCommandInfo(log)
+	connReq.SendCommand(vcBlockCmd)
+}
+
+func (p *LocalPeer) HandleVCBlock(vcBlock *validatorcommand.MsgVCBlock, connReq *ConnReq) {
+	p.cfg.LocalValidator.OnVCBlock(vcBlock, connReq.RemoteAddr)
 }
