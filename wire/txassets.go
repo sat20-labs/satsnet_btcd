@@ -183,6 +183,23 @@ func (p *TxAssets) Split(another *TxAssets) error {
 	return nil
 }
 
+// Align 数组中聪绑定的资产的数量不超过value
+func (p *TxAssets) Align(value int64) TxAssets {
+	var result TxAssets
+	for _, asset := range *p {
+		if asset.BindingSat > 0 && asset.Amount > value {
+			sub := AssetInfo{
+				Name: asset.Name,
+				Amount: asset.Amount - value,
+				BindingSat: asset.BindingSat,
+			}
+			result = append(result, sub)
+			asset.Amount = value
+		}
+	}
+	return result
+}
+
 // Add 将另一个资产列表合并到当前列表中
 func (p *TxAssets) Add(asset *AssetInfo) error {
 	if asset == nil {
