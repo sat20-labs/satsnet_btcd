@@ -233,6 +233,18 @@ func DecodeStringToTx(encodedStr string) (*btcutil.Tx, error) {
 	return btcutil.NewTx(&msgTx), nil
 }
 
+func GetVCBlockState() (*btcjson.GetVCBlockStateResult, error) {
+	return client.GetVCBlockState()
+}
+
+func GetVCBlockHash(height int64) (*btcjson.GetVCBlockHashResult, error) {
+	return client.GetVCBlockHash(height)
+}
+
+func GetVCBlock(blockHash *chainhash.Hash) (*btcjson.GetVCBlockResult, error) {
+	return client.GetVCBlock(blockHash)
+}
+
 // 提供一些接口，可以快速同步mempool中的数据，并将数据保存在本地kv数据库
 // 1. 启动一个线程，或者一个被动的监听接口，监控内存池的新增tx的信息，
 //    需要先获取mempool中所有tx（仅在初始化时调用），并且按照utxo为索引保存在数据库，

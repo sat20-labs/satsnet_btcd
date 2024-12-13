@@ -21,6 +21,28 @@ func showGenesisBlock(chainParams *chaincfg.Params) {
 
 }
 
+func parseAddress(address string, chainParams *chaincfg.Params) {
+
+	pkScript, err := btcwallet.AddrToPkScript(address)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	log.Debugf("    pkScript: %x", pkScript)
+}
+
+func parsePkScript(pkscript string, chainParams *chaincfg.Params) {
+
+	pkBytes, _ := hex.DecodeString(pkscript)
+	address, err := btcwallet.PkScriptToAddr(pkBytes)
+	log.Debugf("pkScript: %x", pkBytes)
+	if err != nil {
+		log.Errorf("PkScriptToAddr failed: %v ", err)
+	} else {
+		log.Debugf("address: %s", address)
+	}
+}
+
 func GenerateGenesisBlock(chainParams *chaincfg.Params) {
 
 	genesisTime := time.Now()

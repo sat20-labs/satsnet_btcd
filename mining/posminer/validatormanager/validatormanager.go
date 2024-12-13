@@ -36,7 +36,7 @@ const (
 
 type PosMinerInterface interface {
 	// OnTimeGenerateBlock is invoke when time to generate block.
-	OnTimeGenerateBlock() (*chainhash.Hash, error)
+	OnTimeGenerateBlock() (*chainhash.Hash, int32, error)
 
 	// GetBlockHeight invoke when get block height from pos miner.
 	GetBlockHeight() int32
@@ -79,8 +79,9 @@ type ValidatorManager struct {
 	lastHandOverTime       time.Time
 
 	// NewVCStore
-	vcStore       *validatechaindb.ValidateChainStore
-	validateChian *validatechain.ValidateChain
+	vcStore         *validatechaindb.ValidateChainStore // VC Store
+	validateChain   *validatechain.ValidateChain        // VC  --- validate chain
+	vcSyncValidator *validator.Validator                // VC Sync Validator
 }
 
 //var validatorMgr *ValidatorManager
@@ -109,7 +110,7 @@ func New(cfg *Config) *ValidatorManager {
 	}
 	validatorMgr.vcStore = vcStore
 
-	validatorMgr.validateChian = validatechain.NewValidateChain(vcStore)
+	validatorMgr.validateChain = validatechain.NewValidateChain(vcStore)
 
 	// For testing
 	//validatorMgr.Testing()
@@ -216,6 +217,8 @@ func (vm *ValidatorManager) Start() {
 		vm.AddActivieValidator(validator)
 		//validator.RequestAllValidatorsInfo()
 	}
+
+	vm.validateChain.Start()
 
 	go vm.observeHandler()
 	go vm.syncValidatorsHandler()
@@ -419,8 +422,8 @@ func (vm *ValidatorManager) SyncGenerator() {
 // Current Epoch is updated
 func (vm *ValidatorManager) OnEpochSynced(currentEpoch *epoch.Epoch, nextEpoch *epoch.Epoch, remoteAddr net.Addr) {
 	log.Debugf("OnEpochSynced from validator [%s]", remoteAddr.String())
-	showEpoch("OnEpochSynced:Current Epoch", currentEpoch)
-	showEpoch("OnEpochSynced:Next Epoch", nextEpoch)
+	// showEpoch("OnEpochSynced:Current Epoch", currentEpoch)
+	// showEpoch("OnEpochSynced:Next Epoch", nextEpoch)
 	// for _, validatorInfo := range epochList {
 	// 	if vm.CurrentEpoch.IsExist(validatorInfo.ValidatorId) == false {
 	// 		log.Debugf("Will add validator [%d] to epoch", validatorInfo.ValidatorId)
@@ -461,6 +464,10 @@ func (vm *ValidatorManager) OnEpochSynced(currentEpoch *epoch.Epoch, nextEpoch *
 	}
 
 	if isChanged {
+
+		// New epoch is set, clear handover flag
+		vm.needHandOver = false
+
 		// Local epoch is updated, show new epoch
 		log.Debug("The local epoch is synced")
 		showEpoch("New current Epoch", vm.CurrentEpoch)
@@ -532,35 +539,31 @@ func (vm *ValidatorManager) OnGeneratorUpdated(newGenerator *generator.Generator
 func (vm *ValidatorManager) OnGeneratorHandOver(handOverGenerator *generator.GeneratorHandOver, remoteAddr net.Addr) {
 	log.Debugf("OnGeneratorHandOver from validator [%s]", remoteAddr.String())
 
-	if handOverGenerator.HandOverType == generator.HandOverTypeByEpochOrder {
+	switch handOverGenerator.HandOverType {
+	case generator.HandOverTypeByEpochOrder:
 		// check the hand over generator is valid. it should be signed by current generator
 
-	} else if handOverGenerator.HandOverType == generator.HandOverTypeByVote {
+	case generator.HandOverTypeByVote:
 		// It should be check by the result of vote
 
 	}
 
 	// Record the hand over generator info, it should be math with generator notified by new generator
 	if vm.isLocalValidatorById(handOverGenerator.GeneratorId) {
+		if vm.CurrentEpoch == nil {
+			log.Errorf("OnGeneratorHandOver failed: Current epoch is nil")
+			return
+		}
+
 		// The next generator is local validator
 		vm.SetLocalAsNextGenerator(handOverGenerator.Height, time.Unix(handOverGenerator.Timestamp, 0))
 
-		if vm.CurrentEpoch != nil {
-			// myGenerator := vm.CurrentEpoch.GetGenerator()
-			// err := vm.CurrentEpoch.ToNextGenerator(myGenerator)
-			// if err != nil {
-			// 	log.Debugf("OnGeneratorHandOver: ToNextGenerator failed: %v", err)
-			// 	return
-			// }
-			// // Broadcast for epoch changed
+		if vm.CurrentEpoch.IsLastGenerator() {
+			// Broadcast  for New Epoch
+			// Current epoch is last, request New Epoch
+			nextEpochIndex := vm.getCurrentEpochIndex() + 1
+			vm.RequestNewEpoch(nextEpochIndex, validatechain.NewEpochReason_EpochHandOver)
 
-			if vm.CurrentEpoch.IsLastGenerator() == true {
-				// Broadcast  for New Epoch
-				// Current epoch is last, request New Epoch
-				nextEpochIndex := vm.getCurrentEpochIndex() + 1
-				vm.RequestNewEpoch(nextEpochIndex)
-
-			}
 		}
 	}
 }
@@ -716,6 +719,12 @@ func (vm *ValidatorManager) OnNewValidatorPeerConnected(netAddr net.Addr, valida
 	log.Debugf("[ValidatorManager]New validator added to connectedlist: %s", netAddr.String())
 }
 
+func (vm *ValidatorManager) getRemoteValidator(remoteAddr net.Addr) *validator.Validator {
+	peerHost := validatorinfo.GetAddrHost(remoteAddr)
+	validatorPeer := vm.LookupValidator(peerHost)
+	return validatorPeer
+}
+
 func (vm *ValidatorManager) OnValidatorPeerDisconnected(validator *validator.Validator) {
 	// Remote validator peer disconnected, it will be notify by remote validator when it cannot connect or sent any command
 	log.Debugf("[ValidatorManager]validator peer is disconnected: %s", validator.String())
@@ -849,10 +858,17 @@ exit:
 }
 
 func (vm *ValidatorManager) showCurrentStats() {
-	validatorList := vm.getValidatorList()
+	// validatorList := vm.getValidatorList()
 
 	log.Debugf("********************************* Observe Validators Summary ********************************")
-	showValidatorList(validatorList)
+	// showValidatorList(validatorList)
+	for _, validator := range vm.ConnectedList {
+		if validator != nil {
+			validator.LogCurrentStats()
+			log.Debugf("----------------------------------------------------------------")
+		}
+	}
+
 	log.Debugf("*********************************        End        ********************************")
 
 	showEpoch("Observe Current Epoch", vm.CurrentEpoch)
@@ -1035,35 +1051,61 @@ func (vm *ValidatorManager) SetLocalAsNextGenerator(height int32, handoverTime t
 
 	showGeneratorInfo(myGenerator)
 
-	//vm.CurrentEpoch.UpdateGenerator(myGenerator)
-	// broadcast Generator
-	// Will Send New Generator to all Connected Validators
-	//cmdGenerator := validatorcommand.NewMsgGenerator(myGenerator)
-	//vm.BroadcastCommand(cmdGenerator)
-	if vm.CurrentEpoch != nil {
-		err := vm.CurrentEpoch.ToNextGenerator(myGenerator)
-		if err != nil {
-			log.Debugf("SetLocalAsNextGenerator: ToNextGenerator failed: %v", err)
-			return
-		}
-		// Broadcast for epoch changed
-		updateEpochCmd := validatorcommand.NewMsgUpdateEpoch(vm.CurrentEpoch)
-		vm.BroadcastCommand(updateEpochCmd)
+	err := vm.CurrentEpoch.ToNextGenerator(myGenerator)
+	if err != nil {
+		log.Debugf("SetLocalAsNextGenerator: ToNextGenerator failed: %v", err)
+		return
 	}
+	// Broadcast for epoch changed
+	updateEpochCmd := validatorcommand.NewMsgUpdateEpoch(vm.CurrentEpoch)
+	vm.BroadcastCommand(updateEpochCmd)
+
+	// Save the change to Validatechain, and then broadcast to other validators
+	vcBlock := validatechain.NewVCBlock()
+	curState := vm.validateChain.GetCurrentState()
+
+	vcBlock.Header.Height = curState.LatestHeight + 1 // height + 1
+	vcBlock.Header.PrevHash = curState.LatestHash     // prev hash is current state hash
+	vcBlock.Header.DataType = validatechain.DataType_UpdateEpoch
+
+	dataBlock := &validatechain.DataUpdateEpoch{
+		UpdatedId:     vm.myValidator.ValidatorInfo.ValidatorId,
+		PublicKey:     vm.myValidator.ValidatorInfo.PublicKey,
+		EpochIndex:    vm.CurrentEpoch.EpochIndex,
+		CreateTime:    vm.CurrentEpoch.CreateTime.Unix(),
+		Reason:        validatechain.UpdateEpochReason_GeneratorHandOver,
+		EpochItemList: make([]epoch.EpochItem, 0),
+		GeneratorPos:  uint32(vm.CurrentEpoch.GetCurGeneratorPos()),
+		Generator:     vm.CurrentEpoch.Generator,
+	}
+
+	for _, item := range vm.CurrentEpoch.ItemList {
+		dataBlock.EpochItemList = append(dataBlock.EpochItemList, *item)
+	}
+
+	vcBlock.Data = dataBlock
+
+	err = vm.SaveVCBlock(vcBlock)
+	if err != nil {
+		return
+	}
+
+	vm.BroadcastVCBlock(validatorcommand.BlockType_VCBlock, &vcBlock.Header.Hash)
+
 }
 
-func (vm *ValidatorManager) OnTimeGenerateBlock() (*chainhash.Hash, error) {
+func (vm *ValidatorManager) OnTimeGenerateBlock() (*chainhash.Hash, int32, error) {
 	log.Debugf("[ValidatorManager]OnTimeGenerateBlock...")
 
 	// Notify validator manager to generate new block
-	hash, err := vm.Cfg.PosMiner.OnTimeGenerateBlock()
+	hash, height, err := vm.Cfg.PosMiner.OnTimeGenerateBlock()
 	if err != nil {
 		log.Debugf("[ValidatorManager]OnTimeGenerateBlock failed: %v", err)
 		// Generate block failed, it should be no tx to be mined, wait for next time
 		if err.Error() == "no any new tx in mempool" || err.Error() == "no any new tx need to be mining" {
 			// No any tx to be mined, continue next slot
 			vm.myValidator.ContinueNextSlot()
-			return nil, err
+			return nil, 0, err
 		}
 
 		// It should some error in the peer, hand over to next validator to miner, the height is not changed
@@ -1077,7 +1119,21 @@ func (vm *ValidatorManager) OnTimeGenerateBlock() (*chainhash.Hash, error) {
 		vm.HandoverToNextGenerator()
 	}
 
-	return hash, nil
+	newBlock := &generator.MinerNewBlock{
+		GeneratorId: vm.myValidator.ValidatorInfo.ValidatorId,
+		PublicKey:   vm.myValidator.ValidatorInfo.PublicKey,
+		Height:      height,
+		MinerTime:   time.Now().Unix(),
+		Hash:        hash,
+	}
+	tokenData := newBlock.GetTokenData()
+	token, err := vm.myValidator.CreateToken(tokenData)
+	if err == nil {
+		newBlock.Token = token
+		vm.VCBlock_MinerNewBlock(newBlock)
+	}
+
+	return hash, height, nil
 }
 
 func (vm *ValidatorManager) HandoverToNextGenerator() {
@@ -1114,6 +1170,7 @@ func (vm *ValidatorManager) HandoverToNextGenerator() {
 		// Current epoch is not valid, will req new epoch to miner new block
 		nextEpoch := vm.GetNextEpoch()
 		if nextEpoch != nil {
+			log.Debugf("[ValidatorManager]Has exist next epoch, will hand over to next epoch")
 			nextBlockHight := heightGenerator
 			timeStamp := time.Now().Unix()
 			handoverEpoch := &epoch.HandOverEpoch{
@@ -1125,7 +1182,7 @@ func (vm *ValidatorManager) HandoverToNextGenerator() {
 			tokenData := handoverEpoch.GetNextEpochTokenData()
 			token, err := vm.myValidator.CreateToken(tokenData)
 			if err != nil {
-				log.Errorf("Create token failed: %v", err)
+				log.Errorf("Create token failed:  %v", err)
 				return
 			}
 			handoverEpoch.Token = token
@@ -1135,10 +1192,28 @@ func (vm *ValidatorManager) HandoverToNextGenerator() {
 			// Notify local peer for changing to next epoch
 			vm.OnNextEpoch(handoverEpoch)
 			vm.needHandOver = false // HandOver completed.
+
+			log.Debugf("[ValidatorManager]hand over to next epoch completed")
+			// Save handover new epoch into db and broadcast the block to validatechain
+			// NNN
+
+		} else {
+			// No Next epoch, will req new epoch to miner new block
+			log.Debugf("[ValidatorManager]No next epoch, will Req newepoch for next epoch, and handover to next epoch")
+			nextEpochIndex := vm.getCurrentEpochIndex() + 1
+			if nextEpochIndex == 1 {
+				// Start the first epoch
+				vm.RequestNewEpoch(nextEpochIndex, validatechain.NewEpochReason_EpochCreate)
+			} else {
+				vm.RequestNewEpoch(nextEpochIndex, validatechain.NewEpochReason_EpochStopped)
+			}
+
 		}
 
 		return
 	}
+
+	log.Debugf("[ValidatorManager] Will hand over to next generator:%d", nextGenerator.ValidatorId)
 
 	nextGeneratorConnected := true // For default, the next generator is connected
 	// Check the next generator is connected
@@ -1172,24 +1247,24 @@ func (vm *ValidatorManager) HandoverToNextGenerator() {
 		vm.BroadcastCommand(cmdHandOver)
 		vm.needHandOver = false // HandOver completed.
 	} else {
+		log.Debugf("[ValidatorManager] The next generator is not connected, Will remove to next generator:%d", nextGenerator.ValidatorId)
 		// The next generator is disconnected
 		// Remove the next generator from epoch, and will req new epoch to miner new block
 		// 在多次尝试重连失败后，需要剔除成员
 		vm.epochMemberMgr.ReqDelEpochMember(nextGenerator.ValidatorId)
 	}
-	return
 }
 
 func (vm *ValidatorManager) BroadcastCommand(command validatorcommand.Message) {
 	log.Debugf("[ValidatorManager]Will broadcast command from all connected validators...")
 	for _, validator := range vm.ConnectedList {
-		log.Debugf("[ValidatorManager]Send command to %s...", validator.String())
+		log.Debugf("[ValidatorManager]Send command <%s> to %s...", command.Command(), validator.String())
 		validator.SendCommand(command)
 	}
 }
 
 // Req new epoch from remote peer
-func (vm *ValidatorManager) ReqNewEpoch(validatorID uint64, epochIndex uint32) (*epoch.Epoch, error) {
+func (vm *ValidatorManager) ReqNewEpoch(validatorID uint64, epochIndex int64, reason uint32) (*chainhash.Hash, error) {
 
 	currentValidatorCount := len(vm.ConnectedList) + 1
 	if currentValidatorCount < MinValidatorsCountEachEpoch {
@@ -1222,9 +1297,53 @@ func (vm *ValidatorManager) ReqNewEpoch(validatorID uint64, epochIndex uint32) (
 		newEpoch.ItemList = append(newEpoch.ItemList, item)
 	}
 
-	showEpoch("New Epoch", newEpoch)
+	newEpochVote := epoch.NewEpochVote{
+		VotorId:   vm.myValidator.ValidatorInfo.ValidatorId,
+		PublicKey: vm.myValidator.ValidatorInfo.PublicKey,
+		NewEpoch:  newEpoch,
+		Reason:    reason,
+	}
+	tokenData := newEpochVote.GetTokenData()
+	if tokenData == nil {
+		return nil, errors.New("token data is nil")
+	}
+	token, err := vm.SignToken(tokenData)
+	if err != nil {
+		return nil, err
+	}
+	newEpochVote.Token = token
 
-	return newEpoch, nil
+	// Save new epoch vote to db and broad cast to all validators
+	epBlock := validatechain.NewEPBlock()
+	epBlock.Data = &validatechain.DataEpochVote{
+		VotorId:       newEpochVote.VotorId,
+		PublicKey:     newEpochVote.PublicKey,
+		EpochIndex:    newEpochVote.NewEpoch.EpochIndex,
+		CreateTime:    newEpochVote.NewEpoch.CreateTime.Unix(),
+		Reason:        newEpochVote.Reason,
+		EpochItemList: make([]epoch.EpochItem, 0),
+		Token:         newEpochVote.Token,
+	}
+	for _, item := range newEpoch.ItemList {
+		epBlock.Data.EpochItemList = append(epBlock.Data.EpochItemList, *item)
+	}
+	err = vm.validateChain.SaveEPBlock(epBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	blockHash, err := epBlock.GetHash()
+	if err != nil {
+		return nil, err
+	}
+	showEpoch("New Epoch", newEpoch)
+	log.Debugf("New Epoch Block hash: %s", blockHash.String())
+	// Broadcast new epoch to all validators
+	//newEpochVoteMsg := validatorcommand.NewMsgNewEpoch(&newEpochVote)
+	vm.BroadcastVCBlock(validatorcommand.BlockType_EPBlock, blockHash)
+
+	// response the new epoch to remote peer
+	return blockHash, nil
 }
 
 // OnNextEpoch from remote peer
@@ -1248,6 +1367,9 @@ func (vm *ValidatorManager) OnNextEpoch(handoverEpoch *epoch.HandOverEpoch) {
 	//vm.epochMemberMgr.UpdateCurrentEpoch(vm.CurrentEpoch)
 	vm.setCurrentEpoch(vm.NextEpoch)
 	vm.NextEpoch = nil
+
+	// New epoch is set clear handover flag
+	vm.needHandOver = false
 
 	showEpoch("New current epoch", vm.CurrentEpoch)
 
@@ -1291,6 +1413,7 @@ func (vm *ValidatorManager) OnUpdateEpoch(currentEpoch *epoch.Epoch) {
 }
 
 func (vm *ValidatorManager) setCurrentEpoch(currentEpoch *epoch.Epoch) {
+
 	vm.CurrentEpoch = currentEpoch
 	vm.epochMemberMgr.UpdateCurrentEpoch(vm.CurrentEpoch)
 	if vm.CurrentEpoch == nil {
@@ -1329,9 +1452,17 @@ func (vm *ValidatorManager) setCurrentEpoch(currentEpoch *epoch.Epoch) {
 	}
 }
 
-func (vm *ValidatorManager) getCurrentEpochIndex() uint32 {
+func (vm *ValidatorManager) getCurrentEpochIndex() int64 {
 	if vm.CurrentEpoch == nil {
-		return 0
+		// Get from db
+		if vm.validateChain == nil {
+			return 0
+		}
+		currentState := vm.validateChain.GetCurrentState()
+		if currentState == nil {
+			return 0
+		}
+		return currentState.LatestEpochIndex
 	}
 	return vm.CurrentEpoch.EpochIndex
 }
@@ -1374,17 +1505,24 @@ func (vm *ValidatorManager) CheckEpoch() {
 		log.Debugf("Not valid epoch to miner, will req new epoch to miner new block")
 		nextEpochIndex := vm.getCurrentEpochIndex() + 1
 		// No epoch exist, request New Epoch
-		vm.RequestNewEpoch(nextEpochIndex)
+		if nextEpochIndex == 1 {
+			// Start the first epoch
+			vm.RequestNewEpoch(nextEpochIndex, validatechain.NewEpochReason_EpochCreate)
+		} else {
+			vm.RequestNewEpoch(nextEpochIndex, validatechain.NewEpochReason_EpochStopped)
+		}
 	} else {
 		log.Debugf("Not enough validators, cannot new epoch to miner new block")
 	}
 }
 
-func (vm *ValidatorManager) RequestNewEpoch(nextEpochIndex uint32) {
+func (vm *ValidatorManager) RequestNewEpoch(nextEpochIndex int64, reason uint32) {
+
+	log.Debugf("[ValidatorManager]Will Req newepoch for next epoch [%d] with reason %d", nextEpochIndex, reason)
 
 	// Will Send CmdReqEpoch to all Connected Validators
-	CmdReqEpoch := validatorcommand.NewMsgReqEpoch(vm.Cfg.ValidatorId, nextEpochIndex)
-	vm.newEpochMgr = CreateNewEpochManager(vm)
+	CmdReqEpoch := validatorcommand.NewMsgReqEpoch(vm.Cfg.ValidatorId, nextEpochIndex, reason)
+	vm.newEpochMgr = CreateNewEpochManager(vm, reason)
 	//vm.BroadcastCommand(CmdReqEpoch)
 	log.Debugf("Will broadcast ReqEpoch command from all connected validators...")
 	for _, validator := range vm.ConnectedList {
@@ -1397,18 +1535,28 @@ func (vm *ValidatorManager) RequestNewEpoch(nextEpochIndex uint32) {
 	vm.newEpochMgr.Start()
 
 	// Add local new epoch result to newepochmanager
-	epoch, _ := vm.ReqNewEpoch(vm.Cfg.ValidatorId, nextEpochIndex)
-	vm.newEpochMgr.AddReceivedEpoch(vm.Cfg.ValidatorId, epoch)
+	hash, err := vm.ReqNewEpoch(vm.Cfg.ValidatorId, nextEpochIndex, reason)
+	if err != nil {
+		log.Debugf("ReqNewEpoch failed: %v", err)
+		return
+	}
+	vm.newEpochMgr.AddReceivedEpoch(vm.Cfg.ValidatorId, hash)
 }
 
-func (vm *ValidatorManager) OnNewEpoch(validatorId uint64, epoch *epoch.Epoch) {
+func (vm *ValidatorManager) OnNewEpoch(validatorId uint64, hash *chainhash.Hash) {
 	log.Debugf("[ValidatorManager]OnNewEpoch received from validator [%d]...", validatorId)
-	title := fmt.Sprintf("Received [%d] New Epoch", validatorId)
-	showEpoch(title, epoch)
+	if hash == nil {
+		log.Debugf("[ValidatorManager]OnNewEpoch Hash is nil, nothing to do...")
+		return
+	}
+
+	log.Debugf("[ValidatorManager]OnNewEpoch Hash: [%s]", hash.String())
+	// title := fmt.Sprintf("Received [%d] New Epoch", validatorId)
+	// showEpoch(title, epoch)
 
 	// Todo: due to received epoch, for new next epoch
 	if vm.newEpochMgr != nil {
-		vm.newEpochMgr.AddReceivedEpoch(validatorId, epoch)
+		vm.newEpochMgr.AddReceivedEpoch(validatorId, hash)
 	}
 }
 
@@ -1488,16 +1636,23 @@ func (vm *ValidatorManager) monitorGeneratorHandOver() {
 	// Check the current epoch is valid or not
 	if vm.CurrentEpoch == nil {
 		// 当前epoch无效, 发起reqepoch请求
+		log.Debugf("[ValidatorManager]Request New Epoch with empty epoch...")
 		nextEpochIndex := vm.getCurrentEpochIndex() + 1
-		vm.RequestNewEpoch(nextEpochIndex)
+		if nextEpochIndex == 1 {
+			// Start the first epoch
+			vm.RequestNewEpoch(nextEpochIndex, validatechain.NewEpochReason_EpochCreate)
+		} else {
+			vm.RequestNewEpoch(nextEpochIndex, validatechain.NewEpochReason_EpochStopped)
+		}
 
 		return
 	}
 
 	if vm.isEpochMember == false {
 		// 如果不是epoch成员，则在监控时间到了以后, 所有的epoch成员都没有让generator轮转起来, 直接发起reqepoch请求
+		log.Debugf("[ValidatorManager]Request New Epoch with not member...")
 		nextEpochIndex := vm.getCurrentEpochIndex() + 1
-		vm.RequestNewEpoch(nextEpochIndex)
+		vm.RequestNewEpoch(nextEpochIndex, validatechain.NewEpochReason_EpochStopped)
 
 		return
 	}
@@ -1508,6 +1663,7 @@ func (vm *ValidatorManager) monitorGeneratorHandOver() {
 	if posGenerator >= 0 {
 		generatorId := vm.CurrentEpoch.GetMemberValidatorId(posGenerator)
 		if generatorId == vm.Cfg.ValidatorId {
+			log.Debugf("[ValidatorManager]Start handover to next generator...")
 			// 当前的Generator是本地节点， 直接通知handover到下一个节点
 			vm.OnNotifyHandover(generatorId)
 			return
@@ -1515,22 +1671,25 @@ func (vm *ValidatorManager) monitorGeneratorHandOver() {
 
 		validator, isConnected := vm.epochMemberMgr.GetEpochMember(generatorId)
 		if isConnected {
+			log.Debugf("[ValidatorManager]Notify %d to handover...", generatorId)
 			// 当前的Generator is online， 通知Generator进行handover
 			CmdNotifyHandOver := validatorcommand.NewMsgNotifyHandover(vm.Cfg.ValidatorId)
 			validator.SendCommand(CmdNotifyHandOver)
 			return
 		}
 
+		log.Debugf("[ValidatorManager] Will del generator %d...", generatorId)
 		// Generator is not connected, del generatorId
 		vm.epochMemberMgr.ReqDelEpochMember(generatorId)
 	} else {
-
+		log.Debugf("[ValidatorManager]No generator now...")
 		// 当前的Epoch还没有启动，开始启动
 		nextEpochValidator := vm.CurrentEpoch.GetNextValidator()
 		if nextEpochValidator == nil {
+			log.Debugf("[ValidatorManager]Request New Epoch with No generator now...")
 			// 当前epoch为空， 直接请求下一个epoch
 			nextEpochIndex := vm.getCurrentEpochIndex() + 1
-			vm.RequestNewEpoch(nextEpochIndex)
+			vm.RequestNewEpoch(nextEpochIndex, validatechain.NewEpochReason_EpochStopped)
 			return
 		}
 
@@ -1548,10 +1707,13 @@ func (vm *ValidatorManager) monitorGeneratorHandOver() {
 		validator, isConnected := vm.epochMemberMgr.GetEpochMember(nextEpochValidator.ValidatorId)
 		if isConnected {
 			// 当前的Generator is online， 通知Generator进行handover
+			log.Debugf("[ValidatorManager] Will Notify  next generator %d to handover...", nextEpochValidator.ValidatorId)
 			CmdNotifyHandOver := validatorcommand.NewMsgNotifyHandover(vm.Cfg.ValidatorId)
 			validator.SendCommand(CmdNotifyHandOver)
 			return
 		}
+
+		log.Debugf("[ValidatorManager] Will del generator %d...", nextEpochValidator.ValidatorId)
 		// Generator is not connected, del generatorId
 		vm.epochMemberMgr.ReqDelEpochMember(nextEpochValidator.ValidatorId)
 
@@ -1581,32 +1743,363 @@ func (vm *ValidatorManager) monitorGeneratorHandOver() {
 
 }
 
+// syncValidateChainHandler for sync validator list from remote peer on a timer
+func (vm *ValidatorManager) syncValidateChainHandler() {
+
+	// Sync VC
+	vm.syncValidateChain()
+
+	syncInterval := time.Second * 30
+	syncTicker := time.NewTicker(syncInterval)
+	defer syncTicker.Stop()
+
+exit:
+	for {
+		log.Debugf("[ValidatorManager]Waiting next timer for syncing ValidateChain...")
+		select {
+		case <-syncTicker.C:
+			vm.syncValidateChain()
+		case <-vm.quit:
+			break exit
+		}
+	}
+
+	log.Debugf("[ValidatorManager]syncValidateChainHandler done.")
+}
+
+// syncValidateChain for sync validator list from remote peer on a timer
+func (vm *ValidatorManager) syncValidateChain() {
+	log.Debugf("[ValidatorManager]syncValidateChain ....")
+	getVCStateCmd := validatorcommand.NewMsgGetVCState(vm.Cfg.ValidatorId)
+
+	for _, validator := range vm.ConnectedList {
+		log.Debugf("[syncValidateChain]Get VC State form %s...", validator.String())
+		validator.SendCommand(getVCStateCmd)
+	}
+	log.Debugf("[ValidatorManager]syncValidateChain done.")
+}
+
+func (vm *ValidatorManager) syncVCBlock() {
+	log.Debugf("[ValidatorManager]syncVCBlock ....")
+	if vm.vcSyncValidator == nil {
+		return
+	}
+	if vm.vcSyncValidator.IsConnected() == false {
+		return
+	}
+	log.Debugf("[syncVCBlock]Get VC Block form %s...", vm.vcSyncValidator.String())
+	// getVCListCmd := validatorcommand.NewMsgGetVCList()
+	// vm.vcSyncValidator.GetVCBlock()
+
+	log.Debugf("[ValidatorManager]syncVCBlock Done.")
+}
+
 // Received get vc state command
-func (vm *ValidatorManager) GetVCState(validatorId uint64) (*validatorcommand.MsgGetVCState, error) {
-	return nil, nil
+func (vm *ValidatorManager) GetVCState(validatorId uint64) (*validatorcommand.MsgVCState, error) {
+	if vm.validateChain == nil {
+		err := errors.New("ValidateChain is invalid")
+		return nil, err
+	}
+	localState := vm.validateChain.GetCurrentState()
+	if localState == nil {
+		err := errors.New("ValidateChain state is invalid")
+		return nil, err
+	}
+	vcStateCmd := validatorcommand.NewMsgVCState(localState.LatestHeight, localState.LatestHash, localState.LatestEpochIndex)
+	return vcStateCmd, nil
 }
 
 // Received a vc state command
-func (vm *ValidatorManager) OnVCState(vsState *validatorcommand.MsgVCState, remoteAddr net.Addr) {
+func (vm *ValidatorManager) OnVCState(vcStateCmd *validatorcommand.MsgVCState, validator *validator.Validator) {
+	if vm.validateChain == nil {
+		err := errors.New("ValidateChain is invalid")
+		log.Error(err)
+		return
+	}
+	localState := vm.validateChain.GetCurrentState()
+	if localState == nil {
+		err := errors.New("ValidateChain state is invalid")
+		log.Error(err)
+		return
+	}
 
+	if vcStateCmd.Height > localState.LatestHeight {
+		if validator != nil && vm.vcSyncValidator == nil {
+			// Start sync VC block from the validator
+			vm.vcSyncValidator = validator
+			getVCListCmd := validatorcommand.NewMsgGetVCList(vm.Cfg.ValidatorId, vcStateCmd.Height, localState.LatestHeight)
+			vm.vcSyncValidator.SendCommand(getVCListCmd)
+		}
+	}
 }
 
 // Received get vc list command
-func (vm *ValidatorManager) GetVCList(validatorId uint64, start int64, end int64) (*validatorcommand.MsgGetVCList, error) {
+func (vm *ValidatorManager) GetVCList(validatorId uint64, start int64, end int64) (*validatorcommand.MsgVCList, error) {
+	VCList := make([]*validatorcommand.VCItem, 0)
+	for i := start; i <= end; i++ {
+		hash, err := vm.validateChain.GetVCBlockHash(i)
+		if err != nil {
+			vm.myValidator.GetMyGenerator().ContinueNextSlot()
+		}
+		VCList = append(VCList, &validatorcommand.VCItem{Height: i, Hash: *hash})
+	}
+	if len(VCList) > 0 {
+		vclistCmd := validatorcommand.NewMsgVCList(VCList)
+		return vclistCmd, nil
+	}
 	return nil, nil
 }
 
 // Received a vc list command
-func (vm *ValidatorManager) OnVCList(vclist *validatorcommand.MsgVCList, remoteAddr net.Addr) {
+func (vm *ValidatorManager) OnVCList(vclistCmd *validatorcommand.MsgVCList, validator *validator.Validator) {
+	if vclistCmd == nil || len(vclistCmd.VCList) == 0 {
+		return
+	}
 
+	// Get all VC Block data from the validator
+	for _, item := range vclistCmd.VCList {
+		getVCBlockCmd := validatorcommand.NewMsgGetVCBlock(vm.Cfg.ValidatorId, validatorcommand.BlockType_VCBlock, item.Hash)
+		validator.SendCommand(getVCBlockCmd)
+	}
 }
 
 // Received get vc block command
-func (vm *ValidatorManager) GetVCBlock(validatorId uint64, blockType uint32, hash chainhash.Hash) (*validatorcommand.MsgGetVCBlock, error) {
-	return nil, nil
+func (vm *ValidatorManager) GetVCBlock(validatorId uint64, blockType uint32, hash chainhash.Hash) (*validatorcommand.MsgVCBlock, error) {
+	var blockData []byte
+	if blockType != validatorcommand.BlockType_VCBlock {
+		// Get VC Block Data
+		vcBlockData, err := vm.vcStore.GetBlockData(hash[:])
+		if err != nil {
+			return nil, err
+		}
+		blockData = vcBlockData
+	} else {
+		// Get EP Block Data
+		epBlockData, err := vm.vcStore.GetEPBlockData(hash[:])
+		if err != nil {
+			return nil, err
+		}
+		blockData = epBlockData
+	}
+
+	getVCBlockCmd := validatorcommand.NewMsgVCBlock(hash, blockType, blockData)
+	return getVCBlockCmd, nil
+}
+
+// BroadcastVCBlock broadcasts a VC or EP block to connected peers based on the block type.
+// It retrieves the block data from the VC store using the provided hash and block type.
+// If the block type is a VC block, it fetches VC block data; otherwise, it fetches EP block data.
+// The function constructs a new MsgVCBlock command with the retrieved data and broadcasts it.
+// Returns an error if retrieving the block data fails.
+func (vm *ValidatorManager) BroadcastVCBlock(blockType uint32, hash *chainhash.Hash) error {
+	var blockData []byte
+	if blockType == validatorcommand.BlockType_VCBlock {
+		// Get VC Block Data
+		vcBlockData, err := vm.vcStore.GetBlockData(hash[:])
+		if err != nil {
+			log.Errorf("Get VC Block [%s] failed: %v", hash.String(), err)
+			return err
+		}
+		blockData = vcBlockData
+	} else {
+		// Get EP Block Data
+		epBlockData, err := vm.vcStore.GetEPBlockData(hash[:])
+		if err != nil {
+			log.Errorf("Get EP Block [%s] failed: %v", hash.String(), err)
+			return err
+		}
+		blockData = epBlockData
+	}
+
+	log.Errorf("Broadcast Block [%s] to validatechain...", hash.String())
+	vcBlockCmd := validatorcommand.NewMsgVCBlock(*hash, blockType, blockData)
+	vm.BroadcastCommand(vcBlockCmd)
+	return nil
 }
 
 // Received a vc block command
-func (vm *ValidatorManager) OnVCBlock(vcblock *validatorcommand.MsgVCBlock, remoteAddr net.Addr) {
+func (vm *ValidatorManager) OnVCBlock(vcblockCmd *validatorcommand.MsgVCBlock, validator *validator.Validator) {
+	if vcblockCmd == nil || vcblockCmd.Payload == nil {
+		return
+	}
 
+	if vcblockCmd.BlockType == validatorcommand.BlockType_VCBlock {
+		_, err := vm.validateChain.GetVCBlock(&vcblockCmd.Hash)
+		if err == nil {
+			// The block already exists
+			return
+		}
+
+		vcBlock := &validatechain.VCBlock{}
+		err = vcBlock.Decode(vcblockCmd.Payload)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		vcBlockHash, err := vcBlock.GetHash()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		if vcBlockHash.IsEqual(&vcblockCmd.Hash) == false {
+			log.Error("Block hash is invalid")
+			return
+		}
+		// Save VC Block data to local
+		vm.SaveVCBlock(vcBlock)
+
+	} else {
+		// Save EP Block data to local
+		epBlock := &validatechain.EPBlock{}
+		err := epBlock.Decode(vcblockCmd.Payload)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		epBlockHash, err := epBlock.GetHash()
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		if epBlockHash.IsEqual(&vcblockCmd.Hash) == false {
+			log.Error("Block hash is invalid")
+			return
+		}
+		// Save EP Block data to local
+		vm.validateChain.SaveEPBlock(epBlock)
+	}
+
+}
+
+// func (vm *ValidatorManager) VoteNewEpoch(newEpoch *epoch.Epoch, reason uint32) {
+// 	NewEpochVote := epoch.NewEpochVote{
+// 		NewEpoch: confirmedEpoch,
+// 		Reason:   reason,
+// 	}
+// }
+
+func (vm *ValidatorManager) ConfirmNewEpoch(confirmedEpoch *epoch.Epoch, reason uint32, receivedEpoch map[uint64]*NewEpochVoteItem) {
+	// Confirm New epoch
+	// 1. save vcblock to vc store, and broadcast to vc
+	// 2. broadcast the result to all validators
+
+	vcBlock := validatechain.NewVCBlock()
+	curState := vm.validateChain.GetCurrentState()
+
+	vcBlock.Header.Height = curState.LatestHeight + 1 // height + 1
+	vcBlock.Header.PrevHash = curState.LatestHash     // prev hash is current state hash
+	vcBlock.Header.DataType = validatechain.DataType_NewEpoch
+	dataBlock := &validatechain.DataNewEpoch{
+		CreatorId:     vm.myValidator.ValidatorInfo.ValidatorId,
+		PublicKey:     vm.myValidator.ValidatorInfo.PublicKey,
+		EpochIndex:    confirmedEpoch.EpochIndex,
+		Reason:        reason,
+		EpochItemList: make([]epoch.EpochItem, 0),
+		EpochVoteList: make([]validatechain.EpochVoteItem, 0),
+	}
+
+	// Append EpochItemList
+	for _, item := range confirmedEpoch.ItemList {
+		dataBlock.EpochItemList = append(dataBlock.EpochItemList, *item)
+	}
+
+	// Append EpochVoteList
+	for _, item := range receivedEpoch {
+		if item == nil || item.Hash == nil || item.VoteData == nil {
+			continue
+		}
+		dataBlock.EpochVoteList = append(dataBlock.EpochVoteList, validatechain.EpochVoteItem{
+			ValidatorId: item.VoteData.VotorId,
+			Hash:        *item.Hash,
+		})
+	}
+	vcBlock.Data = dataBlock
+
+	err := vm.SaveVCBlock(vcBlock)
+	if err != nil {
+		return
+	}
+
+	vm.BroadcastVCBlock(validatorcommand.BlockType_VCBlock, &vcBlock.Header.Hash)
+}
+
+func (vm *ValidatorManager) VCBlock_MinerNewBlock(minerNewBlock *generator.MinerNewBlock) {
+	// record Miner new block to validatechain
+	// 1. save vcblock to vc store
+	// 2. broadcast the vc block to all validators
+
+	vcBlock := validatechain.NewVCBlock()
+	curState := vm.validateChain.GetCurrentState()
+
+	vcBlock.Header.Height = curState.LatestHeight + 1 // height + 1
+	vcBlock.Header.PrevHash = curState.LatestHash     // prev hash is current state hash
+	vcBlock.Header.DataType = validatechain.DataType_MinerNewBlock
+
+	dataBlock := &validatechain.DataMinerNewBlock{
+		GeneratorId:   minerNewBlock.GeneratorId,
+		PublicKey:     minerNewBlock.PublicKey,
+		Timestamp:     minerNewBlock.MinerTime,
+		SatsnetHeight: minerNewBlock.Height,
+		Hash:          *minerNewBlock.Hash,
+		Token:         minerNewBlock.Token,
+	}
+
+	vcBlock.Data = dataBlock
+
+	err := vm.SaveVCBlock(vcBlock)
+	if err != nil {
+		return
+	}
+
+	vm.BroadcastVCBlock(validatorcommand.BlockType_VCBlock, &vcBlock.Header.Hash)
+}
+
+func (vm *ValidatorManager) GetVCStore() *validatechaindb.ValidateChainStore {
+	return vm.vcStore
+}
+
+func (vm *ValidatorManager) SaveVCBlock(vcBlock *validatechain.VCBlock) error {
+	log.Debugf("[ValidatorManager]SaveVCBlock...")
+	// Save VC Block data to local
+	err := vm.validateChain.SaveVCBlock(vcBlock)
+	if err != nil {
+		log.Debugf("[ValidatorManager]SaveVCBlock to DB failed : %v", err)
+		return err
+	}
+
+	// Save VC Block Hash
+	err = vm.validateChain.SaveVCBlockHash(int64(vcBlock.Header.Height), &vcBlock.Header.Hash)
+	if err != nil {
+		log.Debugf("[ValidatorManager]SaveVCBlockHash to DB failed : %v", err)
+		return err
+	}
+
+	localState := vm.validateChain.GetCurrentState()
+	if localState == nil {
+		localState = &validatechain.ValidateChainState{}
+	}
+
+	// Update Current State
+	if localState.LatestHeight < int64(vcBlock.Header.Height) {
+		newEpochIndex := localState.LatestEpochIndex
+
+		vcd, ok := vcBlock.Data.(*validatechain.DataUpdateEpoch)
+		if ok {
+			// The Block is epoch indx, the epoch index is changed
+			newEpochIndex = vcd.EpochIndex
+		}
+
+		newVCState := &validatechain.ValidateChainState{
+			LatestHeight:     vcBlock.Header.Height,
+			LatestHash:       vcBlock.Header.Hash,
+			LatestEpochIndex: newEpochIndex,
+		}
+		err = vm.validateChain.UpdateCurrentState(newVCState)
+		if err != nil {
+			log.Debugf("[ValidatorManager]UpdateCurrentState to DB failed : %v", err)
+			return err
+		}
+	}
+
+	return nil
 }

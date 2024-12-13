@@ -283,7 +283,7 @@ func (em *EpochMemberManager) ReqDelEpochMember(delValidatorID uint64) {
 	em.connectedListMtx.Lock()
 	defer em.connectedListMtx.Unlock()
 
-	log.Debugf("Will broadcast ReqEpoch command from all connected validators...")
+	log.Debugf("Will broadcast DelEpoch command from all connected validators...")
 	for validatorId, validator := range em.ConnectedList {
 		delValidatorResult.ResultList[validatorId] = epoch.DelEpochMemberResult_NotConfirm
 		validator.SendCommand(CmdReqDelEpochMember)
@@ -327,19 +327,19 @@ func (em *EpochMemberManager) OnConfirmedDelEpochMember(delEpochMember *epoch.De
 }
 
 func (em *EpochMemberManager) delEpochMemberHandler(delValidatorID uint64) {
-	log.Debugf("[NewEpochManager]newEpochHandler ...")
+	log.Debugf("[EpochMemberManager]delEpochMemberHandler ...")
 
-	exitNewEpochHandler := make(chan struct{})
+	exitDelEpochHandler := make(chan struct{})
 	duration := time.Second * 5
 	time.AfterFunc(duration, func() {
 		em.handleDelEpochMember(delValidatorID)
-		exitNewEpochHandler <- struct{}{}
+		exitDelEpochHandler <- struct{}{}
 	})
 
 	// 这里阻塞主 goroutine 等待任务执行（可根据需要改为其他逻辑）
 	select {
-	case exitNewEpochHandler <- struct{}{}:
-		log.Debugf("[NewEpochManager]newEpochHandler done .")
+	case exitDelEpochHandler <- struct{}{}:
+		log.Debugf("[EpochMemberManager]delEpochMemberHandler done .")
 		return
 	}
 }
@@ -403,7 +403,8 @@ func (em *EpochMemberManager) ConfirmDelEpochMember(reqDelEpochMember *validator
 		return nil
 	}
 
-	if reqDelEpochMember.Target == validatorcommand.CmdDelEpochMemberTarget_Consult {
+	switch reqDelEpochMember.Target {
+	case validatorcommand.CmdDelEpochMemberTarget_Consult:
 		// 需要Check指定的validator是否已经离线， 如果确认离线， 则回复确认消息
 		validator, isConnected := em.GetEpochMember(reqDelEpochMember.ValidatorId)
 		if !isConnected {
@@ -416,7 +417,7 @@ func (em *EpochMemberManager) ConfirmDelEpochMember(reqDelEpochMember *validator
 		validator.SendCommand(validatorcommand.NewMsgPing(nonce))
 
 		em.checkMemberConnectedHandler(validator, reqDelEpochMember)
-	} else if reqDelEpochMember.Target == validatorcommand.CmdDelEpochMemberTarget_Confirm {
+	case validatorcommand.CmdDelEpochMemberTarget_Confirm:
 		// 已经确认删除，从本地的Epoch中删除validator
 		em.CurrentEpoch.DelEpochMember(reqDelEpochMember.ValidatorId)
 		return nil

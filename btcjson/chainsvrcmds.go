@@ -1114,6 +1114,47 @@ func NewGetTxSpendingPrevOutCmd(
 	}
 }
 
+// GetVCBlockCmd defines the getvcblock JSON-RPC command.
+type GetVCBlockCmd struct {
+	Hash      string
+	BlockType int
+}
+
+// NewGetVCBlockCmd returns a new instance which can be used to issue a getvcblock
+// JSON-RPC command.
+//
+// The parameters which are pointers indicate they are optional.  Passing nil
+// for optional parameters will use the default value.
+func NewGetVCBlockCmd(hash string, blockType int) *GetVCBlockCmd {
+	return &GetVCBlockCmd{
+		Hash:      hash,
+		BlockType: blockType,
+	}
+}
+
+// GetVCBlockStateCmd defines the getvcblockstate JSON-RPC command.
+type GetVCBlockStateCmd struct {
+}
+
+// NewGetVCBlockStateCmd returns a new instance which can be used to issue a getvcblockstate
+// JSON-RPC command.
+func NewGetVCBlockStateCmd() *GetVCBlockStateCmd {
+	return &GetVCBlockStateCmd{}
+}
+
+// GetVCBlockHashCmd defines the getvcblockstate JSON-RPC command.
+type GetVCBlockHashCmd struct {
+	Height int64
+}
+
+// NewGetVCBlockStateCmd returns a new instance which can be used to issue a getvcblockstate
+// JSON-RPC command.
+func NewGetVCBlockHashCmd(height int64) *GetVCBlockHashCmd {
+	return &GetVCBlockHashCmd{
+		Height: height,
+	}
+}
+
 func init() {
 	// No special flags for commands in this file.
 	flags := UsageFlag(0)
@@ -1177,4 +1218,8 @@ func init() {
 	MustRegisterCmd("testmempoolaccept", (*TestMempoolAcceptCmd)(nil), flags)
 	MustRegisterCmd("gettxspendingprevout", (*GetTxSpendingPrevOutCmd)(nil), flags)
 	MustRegisterCmd("getanchortxinfo", (*GetAnchorTxInfoCmd)(nil), flags)
+	MustRegisterCmd("getvcblock", (*GetVCBlockCmd)(nil), flags)
+	MustRegisterCmd("getvcblockstate", (*GetVCBlockStateCmd)(nil), flags)
+	MustRegisterCmd("getvcblockhash", (*GetVCBlockHashCmd)(nil), flags)
+
 }

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechain"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
@@ -226,6 +228,41 @@ func ShowBlocks(start, end int64) {
 	}
 }
 
+func ShowVCBlocks(start, end int64) {
+	vcBlockState, err := satsnet_rpc.GetVCBlockState()
+	if err != nil {
+		log.Errorf("GetVCBlockState failed: %s", err)
+		return
+	}
+
+	if start < 0 {
+		start = 0
+	}
+
+	if end == -1 {
+		end = vcBlockState.Height
+	}
+
+	for blockHeight := start; blockHeight <= end; blockHeight++ {
+		// Check the block height of btc is changed
+		log.Debugf("************************************************************************")
+		log.Debugf("************************************************************************")
+		log.Debugf("VCBlock height: %d,  Shows VC Block height: %d", vcBlockState.Height, blockHeight)
+		if blockHeight > vcBlockState.Height {
+			// no more block
+			break
+		}
+		err = parseVCBlock(blockHeight)
+		if err != nil {
+			log.Errorf("Block %d parseBlock failed: %s", blockHeight, err)
+			continue
+		}
+		//log.Debugf("Show Block: %d completed.", block)
+		log.Debugf("************************************************************************")
+		log.Debugf("")
+	}
+}
+
 func TestRPCGetBlocks() {
 
 	times := 10000
@@ -248,4 +285,163 @@ func TestRPCGetBlocks() {
 
 	log.Debugf("TestBlocks times: %d, failed times: %d", times, failedTimes)
 
+}
+
+func GetDataType(dataType uint32) string {
+	switch dataType {
+	case validatechain.DataType_NewEpoch:
+		return "New Epoch"
+
+	case validatechain.DataType_UpdateEpoch:
+		return "Update Epoch"
+
+	case validatechain.DataType_GeneratorHandOver:
+		return "Generator Hand Over"
+
+	case validatechain.DataType_MinerNewBlock:
+		return "Miner New Block"
+
+	default:
+		return "Unknow data type"
+	}
+}
+
+func parseVCBlock(height int64) error {
+	log.Debugf("-------------------  VC Block Info  -------------------------")
+	log.Debugf("    Block: %d", height)
+	vsBlockHash, err := satsnet_rpc.GetVCBlockHash(height)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	log.Debugf("    Block Hash: %s", vsBlockHash.Hash)
+	hash, err := chainhash.NewHashFromStr(vsBlockHash.Hash)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	blockResult, err := satsnet_rpc.GetVCBlock(hash)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	blockData := blockResult.DataPayload
+	vcBlock := validatechain.VCBlock{}
+	err = vcBlock.Decode(blockData)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	// Show Block info
+	log.Debugf("    Block Version: %d", vcBlock.Header.Version)
+	log.Debugf("    Prev Block Hash: %s", vcBlock.Header.PrevHash.String())
+	log.Debugf("    Block Time: %s", time.Unix(vcBlock.Header.CreateTime, 0).Format(time.DateTime))
+	log.Debugf("    Block Data type: %s", GetDataType(vcBlock.Header.DataType))
+
+	log.Debugf("-------------------------  End  --------------------------")
+	switch vcd := vcBlock.Data.(type) { //nolint:gocritice := vcd.Data.(type)
+	case *validatechain.DataNewEpoch:
+		showNewEpochData(vcd)
+	case *validatechain.DataUpdateEpoch:
+		showUpdateEpochData(vcd)
+	case *validatechain.DataGeneratorHandOver:
+		showGeneratorHandOverData(vcd)
+	case *validatechain.DataMinerNewBlock:
+		showMinerNewBlockData(vcd)
+	}
+
+	log.Debugf("Parse VC Block done.")
+	return nil
+}
+
+var (
+	NewEpochReason = map[uint32]string{
+		validatechain.NewEpochReason_EpochCreate:   "Epoch init",
+		validatechain.NewEpochReason_EpochHandOver: "Epoch handover",
+		validatechain.NewEpochReason_EpochStopped:  "Epoch stopped",
+	}
+
+	UpdateEpochReason = map[uint32]string{
+		validatechain.UpdateEpochReason_EpochHandOver:     "Epoch handover",
+		validatechain.UpdateEpochReason_GeneratorHandOver: " Generator handover",
+		validatechain.UpdateEpochReason_MemberRemoved:     "Member removed",
+	}
+)
+
+func showNewEpochData(newEpochData *validatechain.DataNewEpoch) {
+	log.Debugf("-------------------     New Epoch Data   -------------------------")
+	log.Debugf("    EpochIndex: %d", newEpochData.EpochIndex)
+	log.Debugf("    Creator ID: %d", newEpochData.CreatorId)
+	log.Debugf("    PublicKey: %x", newEpochData.PublicKey)
+	log.Debugf("    CreateTime: %s", time.Unix(newEpochData.CreateTime, 0).Format(time.DateTime))
+	log.Debugf("    Create Reason: %s", NewEpochReason[newEpochData.Reason])
+
+	log.Debugf("-------------------------------------------------")
+	log.Debugf("---------------    Epoch list   -----------------")
+	log.Debugf("-------------------------------------------------")
+	for index, epochItem := range newEpochData.EpochItemList {
+		log.Debugf("    Index: %d", index)
+		log.Debugf("    Validator ID: %d", epochItem.ValidatorId)
+		log.Debugf("    PublicKey: %x", epochItem.PublicKey)
+		log.Debugf("-------------------------------------------------")
+	}
+
+	log.Debugf("-------------------------------------------------")
+	log.Debugf("---------------    Vote list   -----------------")
+	log.Debugf("-------------------------------------------------")
+	for index, epochItem := range newEpochData.EpochVoteList {
+		log.Debugf("    Index: %d", index)
+		log.Debugf("    Validator ID: %d", epochItem.ValidatorId)
+		log.Debugf("    Hash: %x", epochItem.Hash.String())
+		log.Debugf("-------------------------------------------------")
+	}
+	log.Debugf("-------------------  New Epoch Data End  -------------------------")
+}
+
+func showUpdateEpochData(updateEpochData *validatechain.DataUpdateEpoch) {
+	log.Debugf("-------------------     Update Epoch Data   -------------------------")
+	log.Debugf("    UpdatedId: %d", updateEpochData.UpdatedId)
+	log.Debugf("    PublicKey: %x", updateEpochData.PublicKey)
+	log.Debugf("    EpochIndex: %d", updateEpochData.EpochIndex)
+	log.Debugf("    CreateTime: %s", time.Unix(updateEpochData.CreateTime, 0).Format(time.DateTime))
+	log.Debugf("    Reason: %s", UpdateEpochReason[updateEpochData.Reason])
+	log.Debugf("-------------------------------------------------")
+	log.Debugf("---------------    Epoch list   -----------------")
+	log.Debugf("-------------------------------------------------")
+	for index, epochItem := range updateEpochData.EpochItemList {
+		log.Debugf("    Index: %d", index)
+		log.Debugf("    Validator ID: %d", epochItem.ValidatorId)
+		log.Debugf("    PublicKey: %x", epochItem.PublicKey)
+		log.Debugf("-------------------------------------------------")
+	}
+
+	log.Debugf("-------------------------------------------------")
+	log.Debugf("---------------    Generator   -----------------")
+	log.Debugf("-------------------------------------------------")
+	log.Debugf("    GeneratorPos: %d", updateEpochData.GeneratorPos)
+	log.Debugf("    GeneratorId: %d", updateEpochData.Generator.GeneratorId)
+	log.Debugf("    Generator Height: %d", updateEpochData.Generator.Height)
+	log.Debugf("    Generator Timestamp: %s", time.Unix(updateEpochData.Generator.Timestamp, 0).Format(time.DateTime))
+	log.Debugf("    Generator Token: %s", updateEpochData.Generator.Token)
+	log.Debugf("-------------------------------------------------")
+	log.Debugf("-------------------  Update Epoch Data End  -------------------------")
+}
+
+func showGeneratorHandOverData(generatorHandOverData *validatechain.DataGeneratorHandOver) {
+	log.Debugf("-------------------     Generator HandOver Data   -------------------------")
+	log.Debugf("-------------------  Generator HandOver Data End  -------------------------")
+}
+
+func showMinerNewBlockData(newBlockData *validatechain.DataMinerNewBlock) {
+	log.Debugf("-------------------    Miner New Block Data   -------------------------")
+	log.Debugf("    GeneratorId: %d", newBlockData.GeneratorId)
+	log.Debugf("    PublicKey: %x", newBlockData.PublicKey)
+	log.Debugf("    Timestamp: %s", time.Unix(newBlockData.Timestamp, 0).Format(time.DateTime))
+	log.Debugf("    SatsnetHeight: %d", newBlockData.SatsnetHeight)
+	log.Debugf("    Hash: %s", newBlockData.Hash.String())
+	log.Debugf("    Token: %s", newBlockData.Token)
+	log.Debugf("-------------------  Miner New Block Data End  -------------------------")
 }

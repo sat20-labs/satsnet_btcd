@@ -933,3 +933,22 @@ type GetAnchorTxInfoResult struct {
 	Witness    string `json:"witness"`
 	Amount     int64  `json:"amount"`
 }
+
+// GetVCBlockResult models the data from the getvcblock command
+type GetVCBlockResult struct {
+	Hash        string `json:"hash"`
+	BlockType   int    `json:"blockType"`
+	DataPayload []byte `json:"dataPayload"`
+}
+
+// GetVCBlockStateResult models the data from the getvcblock command
+type GetVCBlockStateResult struct {
+	Height int64  `json:"height"`
+	Hash   string `json:"hash"`
+}
+
+// GetVCBlockHashResult models the data from the getvcblock command
+type GetVCBlockHashResult struct {
+	Height int64  `json:"height"`
+	Hash   string `json:"hash"`
+}

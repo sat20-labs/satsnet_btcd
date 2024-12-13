@@ -3,6 +3,7 @@ package validatechain
 import (
 	"bytes"
 	"io"
+	"time"
 
 	"github.com/sat20-labs/satsnet_btcd/btcec"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
@@ -20,7 +21,7 @@ type EPBlockHeader struct {
 type DataEpochVote struct {
 	VotorId       uint64                               // 投票者ID
 	PublicKey     [btcec.PubKeyBytesLenCompressed]byte // 投票者公钥
-	EpochIndex    uint32                               // 要投票Epoch Index
+	EpochIndex    int64                               // 要投票Epoch Index
 	CreateTime    int64                                // 要投票的Epoch创建时间
 	Reason        uint32                               // 要投票的Epoch发起原因（Epoch创立，Epoch轮换，当前Epoch停摆）
 	EpochItemList []epoch.EpochItem                    // 选择的Epoch的ItemList
@@ -31,6 +32,16 @@ type EPBlock struct {
 	Header  EPBlockHeader
 	Data    *DataEpochVote
 	payload []byte
+}
+
+func NewEPBlock() *EPBlock {
+	epBlock := &EPBlock{
+		Header: EPBlockHeader{
+			CreateTime: time.Now().Unix(),
+			Version:    uint32(Version_ValidateChain),
+		}}
+
+	return epBlock
 }
 
 func (epb *EPBlock) GetHash() (*chainhash.Hash, error) {

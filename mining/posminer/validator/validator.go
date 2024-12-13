@@ -42,7 +42,7 @@ type ValidatorListener interface {
 	GetLocalEpoch(uint64) (*epoch.Epoch, *epoch.Epoch, error)
 
 	// Req new epoch from remote peer
-	ReqNewEpoch(uint64, uint32) (*epoch.Epoch, error)
+	ReqNewEpoch(uint64, int64, uint32) (*chainhash.Hash, error)
 
 	// OnNextEpoch from remote peer
 	OnNextEpoch(*epoch.HandOverEpoch)
@@ -54,7 +54,7 @@ type ValidatorListener interface {
 	OnGeneratorUpdated(*generator.Generator, uint64)
 
 	// New epoch command is received
-	OnNewEpoch(uint64, *epoch.Epoch)
+	OnNewEpoch(uint64, *chainhash.Hash)
 
 	// Current generator is updated
 	OnGeneratorHandOver(*generator.GeneratorHandOver, net.Addr)
@@ -66,7 +66,7 @@ type ValidatorListener interface {
 	GetLocalValidatorInfo() *validatorinfo.ValidatorInfo
 
 	// OnTimeGenerateBlock is invoke when time to generate block.
-	OnTimeGenerateBlock() (*chainhash.Hash, error)
+	OnTimeGenerateBlock() (*chainhash.Hash, int32, error)
 
 	// OnConfirmEpoch is invoke when received a confirm epoch command
 	OnConfirmEpoch(*epoch.Epoch, net.Addr)
@@ -81,22 +81,22 @@ type ValidatorListener interface {
 	OnNotifyHandover(uint64)
 
 	// Received get vc state command
-	GetVCState(uint64) (*validatorcommand.MsgGetVCState, error)
+	GetVCState(uint64) (*validatorcommand.MsgVCState, error)
 
 	// Received a vc state command
-	OnVCState(*validatorcommand.MsgVCState, net.Addr)
+	OnVCState(*validatorcommand.MsgVCState, *Validator)
 
 	// Received get vc list command
-	GetVCList(uint64, int64, int64) (*validatorcommand.MsgGetVCList, error)
+	GetVCList(uint64, int64, int64) (*validatorcommand.MsgVCList, error)
 
 	// Received a vc list command
-	OnVCList(*validatorcommand.MsgVCList, net.Addr)
+	OnVCList(*validatorcommand.MsgVCList, *Validator)
 
 	// Received get vc block command
-	GetVCBlock(uint64, uint32, chainhash.Hash) (*validatorcommand.MsgGetVCBlock, error)
+	GetVCBlock(uint64, uint32, chainhash.Hash) (*validatorcommand.MsgVCBlock, error)
 
 	// Received a vc block command
-	OnVCBlock(*validatorcommand.MsgVCBlock, net.Addr)
+	OnVCBlock(*validatorcommand.MsgVCBlock, *Validator)
 }
 
 // Config is the struct to hold configuration options useful to Validator.
@@ -501,6 +501,26 @@ func (v *Validator) SyncVaildatorInfo(validatorInfo *validatorinfo.ValidatorInfo
 	v.UpdateValidatorInfo(validatorInfo, validatorinfo.MaskAll)
 }
 
+func (v *Validator) LogCurrentStats() {
+	// Log validator info
+	log.Debugf("validator ID: %d", v.ValidatorInfo.ValidatorId)
+	log.Debugf("validator Public: %x", v.ValidatorInfo.PublicKey[:])
+	log.Debugf("validator Host: %s", v.ValidatorInfo.Host)
+	log.Debugf("validator CreateTime: %s", v.ValidatorInfo.CreateTime.Format("2006-01-02 15:04:05"))
+
+	//Log validator stats
+	if v.peer == nil {
+		log.Debugf("validator peer is nil")
+		return
+	}
+	v.peer.LogConnStats()
+	// log.Debugf("validator LastSend: %s", v.peer.LastSend().Format("2006-01-02 15:04:05"))
+	// log.Debugf("validator LastRecv: %s", v.peer.LastRecv().Format("2006-01-02 15:04:05"))
+	// log.Debugf("validator LastPingTime: %s", v.peer.LastPingTime().Format("2006-01-02 15:04:05"))
+	// log.Debugf("validator LastPingNonce: %d", v.peer.LastPingNonce())
+	// log.Debugf("validator LastPingMicros: %d", v.peer.LastPingMicros())
+}
+
 // GetLocalValidatorInfo invoke when local validator info.
 func (v *Validator) GetLocalValidatorInfo(uint64) *validatorinfo.ValidatorInfo {
 	validatorInfo := v.Cfg.Listener.GetLocalValidatorInfo()
@@ -529,8 +549,8 @@ func (v *Validator) OnGeneratorResponse(generatorInfo *generator.Generator) {
 	v.Cfg.Listener.OnGeneratorUpdated(generatorInfo, v.ValidatorInfo.ValidatorId)
 }
 
-func (v *Validator) OnNewEpoch(validatorId uint64, epoch *epoch.Epoch) {
-	v.Cfg.Listener.OnNewEpoch(validatorId, epoch)
+func (v *Validator) OnNewEpoch(validatorId uint64, hash *chainhash.Hash) {
+	v.Cfg.Listener.OnNewEpoch(validatorId, hash)
 }
 
 func (v *Validator) OnConfirmedDelEpochMember(delEpochMember *epoch.DelEpochMember) {
@@ -540,15 +560,15 @@ func (v *Validator) OnConfirmedDelEpochMember(delEpochMember *epoch.DelEpochMemb
 
 // Received a vc state command
 func (v *Validator) OnVCState(vsState *validatorcommand.MsgVCState, remoteAddr net.Addr) {
-	v.Cfg.Listener.OnVCState(vsState, remoteAddr)
+	v.Cfg.Listener.OnVCState(vsState, v)
 }
 
 // Received a vc list command
 func (v *Validator) OnVCList(vclist *validatorcommand.MsgVCList, remoteAddr net.Addr) {
-	v.Cfg.Listener.OnVCList(vclist, remoteAddr)
+	v.Cfg.Listener.OnVCList(vclist, v)
 }
 
 // Received a vc block command
 func (v *Validator) OnVCBlock(vcblock *validatorcommand.MsgVCBlock, remoteAddr net.Addr) {
-	v.Cfg.Listener.OnVCBlock(vcblock, remoteAddr)
+	v.Cfg.Listener.OnVCBlock(vcblock, v)
 }

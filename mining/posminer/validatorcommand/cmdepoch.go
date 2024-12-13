@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	MaxMsgEpochLength = (20 + 256*60) * 2
+	MaxMsgEpochLength = (24 + 256*60) * 2
 )
 
 // MsgEpoch implements the Message interface try to get all validators

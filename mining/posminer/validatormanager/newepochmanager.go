@@ -2,10 +2,11 @@ package validatormanager
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechain"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
 )
 
@@ -14,17 +15,24 @@ import (
 // 2. 记录所有发送的Validator的ID， 用于处理NewEpoch时的依据
 // 3. 接收到NewEpoch事件时交给NewEpochManager进行处理
 
+type NewEpochVoteItem struct {
+	VoteData *validatechain.DataEpochVote // 投票的epoch
+	Hash     *chainhash.Hash              //  投票的epblock的hash
+}
+
 type NewEpochManager struct {
 	ValidatorMgr  *ValidatorManager
 	started       bool
-	receivedEpoch map[uint64]*epoch.Epoch
+	reason        uint32
+	receivedEpoch map[uint64]*NewEpochVoteItem
 }
 
-func CreateNewEpochManager(validatorMgr *ValidatorManager) *NewEpochManager {
+func CreateNewEpochManager(validatorMgr *ValidatorManager, reason uint32) *NewEpochManager {
 	return &NewEpochManager{
 		ValidatorMgr:  validatorMgr,
-		receivedEpoch: make(map[uint64]*epoch.Epoch),
+		receivedEpoch: make(map[uint64]*NewEpochVoteItem),
 		started:       false,
+		reason:        reason,
 	}
 }
 
@@ -40,10 +48,10 @@ func (nem *NewEpochManager) NewReqEpoch(validatorId uint64) {
 		log.Errorf("NewReqEpoch failed: %v", err)
 		return
 	}
-	nem.receivedEpoch[validatorId] = &epoch.Epoch{}
+	nem.receivedEpoch[validatorId] = &NewEpochVoteItem{}
 }
 
-func (nem *NewEpochManager) AddReceivedEpoch(validatorId uint64, epoch *epoch.Epoch) error {
+func (nem *NewEpochManager) AddReceivedEpoch(validatorId uint64, hash *chainhash.Hash) error {
 	if _, ok := nem.receivedEpoch[validatorId]; !ok {
 		err := errors.New("Isnot invited validatorId for received epoch")
 		log.Errorf("AddReceivedEpoch failed: %v", err)
@@ -51,7 +59,7 @@ func (nem *NewEpochManager) AddReceivedEpoch(validatorId uint64, epoch *epoch.Ep
 
 	}
 	// Update the epoch of the validator
-	nem.receivedEpoch[validatorId] = epoch
+	nem.receivedEpoch[validatorId].Hash = hash
 	return nil
 }
 
@@ -80,11 +88,11 @@ func (nem *NewEpochManager) newEpochHandler() {
 
 type ValidEpochItem struct {
 	EpochCount int
-	epoch      *epoch.Epoch
+	VoteItem   *NewEpochVoteItem
 }
 
 type NewEpochResult struct {
-	invalidEpoch []*epoch.Epoch
+	invalidEpoch []*NewEpochVoteItem
 	validEpoch   []*ValidEpochItem
 }
 
@@ -96,27 +104,37 @@ func (nem *NewEpochManager) handleNewEpoch() {
 
 	invitedCount := len(nem.receivedEpoch)
 
-	for validatorId, epoch := range nem.receivedEpoch {
-		title := fmt.Sprintf("Received Epoch from %d", validatorId)
-		showEpoch(title, epoch)
+	for validatorId, voteItem := range nem.receivedEpoch {
+		if voteItem == nil || voteItem.Hash == nil {
+			log.Debugf("Not received new epoch by validator [%d]", validatorId)
+			continue
+		}
+		//title := fmt.Sprintf("Received Epoch from %d", validatorId)
+		voteItemData, err := nem.ValidatorMgr.validateChain.GetEPBlock(voteItem.Hash)
+		if err != nil {
+			log.Debugf("Cannot get epblock by hash [%s] from validator [%d]", voteItem.Hash.String(), validatorId)
+			continue
+		}
+		voteItem.VoteData = voteItemData.Data
+		//showEpoch(title, epoch)
 	}
 
 	// view the req epoch result
 	result := NewEpochResult{
-		invalidEpoch: make([]*epoch.Epoch, 0),
+		invalidEpoch: make([]*NewEpochVoteItem, 0),
 		validEpoch:   make([]*ValidEpochItem, 0),
 	}
 
-	for _, epoch := range nem.receivedEpoch {
-		if isValidEpoch(epoch) == false {
-			result.invalidEpoch = append(result.invalidEpoch, epoch)
+	for _, voteItem := range nem.receivedEpoch {
+		if isValidVote(voteItem) == false {
+			result.invalidEpoch = append(result.invalidEpoch, voteItem)
 			continue
 		}
 
 		matched := false
 		// Find the epoch match with valid epoch
 		for _, validItem := range result.validEpoch {
-			isSame := isSameEpoch(epoch, validItem.epoch)
+			isSame := isSameVote(voteItem, validItem.VoteItem)
 			if isSame == true {
 				matched = true
 				validItem.EpochCount++
@@ -126,7 +144,7 @@ func (nem *NewEpochManager) handleNewEpoch() {
 		if matched == false {
 			result.validEpoch = append(result.validEpoch, &ValidEpochItem{
 				EpochCount: 1,
-				epoch:      epoch,
+				VoteItem:   voteItem,
 			})
 		}
 
@@ -144,15 +162,23 @@ func (nem *NewEpochManager) handleNewEpoch() {
 		if validItem.EpochCount >= minValidCount {
 			log.Debugf("valid epoch:")
 			log.Debugf("epoch count: %d", validItem.EpochCount)
-			showEpoch("valid epoch:", validItem.epoch)
+			//showEpoch("valid epoch:", validItem.epoch)
 
 			// The new epoch is confirmed, the result will be sent to all validators
 			epochConfirmed := &epoch.Epoch{
-				EpochIndex:      validItem.epoch.EpochIndex,
+				EpochIndex:      validItem.VoteItem.VoteData.EpochIndex,
 				CreateTime:      time.Now(), // epoch confirmed time
 				CurGeneratorPos: epoch.Pos_Epoch_NotStarted,
-				ItemList:        validItem.epoch.ItemList,
+				ItemList:        make([]*epoch.EpochItem, 0),
 			}
+
+			for _, item := range validItem.VoteItem.VoteData.EpochItemList {
+				epochConfirmed.ItemList = append(epochConfirmed.ItemList, &item)
+			}
+
+			// save to vc block, and broadcast to other validators
+
+			nem.ValidatorMgr.ConfirmNewEpoch(epochConfirmed, nem.reason, nem.receivedEpoch)
 
 			// Notify local peer for the confirmed epoch
 			nem.ValidatorMgr.OnConfirmEpoch(epochConfirmed, nil)
@@ -195,7 +221,7 @@ func (nem *NewEpochManager) handleNewEpoch() {
 		} else {
 			log.Debugf("invalid epoch:")
 			log.Debugf("epoch count: %d", validItem.EpochCount)
-			showEpoch("invalid epoch:", validItem.epoch)
+			//showEpoch("invalid epoch:", validItem.epoch)
 		}
 	}
 
@@ -203,33 +229,33 @@ func (nem *NewEpochManager) handleNewEpoch() {
 	log.Debugf("****************************************************************************************")
 }
 
-func isValidEpoch(epoch *epoch.Epoch) bool {
-	if epoch == nil {
+func isValidVote(voteItem *NewEpochVoteItem) bool {
+	if voteItem == nil || voteItem.VoteData == nil {
 		return false
 	}
 
-	if len(epoch.ItemList) == 0 {
+	if len(voteItem.VoteData.EpochItemList) == 0 {
 		return false
 	}
 
 	return true
 }
 
-func isSameEpoch(epoch1 *epoch.Epoch, epoch2 *epoch.Epoch) bool {
-	if epoch1 == nil || epoch2 == nil {
+func isSameVote(vote1 *NewEpochVoteItem, vote2 *NewEpochVoteItem) bool {
+	if vote1 == nil || vote1.VoteData == nil || vote2 == nil || vote2.VoteData == nil {
 		return false
 	}
 
-	if epoch1.EpochIndex != epoch2.EpochIndex {
+	if vote1.VoteData.EpochIndex != vote2.VoteData.EpochIndex {
 		return false
 	}
 
-	if len(epoch1.ItemList) != len(epoch2.ItemList) {
+	if len(vote1.VoteData.EpochItemList) != len(vote2.VoteData.EpochItemList) {
 		return false
 	}
 
-	for i := 0; i < len(epoch1.ItemList); i++ {
-		if epoch1.ItemList[i].ValidatorId != epoch2.ItemList[i].ValidatorId {
+	for i := 0; i < len(vote1.VoteData.EpochItemList); i++ {
+		if vote1.VoteData.EpochItemList[i].ValidatorId != vote2.VoteData.EpochItemList[i].ValidatorId {
 			return false
 		}
 	}

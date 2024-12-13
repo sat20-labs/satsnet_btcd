@@ -621,11 +621,12 @@ mempoolLoop:
 	// so then this means that we'll include any transactions with witness
 	// data in the mempool, and also add the witness commitment as an
 	// OP_RETURN output in the coinbase transaction.
-	segwitState, err := g.chain.ThresholdState(chaincfg.DeploymentSegwit)
-	if err != nil {
-		return nil, err
-	}
-	segwitActive := segwitState == blockchain.ThresholdActive
+	// segwitState, err := g.chain.ThresholdState(chaincfg.DeploymentSegwit)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// segwitActive := segwitState == blockchain.ThresholdActive
+	segwitActive := true // satsnet support segwit always
 
 	witnessIncluded := false
 
@@ -928,6 +929,8 @@ func AddWitnessCommitment(coinbaseTx *btcutil.Tx,
 	}
 	coinbaseTx.MsgTx().TxOut = append(coinbaseTx.MsgTx().TxOut,
 		commitmentOutput)
+
+	coinbaseTx.ClearHashCache() // The coinbaseTx has changed, clear hash cache
 
 	return witnessCommitment
 }

@@ -1,11 +1,19 @@
 package epoch
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"time"
 
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sat20-labs/satsnet_btcd/btcec"
+	"github.com/sat20-labs/satsnet_btcd/btcec/ecdsa"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 )
 
@@ -21,13 +29,22 @@ type EpochItem struct {
 }
 
 type Epoch struct {
-	EpochIndex      uint32               // Epoch Index, start from 0
+	EpochIndex      int64                // Epoch Index, start from 0
 	CreateHeight    int32                // 创建Epoch时当前Block的高度
 	CreateTime      time.Time            // 当前Epoch的创建时间
 	ItemList        []*EpochItem         // 当前Epoch包含的验证者列表，（已排序）， 在一个Epoch结束前不会改变
 	Generator       *generator.Generator // 当前Generator
 	CurGeneratorPos int32                // 当前Generator在ItemList中的位置
 	//	CurrentHeight uint64               // 当前Block chain的高度
+}
+
+type NewEpochVote struct {
+	NewEpoch  *Epoch
+	Reason    uint32
+	VotorId   uint64
+	PublicKey [btcec.PubKeyBytesLenCompressed]byte
+	Token     string
+	Hash      *chainhash.Hash // epoch block hash
 }
 
 func NewEpoch() *Epoch {
@@ -234,4 +251,84 @@ func (e *Epoch) GetValidatorPos(validatorId uint64) int32 {
 	}
 
 	return -1
+}
+
+func (nev *NewEpochVote) GetTokenData() []byte {
+
+	// Next epoch Token Data format: "satsnet:delepochmem:validatorid:DelValidatorId:DelCode:EpochIndex:timestamp"
+	//tokenData := fmt.Sprintf("satsnet:newepochvote:%d:%d:%d:%d:%d:%d", he.ValidatorId, he.DelValidatorId, he.DelCode, he.EpochIndex, he.Result, he.Timestamp)
+	var bw bytes.Buffer
+
+	err := nev.Encode(&bw)
+	if err != nil {
+		log.Errorf("Failed to encode new epoch vote: %v", err)
+		return nil
+	}
+
+	tokenData := bw.Bytes()
+
+	tokenSource := sha256.Sum256([]byte(tokenData))
+
+	return tokenSource[:]
+}
+func (nev *NewEpochVote) Encode(w io.Writer) error {
+	// new epoch vote Token Data format: "satsnet:newepochvote:"
+	// VotorId, Reason
+	// EpochIndex
+	// CreateTime
+	// ItemList
+
+	tokenTitle := "satsnet:newepochvote:"
+	err := utils.WriteElements(w,
+		tokenTitle,
+		nev.VotorId,
+		nev.Reason,
+		nev.NewEpoch.EpochIndex,
+		nev.NewEpoch.CreateTime.Unix())
+	if err != nil {
+		return err
+	}
+	for _, item := range nev.NewEpoch.ItemList {
+		err := utils.WriteElements(w,
+			item.ValidatorId,
+			item.PublicKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (nev *NewEpochVote) VerifyToken(pubKey []byte) bool {
+	signatureBytes, err := base64.StdEncoding.DecodeString(nev.Token)
+	if err != nil {
+		log.Debugf("[NewEpochVote]VerifyToken: Invalid generator token, ignore it.")
+		return false
+	}
+
+	tokenData := nev.GetTokenData()
+
+	publicKey, err := secp256k1.ParsePubKey(pubKey[:])
+	if err != nil {
+		log.Debugf("[NewEpochVote]VerifyToken: Invalid public key.")
+		return false
+	}
+	// 解析签名
+	signature, err := ecdsa.ParseDERSignature(signatureBytes)
+	if err != nil {
+		log.Debugf("Failed to parse signature: %v", err)
+		return false
+	}
+
+	// 使用公钥验证签名
+	valid := signature.Verify(tokenData, publicKey)
+	if valid {
+		log.Debugf("[NewEpochVote]VerifyToken:Signature is valid.")
+		return true
+	} else {
+		log.Debugf("[NewEpochVote]VerifyToken:Signature is invalid.")
+		return false
+	}
+
 }

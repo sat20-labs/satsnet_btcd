@@ -876,6 +876,10 @@ func loadConfig() (*config, []string, error) {
 
 	if cfg.DisableRPC {
 		btcdLog.Infof("RPC service is disabled")
+		btcdLog.Infof("cfg.RPCUser = %s", cfg.RPCUser)
+		btcdLog.Infof("cfg.RPCPass = %s", cfg.RPCPass)
+		btcdLog.Infof("cfg.RPCLimitUser = %s", cfg.RPCLimitUser)
+		btcdLog.Infof("cfg.RPCLimitPass = %s", cfg.RPCLimitPass)
 	}
 
 	// Default RPC to listen on localhost only.

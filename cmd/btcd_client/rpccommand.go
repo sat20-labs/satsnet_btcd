@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
@@ -104,7 +105,7 @@ func testGetAccordingLockedInfo(txid string) {
 	fmt.Printf("Locked TX WitnessScript: %v\n", lockedTxInfo.WitnessScript)
 	fmt.Printf("Locked TX Amount: %d\n", lockedTxInfo.Amount)
 
-	fmt.Printf("Anchor TX txid(Satsnet): %s\n", txid)	
+	fmt.Printf("Anchor TX txid(Satsnet): %s\n", txid)
 }
 
 func testGetAccordingAnchorInfo(lockedTxid string) {
@@ -143,4 +144,26 @@ func testGetAccordingAnchorInfo(lockedTxid string) {
 
 	btcwallet.LogMsgTx(resultTx.MsgTx())
 	fmt.Printf("************************************Anchor TX End**************************************\n")
+}
+
+func testGetBlocksWithTx(txid string) {
+	tx, err := satsnet_rpc.GetTxVerbose(txid)
+	if err != nil {
+		log.Errorf("Invalid Txid : %s", txid)
+		return
+	}
+	log.Infof("Tx Id: %s", tx.Txid)
+	log.Infof("Tx Hex: %s", tx.Hex)
+	log.Infof("Tx Hash: %s", tx.Hash)
+	log.Infof("Block: %s", tx.BlockHash)
+
+	block, err := satsnet_rpc.GetRawBlockVerbose(tx.BlockHash)
+	if err != nil {
+		log.Errorf("Invalid Block : %s", tx.BlockHash)
+		return
+	}
+
+	log.Infof("Block Height: %d", block.Height)
+	log.Infof("Block Hash: %d", block.Hash)
+	log.Infof("Block Time: %s", time.Unix(block.Time, 0).Format(time.DateTime)) //time.Unix(block.Time.Format(time.DateTime))
 }

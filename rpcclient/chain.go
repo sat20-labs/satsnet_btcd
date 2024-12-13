@@ -162,6 +162,145 @@ func (c *Client) GetBlock(blockHash *chainhash.Hash) (*wire.MsgBlock, error) {
 	return c.GetBlockAsync(blockHash).Receive()
 }
 
+// FutureGetBlockResult is a future promise to deliver the result of a
+// GetBlockAsync RPC invocation (or an applicable error).
+type FutureGetVCBlockResult chan *Response
+
+// Receive waits for the Response promised by the future and returns the raw
+// block requested from the server given its hash.
+func (r FutureGetVCBlockResult) Receive() (*btcjson.GetVCBlockResult, error) {
+	res, err := ReceiveFuture(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var blockResult btcjson.GetVCBlockResult
+	err = json.Unmarshal(res, &blockResult)
+	if err != nil {
+		return nil, err
+	}
+
+	return &blockResult, nil
+}
+
+// GetBlockAsync returns an instance of a type that can be used to get the
+// result of the RPC at some future time by invoking the Receive function on the
+// returned instance.
+//
+// See GetBlock for the blocking version and more details.
+func (c *Client) GetVCBlockAsync(blockHash *chainhash.Hash) FutureGetVCBlockResult {
+	hash := ""
+	if blockHash != nil {
+		hash = blockHash.String()
+	}
+
+	cmd := btcjson.NewGetVCBlockCmd(hash, 1)
+	return c.SendCmd(cmd)
+}
+
+// GetBlock returns a raw block from the server given its hash.
+//
+// See GetBlockVerbose to retrieve a data structure with information about the
+// block instead.
+func (c *Client) GetVCBlock(blockHash *chainhash.Hash) (*btcjson.GetVCBlockResult, error) {
+	return c.GetVCBlockAsync(blockHash).Receive()
+}
+
+// GetBlockAsync returns an instance of a type that can be used to get the
+// result of the RPC at some future time by invoking the Receive function on the
+// returned instance.
+//
+// See GetBlock for the blocking version and more details.
+func (c *Client) GetEPBlockAsync(blockHash *chainhash.Hash) FutureGetVCBlockResult {
+	hash := ""
+	if blockHash != nil {
+		hash = blockHash.String()
+	}
+
+	cmd := btcjson.NewGetVCBlockCmd(hash, 2)
+	return c.SendCmd(cmd)
+}
+
+// GetBlock returns a raw block from the server given its hash.
+//
+// See GetBlockVerbose to retrieve a data structure with information about the
+// block instead.
+func (c *Client) GetEPBlock(blockHash *chainhash.Hash) (*btcjson.GetVCBlockResult, error) {
+	return c.GetEPBlockAsync(blockHash).Receive()
+}
+
+// FutureGetVCBlockHashResult is a future promise to deliver the result of a
+// GetVCBlockHashAsync RPC invocation (or an applicable error).
+type FutureGetVCBlockStateResult chan *Response
+
+// Receive waits for the Response promised by the future and returns the hash of
+// the best block in the longest block chain.
+func (r FutureGetVCBlockStateResult) Receive() (*btcjson.GetVCBlockStateResult, error) {
+	res, err := ReceiveFuture(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var blockStateResult btcjson.GetVCBlockStateResult
+	err = json.Unmarshal(res, &blockStateResult)
+	if err != nil {
+		return nil, err
+	}
+	return &blockStateResult, nil
+}
+
+// GetBestBlockHashAsync returns an instance of a type that can be used to get
+// the result of the RPC at some future time by invoking the Receive function on
+// the returned instance.
+//
+// See GetBestBlockHash for the blocking version and more details.
+func (c *Client) GetVCBlockStateAsync() FutureGetVCBlockStateResult {
+	cmd := btcjson.NewGetVCBlockStateCmd()
+	return c.SendCmd(cmd)
+}
+
+// GetBestBlockHash returns the hash of the best block in the longest block
+// chain.
+func (c *Client) GetVCBlockState() (*btcjson.GetVCBlockStateResult, error) {
+	return c.GetVCBlockStateAsync().Receive()
+}
+
+// FutureGetVCBlockHashResult is a future promise to deliver the result of a
+// GetVCBlockHashAsync RPC invocation (or an applicable error).
+type FutureGetVCBlockHashResult chan *Response
+
+// Receive waits for the Response promised by the future and returns the hash of
+// the best block in the longest block chain.
+func (r FutureGetVCBlockHashResult) Receive() (*btcjson.GetVCBlockHashResult, error) {
+	res, err := ReceiveFuture(r)
+	if err != nil {
+		return nil, err
+	}
+
+	var blockHashResult btcjson.GetVCBlockHashResult
+	err = json.Unmarshal(res, &blockHashResult)
+	if err != nil {
+		return nil, err
+	}
+	return &blockHashResult, nil
+}
+
+// GetBestBlockHashAsync returns an instance of a type that can be used to get
+// the result of the RPC at some future time by invoking the Receive function on
+// the returned instance.
+//
+// See GetBestBlockHash for the blocking version and more details.
+func (c *Client) GetVCBlockHashAsync(height int64) FutureGetVCBlockHashResult {
+	cmd := btcjson.NewGetVCBlockHashCmd(height)
+	return c.SendCmd(cmd)
+}
+
+// GetBestBlockHash returns the hash of the best block in the longest block
+// chain.
+func (c *Client) GetVCBlockHash(height int64) (*btcjson.GetVCBlockHashResult, error) {
+	return c.GetVCBlockHashAsync(height).Receive()
+}
+
 // FutureGetBlockVerboseResult is a future promise to deliver the result of a
 // GetBlockVerboseAsync RPC invocation (or an applicable error).
 type FutureGetBlockVerboseResult struct {

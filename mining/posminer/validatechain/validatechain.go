@@ -15,6 +15,10 @@ type ValidateChain struct {
 }
 
 func NewValidateChain(vcStore *validatechaindb.ValidateChainStore) *ValidateChain {
+	if vcStore == nil {
+		return nil
+	}
+
 	chain := &ValidateChain{
 		vcStore: vcStore,
 	}
@@ -25,6 +29,18 @@ func NewValidateChain(vcStore *validatechaindb.ValidateChainStore) *ValidateChai
 	}
 
 	return chain
+}
+func (vc *ValidateChain) Start() error {
+	err := vc.SyncValidateChain()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (vc *ValidateChain) SyncValidateChain() error {
+	return nil
 }
 
 // 得到本地当前的最新状态
@@ -47,11 +63,6 @@ func (vc *ValidateChain) UpdateCurrentState(state *ValidateChainState) error {
 	}
 
 	return nil
-}
-
-// 根据高度获取BlockHash
-func (vc *ValidateChain) GetHash(height int64) {
-
 }
 
 // 根据Hash获取块数据
@@ -89,9 +100,21 @@ func (vc *ValidateChain) SaveVCBlock(vcBlock *VCBlock) error {
 	return nil
 }
 
-// 更新一个高度与blockhash
-func (vc *ValidateChain) UpdateHash() {
+// 根据高度获取BlockHash
+func (vc *ValidateChain) GetVCBlockHash(height int64) (*chainhash.Hash, error) {
+	hash, err := vc.vcStore.GetVCBlockHash(height)
+	if err != nil {
+		return nil, err
+	}
 
+	return hash, nil
+}
+
+// 更新一个高度与blockhash
+func (vc *ValidateChain) SaveVCBlockHash(height int64, hash *chainhash.Hash) error {
+	err := vc.vcStore.SaveVCBlockHash(height, hash)
+
+	return err
 }
 
 // 写入投票的数据

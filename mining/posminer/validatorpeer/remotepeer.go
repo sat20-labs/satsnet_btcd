@@ -43,7 +43,7 @@ type RemotePeerInterface interface {
 	OnGeneratorResponse(generatorInfo *generator.Generator)
 
 	// New epoch command is received
-	OnNewEpoch(validatorId uint64, epoch *epoch.Epoch)
+	OnNewEpoch(validatorId uint64, hash *chainhash.Hash)
 
 	// GetLocalValidatorInfo invoke when local validator info.
 	GetLocalValidatorInfo(uint64) *validatorinfo.ValidatorInfo
@@ -336,6 +336,16 @@ func (p *RemotePeer) BytesReceived() uint64 {
 	return atomic.LoadUint64(&p.bytesReceived)
 }
 
+func (p *RemotePeer) LogConnStats() {
+	p.connLock.RLock()
+	defer p.connLock.RUnlock()
+	if p.connReq == nil {
+		log.Debugf("The validator is disconnected")
+		return
+	}
+	p.connReq.logConnInfo("")
+}
+
 // OnConnDisconnected to be called when a connection is disconnected.
 //
 // This function is safe for concurrent access.
@@ -600,6 +610,7 @@ out:
 			p.statsMtx.Lock()
 			p.lastPingNonce = nonce
 			p.lastPingTime = time.Now()
+			p.lastPingMicros = -1 //  wait response with pong
 			p.statsMtx.Unlock()
 
 			go func() {
@@ -848,24 +859,24 @@ func (p *RemotePeer) HandleGeneratorResponse(generatorCmd *validatorcommand.MsgG
 func (p *RemotePeer) HandleNewEpoch(newEpochCmd *validatorcommand.MsgNewEpoch, connReq *ConnReq) {
 	// 	First check the remote validator is valid, then notify the validator
 	log.Debugf("----------[RemotePeer]The epoch list is response from  validatorvalidator ID: %d", p.cfg.RemoteValidatorId)
-	newEpoch := &epoch.Epoch{
-		EpochIndex:      newEpochCmd.EpochIndex,
-		CreateHeight:    newEpochCmd.CreateHeight,
-		CreateTime:      newEpochCmd.CreateTime,
-		ItemList:        make([]*epoch.EpochItem, 0),
-		CurGeneratorPos: epoch.Pos_Epoch_NotStarted,
-	}
-	for _, epochItem := range newEpochCmd.ItemList {
-		validatorItem := &epoch.EpochItem{
-			ValidatorId: epochItem.ValidatorId,
-			Host:        epochItem.Host,
-			PublicKey:   epochItem.PublicKey,
-			Index:       epochItem.Index,
-		}
-		newEpoch.ItemList = append(newEpoch.ItemList, validatorItem)
-	}
+	// newEpoch := &epoch.Epoch{
+	// 	EpochIndex:      newEpochCmd.EpochIndex,
+	// 	CreateHeight:    newEpochCmd.CreateHeight,
+	// 	CreateTime:      newEpochCmd.CreateTime,
+	// 	ItemList:        make([]*epoch.EpochItem, 0),
+	// 	CurGeneratorPos: epoch.Pos_Epoch_NotStarted,
+	// }
+	// for _, epochItem := range newEpochCmd.ItemList {
+	// 	validatorItem := &epoch.EpochItem{
+	// 		ValidatorId: epochItem.ValidatorId,
+	// 		Host:        epochItem.Host,
+	// 		PublicKey:   epochItem.PublicKey,
+	// 		Index:       epochItem.Index,
+	// 	}
+	// 	newEpoch.ItemList = append(newEpoch.ItemList, validatorItem)
+	// }
 
-	p.cfg.RemoteValidatorListener.OnNewEpoch(newEpochCmd.ValidatorId, newEpoch)
+	p.cfg.RemoteValidatorListener.OnNewEpoch(newEpochCmd.ValidatorId, &newEpochCmd.Hash)
 }
 
 func (p *RemotePeer) HandleConfirmDelEpoch(confirmDelEpochMemCmd *validatorcommand.MsgConfirmDelEpoch, connReq *ConnReq) {

@@ -27,7 +27,7 @@ type MsgConfirmEpoch struct {
 	ValidatorId uint64 // Validator Id
 
 	// epoch info for the confirmed epoch
-	EpochIndex   uint32            // Epoch Index, start from 0
+	EpochIndex   int64             // Epoch Index, start from 0
 	CreateHeight int32             // 创建Epoch时当前Block的高度
 	CreateTime   time.Time         // 当前Epoch的创建时间
 	ItemList     []epoch.EpochItem // 当前Epoch包含的验证者列表，（已排序）， 在一个Epoch结束前不会改变
@@ -135,9 +135,9 @@ func (msg *MsgConfirmEpoch) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgConfirmEpoch) MaxPayloadLength(pver uint32) uint32 {
-	//  ValidatorId 8 bytes + EpochIndex 4 bytes + CreateHeight 4 bytes + CreateTime 8 bytes + ValidatorCount 4 bytes
+	//  ValidatorId 8 bytes + EpochIndex 8 bytes + CreateHeight 4 bytes + CreateTime 8 bytes + ValidatorCount 4 bytes
 	//  Max validator count is 256 (Max Epoch Size) , EpochItem is 60 bytes
-	return 28 + 256*60 // 69 len of validatorinfo.ValidatorInfo to be sent
+	return 32 + 256*60 // 69 len of validatorinfo.ValidatorInfo to be sent
 
 }
 

@@ -353,6 +353,22 @@ func main() {
 		} else if method == "showgenesis" {
 			showGenesisBlock(currentNetwork)
 			continue
+		} else if method == "addr2pk" {
+			if length < 2 {
+				fmt.Printf("parseaddress need address\n")
+				return
+			}
+			address := words[1]
+			parseAddress(address, currentNetwork)
+			continue
+		} else if method == "pk2addr" {
+			if length < 2 {
+				fmt.Printf("parseaddress need address\n")
+				return
+			}
+			pkscript := words[1]
+			parsePkScript(pkscript, currentNetwork)
+			continue
 		} else if method == "creategenesis" {
 			GenerateGenesisBlock(currentNetwork)
 			continue
@@ -380,10 +396,42 @@ func main() {
 
 			ShowBlocks(start, end)
 			continue
+		} else if method == "showvcblocks" {
+			start := int64(0)
+			end := int64(-1)
+			if length >= 2 {
+				number, err := strconv.ParseInt(words[1], 10, 64)
+
+				if err != nil {
+					fmt.Printf("parse height error, need int\n")
+				}
+
+				start = number
+			}
+			if length >= 3 {
+				number, err := strconv.ParseInt(words[2], 10, 64)
+
+				if err != nil {
+					fmt.Printf("parse height error, need int\n")
+				}
+
+				end = number
+			}
+
+			ShowVCBlocks(start, end)
+			continue
 		} else if method == "testrpcblocks" {
 			fmt.Fprintln(os.Stderr, listCmdMessage)
 			//os.Exit(0)
 			TestRPCGetBlocks()
+			continue
+		} else if method == "gettxblock" {
+			if length < 2 {
+				fmt.Printf("accordinganchorinfo need txid\n")
+				continue
+			}
+			txid := words[1]
+			testGetBlocksWithTx(txid)
 			continue
 		}
 

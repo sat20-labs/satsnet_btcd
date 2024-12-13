@@ -18,6 +18,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechaindb"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatormanager"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -706,16 +707,24 @@ func New(cfg *Config) *POSMiner {
 }
 
 // OnTimeGenerateBlock is invoke when time to generate block.
-func (m *POSMiner) OnTimeGenerateBlock() (*chainhash.Hash, error) {
+func (m *POSMiner) OnTimeGenerateBlock() (*chainhash.Hash, int32, error) {
 	log.Debugf("Timeup for OnTimeGenerateBlock ......")
 
 	return m.GenerateNewTestBlock()
 }
 
-func (m *POSMiner) GenerateNewTestBlock() (*chainhash.Hash, error) {
+func (m *POSMiner) GenerateNewTestBlock() (*chainhash.Hash, int32, error) {
 	log.Debugf("GenerateNewTestBlock ......")
 
 	// return nil, errors.New("Test generate failed.")
+	curHeight := m.g.BestSnapshot().Height
+	if curHeight != 0 && !m.cfg.IsCurrent() {
+		m.submitBlockLock.Unlock()
+		time.Sleep(time.Second)
+		log.Debugf("curHeight = %d and not current.", curHeight)
+		err := fmt.Errorf("The blockchain is not best chain.")
+		return nil, 0, err
+	}
 
 	blockHash := chainhash.DoubleHashRaw(func(w io.Writer) error {
 		buf := make([]byte, 128)
@@ -730,10 +739,10 @@ func (m *POSMiner) GenerateNewTestBlock() (*chainhash.Hash, error) {
 		return nil
 	})
 
-	return &blockHash, nil
+	return &blockHash, curHeight + 1, nil
 }
 
-func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, error) {
+func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, int32, error) {
 	// Wait until there is a connection to at least one other peer
 	// since there is no way to relay a found block or receive
 	// transactions to work on when there are no connected peers.
@@ -755,7 +764,7 @@ func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, error) {
 		time.Sleep(time.Second)
 		log.Debugf("curHeight = %d and not current.", curHeight)
 		err := fmt.Errorf("The blockchain is not best chain.")
-		return nil, err
+		return nil, 0, err
 	}
 
 	// Choose a payment address at random.
@@ -772,7 +781,7 @@ func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, error) {
 		errStr := fmt.Sprintf("Failed to create new block "+
 			"template: %v", err)
 		log.Errorf(errStr)
-		return nil, err
+		return nil, 0, err
 	}
 
 	log.Debugf("NewBlockTemplate done.")
@@ -786,14 +795,21 @@ func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, error) {
 		block := btcutil.NewBlock(template.Block)
 		m.submitBlock(block)
 		blockHash := block.Hash()
-		return blockHash, nil
+		return blockHash, curHeight + 1, nil
 	}
 
 	err = fmt.Errorf("Failed to solve block")
-	return nil, err
+	return nil, 0, err
 }
 
 // GetBlockHeight invoke when get block height from pos miner.
 func (m *POSMiner) GetBlockHeight() int32 {
 	return m.g.BestSnapshot().Height
+}
+
+func (m *POSMiner) GetVCStore() *validatechaindb.ValidateChainStore {
+	if m.ValidatorMgr == nil {
+		return nil
+	}
+	return m.ValidatorMgr.GetVCStore()
 }

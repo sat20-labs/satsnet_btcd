@@ -232,7 +232,7 @@ func (v *LocalValidator) GetGenerator(validatorId uint64) *generator.Generator {
 	return generator
 }
 
-func (v *LocalValidator) OnTimeGenerateBlock() (*chainhash.Hash, error) {
+func (v *LocalValidator) OnTimeGenerateBlock() (*chainhash.Hash, int32, error) {
 	log.Debugf("[LocalValidator]OnTimeGenerateBlock")
 
 	return v.Cfg.Listener.OnTimeGenerateBlock()
@@ -249,9 +249,9 @@ func (v *LocalValidator) OnHandOverGenerator(handOverInfo generator.GeneratorHan
 }
 
 // Req new epoch from remote peer
-func (v *LocalValidator) ReqNewEpoch(validatorID uint64, epochIndex uint32) (*epoch.Epoch, error) {
+func (v *LocalValidator) ReqNewEpoch(validatorID uint64, epochIndex int64, reason uint32) (*chainhash.Hash, error) {
 
-	return v.Cfg.Listener.ReqNewEpoch(validatorID, epochIndex)
+	return v.Cfg.Listener.ReqNewEpoch(validatorID, epochIndex, reason)
 }
 
 // Received a confirm epoch command
@@ -286,21 +286,21 @@ func (v *LocalValidator) OnNotifyHandover(validatorId uint64, remoteAddr net.Add
 }
 
 // Received get vc state command
-func (v *LocalValidator) GetVCState(validatorId uint64) (*validatorcommand.MsgGetVCState, error) {
+func (v *LocalValidator) GetVCState(validatorId uint64) (*validatorcommand.MsgVCState, error) {
 	return v.Cfg.Listener.GetVCState(validatorId)
 }
 
 // Received get vc list command
-func (v *LocalValidator) GetVCList(validatorId uint64, start int64, end int64) (*validatorcommand.MsgGetVCList, error) {
+func (v *LocalValidator) GetVCList(validatorId uint64, start int64, end int64) (*validatorcommand.MsgVCList, error) {
 	return v.Cfg.Listener.GetVCList(validatorId, start, end)
 }
 
 // Received get vc block command
-func (v *LocalValidator) GetVCBlock(validatorId uint64, blockType uint32, hash chainhash.Hash) (*validatorcommand.MsgGetVCBlock, error) {
+func (v *LocalValidator) GetVCBlock(validatorId uint64, blockType uint32, hash chainhash.Hash) (*validatorcommand.MsgVCBlock, error) {
 	return v.Cfg.Listener.GetVCBlock(validatorId, blockType, hash)
 }
 
 // Received a vc block command
 func (v *LocalValidator) OnVCBlock(vcblock *validatorcommand.MsgVCBlock, remoteAddr net.Addr) {
-	v.Cfg.Listener.OnVCBlock(vcblock, remoteAddr)
+	v.Cfg.Listener.OnVCBlock(vcblock, nil)
 }

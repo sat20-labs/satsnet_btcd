@@ -2512,7 +2512,14 @@ func (s *server) Start() {
 	// Start the CPU miner if generation is enabled.
 	if cfg.Generate {
 		//s.cpuMiner.Start()
+		if s.rpcServer == nil {
+			srvrLog.Errorf("RPC server is not ready.")
+			return
+		}
+		srvrLog.Errorf("Start pos miner.")
 		s.posMiner.Start(cfg.TimerGenerate)
+
+		s.rpcServer.SetVCStore(s.posMiner.GetVCStore())
 	}
 }
 
@@ -3077,6 +3084,8 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 			return nil, errors.New("RPCS: No valid listen address")
 		}
 
+		vcStore := s.posMiner.GetVCStore()
+
 		s.rpcServer, err = newRPCServer(&rpcserverConfig{
 			Listeners:    rpcListeners,
 			StartupTime:  s.startupTime,
@@ -3093,11 +3102,14 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 			AddrIndex:    s.addrIndex,
 			CfIndex:      s.cfIndex,
 			FeeEstimator: s.feeEstimator,
+			VCStore:      vcStore,
 		})
 		if err != nil {
+			srvrLog.Errorf("Unable to start RPC server: %v", err)
 			return nil, err
 		}
 
+		srvrLog.Debugf("Start RPC server succeed.")
 		// Signal process shutdown when the RPC server requests it.
 		go func() {
 			<-s.rpcServer.RequestedProcessShutdown()

@@ -14,7 +14,7 @@ type HandOverEpoch struct {
 	ValidatorId    uint64
 	Timestamp      int64  // The time of generator hand over, it should be time of completed miner last block
 	Token          string // The token for epoch handover, it sign by current generator (HandOver), if the type is New Epoch, it is signed by Epoch Requester (Epoch member)
-	NextEpochIndex uint32 // Next epoch index
+	NextEpochIndex int64  // Next epoch index
 	NextHeight     int32  // The next block height
 }
 

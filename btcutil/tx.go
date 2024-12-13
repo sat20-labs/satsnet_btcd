@@ -36,6 +36,11 @@ func (t *Tx) MsgTx() *wire.MsgTx {
 	return t.msgTx
 }
 
+func (t *Tx) ClearHashCache() {
+	t.txHash = nil
+	t.txHashWitness = nil
+}
+
 // Hash returns the hash of the transaction.  This is equivalent to calling
 // TxHash on the underlying wire.MsgTx, however it caches the result so
 // subsequent calls are more efficient.  If the Tx has the raw bytes of the tx

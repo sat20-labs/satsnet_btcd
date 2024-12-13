@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	CmdDelEpochMemberTarget_Consult = 1 // The command target is consult
-	CmdDelEpochMemberTarget_Confirm = 1 // The command target is notify for confirmed the epoch member is deleted
+	CmdDelEpochMemberTarget_Consult = uint32(0) // The command target is consult
+	CmdDelEpochMemberTarget_Confirm = uint32(1) // The command target is notify for confirmed the epoch member is deleted
 )
 
 // MsgReqDelEpochMember implements the Message interface and get current generator
@@ -28,7 +28,7 @@ type MsgReqDelEpochMember struct {
 	Target         uint32
 	DelValidatorId uint64 // The validator id to be deleted
 	DelCode        uint32 // The reason code for delete epoch member
-	EpochIndex     uint32 // The epoch index for confirm epoch member delete
+	EpochIndex     int64  // The epoch index for confirm epoch member delete
 }
 
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
@@ -73,8 +73,8 @@ func (msg *MsgReqDelEpochMember) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgReqDelEpochMember) MaxPayloadLength(pver uint32) uint32 {
-	// validatorId 8 bytes + DelValidatorId 8 bytes + DelCode 4 bytes + EpochIndex 4bytes
-	return 24
+	// validatorId 8 bytes + DelValidatorId 8 bytes + DelCode 4 bytes + EpochIndex 8 bytes
+	return 28
 }
 
 func (msg *MsgReqDelEpochMember) LogCommandInfo(log btclog.Logger) {
@@ -88,7 +88,7 @@ func (msg *MsgReqDelEpochMember) LogCommandInfo(log btclog.Logger) {
 // NewMsgReqDelEpochMember returns a new bitcoin version message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.
-func NewMsgReqDelEpochMember(validatorId uint64, target uint32, delValidatorId uint64, delCode uint32, epochIndex uint32) *MsgReqDelEpochMember {
+func NewMsgReqDelEpochMember(validatorId uint64, target uint32, delValidatorId uint64, delCode uint32, epochIndex int64) *MsgReqDelEpochMember {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.

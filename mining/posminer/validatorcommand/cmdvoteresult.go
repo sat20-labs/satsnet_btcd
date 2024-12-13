@@ -28,7 +28,7 @@ type VoteResult struct {
 	ValidatorId uint64     // The validator id of request vote
 	VoteType    uint32     // Vote type
 	VoteId      uint32     // The vote id
-	EpochIndex  uint32     // The epoch index
+	EpochIndex  int64      // The epoch index
 	VoteCount   uint32     // The vote count
 	Pass        uint32     // Pass or fail
 	VoteList    []VoteItem // The vote list
@@ -119,9 +119,9 @@ func (msg *MsgVoteResult) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgVoteResult) MaxPayloadLength(pver uint32) uint32 {
-	// ValidatorId 8 bytes + VoteType 4 bytes + VoteId 4 bytes  + EpochIndex 4 bytes + VoteCount 4 bytes + Pass 4 bytes +
+	// ValidatorId 8 bytes + VoteType 4 bytes + VoteId 4 bytes  + EpochIndex 8 bytes + VoteCount 4 bytes + Pass 4 bytes +
 	// (ValidatorId 8 bytes + Pass 4 bytes + GeneratorId 8 bytes + Token 20 bytes) * MaxVoteCount
-	return 36 + (20+MaxVoteTokenSize)*MaxVoteCount
+	return 40 + (20+MaxVoteTokenSize)*MaxVoteCount
 }
 
 func (msg *MsgVoteResult) LogCommandInfo(log btclog.Logger) {

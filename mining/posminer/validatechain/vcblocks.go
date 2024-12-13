@@ -3,6 +3,7 @@ package validatechain
 import (
 	"bytes"
 	"io"
+	"time"
 
 	"github.com/sat20-labs/satsnet_btcd/btcec"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
@@ -19,14 +20,19 @@ const (
 	DataType_MinerNewBlock     = 4
 
 	// Epoch 投票原因
-	Reason_EpochCreate   = 1 // 这个用于第一次创建Epoch
-	Reason_EpochHandOver = 2 // 这个用于Epoch轮换， 即上一个Epoch已经结束，投票产生下一个Epoch
-	Reason_EpochStopped  = 3 // 这个用于上一个Epoch长时间没有任何更新， 需要投票产生新的Epoch来重新挖矿
+	NewEpochReason_EpochCreate   = 1 // 这个用于第一次创建Epoch
+	NewEpochReason_EpochHandOver = 2 // 这个用于Epoch轮换， 即上一个Epoch已经结束，投票产生下一个Epoch
+	NewEpochReason_EpochStopped  = 3 // 这个用于上一个Epoch长时间没有任何更新， 需要投票产生新的Epoch来重新挖矿
+
+	// Update Epoch Reason
+	UpdateEpochReason_EpochHandOver     = 1 // Epoch 转正
+	UpdateEpochReason_GeneratorHandOver = 2 // Generator 轮换
+	UpdateEpochReason_MemberRemoved     = 3 // 成员删除
 )
 
 type VCBlockHeader struct {
 	Hash       chainhash.Hash // 块Hash
-	Height     uint32         // 块高度， 高度从0开始
+	Height     int64          // 块高度， 高度从0开始
 	PrevHash   chainhash.Hash // 前序块的Hash
 	CreateTime int64          // 块创建的时间
 	Version    uint32         // 块版本
@@ -42,7 +48,7 @@ type EpochVoteItem struct {
 type DataNewEpoch struct {
 	CreatorId     uint64                               // 创建者ID
 	PublicKey     [btcec.PubKeyBytesLenCompressed]byte // 创建者公钥
-	EpochIndex    uint32                               // Epoch Index
+	EpochIndex    int64                                // Epoch Index
 	CreateTime    int64                                // 创建时间
 	Reason        uint32                               // 发起原因（Epoch创立，Epoch轮换，当前Epoch停摆）
 	EpochItemList []epoch.EpochItem                    // 该Epoch最终的ItemList
@@ -53,7 +59,7 @@ type DataNewEpoch struct {
 type DataUpdateEpoch struct {
 	UpdatedId     uint64                               // 更新者ID
 	PublicKey     [btcec.PubKeyBytesLenCompressed]byte // 更新者公钥
-	EpochIndex    uint32                               // Epoch Index
+	EpochIndex    int64                                // Epoch Index
 	CreateTime    int64                                // 创建时间
 	Reason        uint32                               // 更新原因（Epoch转正，成员删除，generator更新）
 	EpochItemList []epoch.EpochItem                    // 该Epoch最终的ItemList
@@ -68,18 +74,18 @@ type DataGeneratorHandOver struct {
 	HandOverType    int32                                // HandOverType: 0: HandOver by current generator with Epoch member Order, 1: Vote by Epoch member
 	Timestamp       int64                                //  generator流转的时间
 	NextGeneratorId uint64                               // 下一个Generator的ID
-	NextHeight      int32                                // 下一个块的高度
+	NextHeight      int64                                // 下一个块的高度
 	Token           string                               // 流转的Token
 }
 
 // Generator出块
 type DataMinerNewBlock struct {
-	GeneratorId uint64                               // 当前Generator的Id
-	PublicKey   [btcec.PubKeyBytesLenCompressed]byte // generator的公钥
-	Timestamp   int64                                // generator出块的时间
-	Height      int32                                // Satsnet出块的高度
-	Hash        []byte                               // 出块的Satsnet块Hash
-	Token       string                               // 出块的Token
+	GeneratorId   uint64                               // 当前Generator的Id
+	PublicKey     [btcec.PubKeyBytesLenCompressed]byte // generator的公钥
+	Timestamp     int64                                // generator出块的时间
+	SatsnetHeight int32                                // Satsnet出块的高度
+	Hash          chainhash.Hash                       // 出块的Satsnet块Hash
+	Token         string                               // 出块的Token
 }
 
 type VCBlock struct {
@@ -87,6 +93,16 @@ type VCBlock struct {
 	Data   interface{}
 
 	payload []byte
+}
+
+func NewVCBlock() *VCBlock {
+	vcBlock := &VCBlock{
+		Header: VCBlockHeader{
+			CreateTime: time.Now().Unix(),
+			Version:    uint32(Version_ValidateChain),
+		}}
+
+	return vcBlock
 }
 
 func (vcb *VCBlock) GetHash() (*chainhash.Hash, error) {
@@ -124,6 +140,31 @@ func (vcb *VCBlock) CalcBlockHash() (*chainhash.Hash, error) {
 }
 
 func (vcb *VCBlock) Encode() ([]byte, error) {
+	// Encode the VC block payload.
+	var bw bytes.Buffer
+
+	// Encode the block header.
+	err := vcb.Header.Encode(&bw)
+	if err != nil {
+		return nil, err
+	}
+
+	// Encode the block Data.
+	if vcb.payload == nil {
+		payload, err := vcb.EncodeData()
+		if err != nil {
+			return nil, err
+		}
+		vcb.payload = payload
+	}
+
+	bw.Write(vcb.payload)
+
+	payloadBlock := bw.Bytes()
+	return payloadBlock, nil
+}
+
+func (vcb *VCBlock) GetBlockData() ([]byte, error) {
 	// Encode the VC block payload.
 	var bw bytes.Buffer
 
@@ -540,7 +581,7 @@ func (nb *DataMinerNewBlock) Encode(w io.Writer) error {
 		nb.GeneratorId,
 		nb.PublicKey,
 		nb.Timestamp,
-		nb.Height,
+		nb.SatsnetHeight,
 		nb.Hash,
 		nb.Token)
 	if err != nil {
@@ -555,7 +596,7 @@ func (nb *DataMinerNewBlock) Decode(r io.Reader) error {
 		&nb.GeneratorId,
 		&nb.PublicKey,
 		&nb.Timestamp,
-		&nb.Height,
+		&nb.SatsnetHeight,
 		&nb.Hash,
 		&nb.Token)
 	if err != nil {

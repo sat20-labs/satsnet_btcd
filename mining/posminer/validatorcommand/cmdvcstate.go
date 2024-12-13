@@ -19,8 +19,9 @@ import (
 // message of its own containing the negotiated values followed by a verack
 // message (MsgGenerator).
 type MsgVCState struct {
-	Height int64          // Last block height
-	Hash   chainhash.Hash // Last block hash
+	Height     int64          // Last block height
+	Hash       chainhash.Hash // Last block hash
+	EpochIndex int64          // last epoch index
 }
 
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
@@ -37,7 +38,7 @@ func (msg *MsgVCState) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := utils.ReadElements(buf, &msg.Height, &msg.Hash)
+	err := utils.ReadElements(buf, &msg.Height, &msg.Hash, &msg.EpochIndex)
 	if err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func (msg *MsgVCState) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgVCState) BtcEncode(w io.Writer, pver uint32) error {
-	err := utils.WriteElements(w, msg.Height, msg.Hash)
+	err := utils.WriteElements(w, msg.Height, msg.Hash, msg.EpochIndex)
 	if err != nil {
 		return err
 	}
@@ -65,26 +66,28 @@ func (msg *MsgVCState) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgVCState) MaxPayloadLength(pver uint32) uint32 {
-	// validatorId 8 bytes + hash 32 bytes
-	return 40
+	// validatorId 8 bytes + hash 32 bytes + epoch index 8 bytes
+	return 48
 }
 
 func (msg *MsgVCState) LogCommandInfo(log btclog.Logger) {
 	log.Debugf("Command MsgVCState:")
 	log.Debugf("Height: %d", msg.Height)
 	log.Debugf("Hash: %s", msg.Hash.String())
+	log.Debugf("EpochIndex: %d", msg.EpochIndex)
 }
 
 // NewMsgVCState returns a new bitcoin version message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.
-func NewMsgVCState(height int64, hash chainhash.Hash) *MsgVCState {
+func NewMsgVCState(height int64, hash chainhash.Hash, epochIndex int64) *MsgVCState {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
 	return &MsgVCState{
-		Height: height,
-		Hash:   hash,
+		Height:     height,
+		Hash:       hash,
+		EpochIndex: epochIndex,
 	}
 
 }

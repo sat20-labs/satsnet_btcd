@@ -141,6 +141,9 @@ func makeEmptyMessage(command string) (Message, error) {
 	case CmdHandOver:
 		msg = &MsgHandOver{}
 
+	case CmdNotifyHandOver:
+		msg = &MsgNotifyHandover{}
+
 	case CmdPing:
 		msg = &MsgPing{}
 

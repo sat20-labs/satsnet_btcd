@@ -40,6 +40,9 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/mining"
 	"github.com/sat20-labs/satsnet_btcd/mining/cpuminer"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechain"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechaindb"
 	"github.com/sat20-labs/satsnet_btcd/peer"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
@@ -192,6 +195,11 @@ var rpcHandlersBeforeInit = map[string]commandHandler{
 	"getblockstats":          handleGetBlockStats,
 	"estimatesmartfee":       handleEstimateSmartFee,
 	"getanchortxinfo":        handleGetAnchorTxInfo,
+
+	// rpc for validatechain
+	"getvcblock":      handleGetVCBlock,
+	"getvcblockstate": handleGetVCBlockState,
+	"getvcblockhash":  handleGetVCBlockHash,
 }
 
 // list of commands that we recognize, but for which btcd has no support because
@@ -1067,17 +1075,18 @@ func getDifficultyRatio(bits uint32, params *chaincfg.Params) float64 {
 	// converted back to a number.  Note this is not the same as the proof of
 	// work limit directly because the block difficulty is encoded in a block
 	// with the compact form which loses precision.
-	max := blockchain.CompactToBig(params.PowLimitBits)
-	target := blockchain.CompactToBig(bits)
+	// max := blockchain.CompactToBig(params.PowLimitBits)
+	// target := blockchain.CompactToBig(bits)
 
-	difficulty := new(big.Rat).SetFrac(max, target)
-	outString := difficulty.FloatString(8)
-	diff, err := strconv.ParseFloat(outString, 64)
-	if err != nil {
-		rpcsLog.Errorf("Cannot get difficulty: %v", err)
-		return 0
-	}
-	return diff
+	// difficulty := new(big.Rat).SetFrac(max, target)
+	// outString := difficulty.FloatString(8)
+	// diff, err := strconv.ParseFloat(outString, 64)
+	// if err != nil {
+	// 	rpcsLog.Errorf("Cannot get difficulty: %v", err)
+	// 	return 0
+	// }
+	// return diff
+	return 0
 }
 
 // handleGetBlock implements the getblock command.
@@ -4965,6 +4974,8 @@ type rpcserverConfig struct {
 	// The fee estimator keeps track of how long transactions are left in
 	// the mempool before they are mined into blocks.
 	FeeEstimator *mempool.FeeEstimator
+
+	VCStore *validatechaindb.ValidateChainStore
 }
 
 // newRPCServer returns a new instance of the rpcServer struct.
@@ -5031,6 +5042,83 @@ func (s *rpcServer) handleBlockchainNotification(notification *blockchain.Notifi
 	}
 }
 
+// handleGetBlock implements the getblock command.
+func handleGetVCBlock(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.GetVCBlockCmd)
+
+	// Load the raw block bytes from the database.
+	hash, err := chainhash.NewHashFromStr(c.Hash)
+	if err != nil {
+		return nil, rpcDecodeHexError(c.Hash)
+	}
+	var blkBytes []byte
+
+	if c.BlockType == 1 {
+		blkBytes, err = s.cfg.VCStore.GetBlockData(hash[:])
+	} else {
+		blkBytes, err = s.cfg.VCStore.GetEPBlockData(hash[:])
+	}
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCBlockNotFound,
+			Message: "Block not found",
+		}
+	}
+
+	blockReply := btcjson.GetVCBlockResult{
+		Hash:        c.Hash,
+		BlockType:   c.BlockType,
+		DataPayload: blkBytes,
+	}
+
+	return blockReply, nil
+}
+
+func handleGetVCBlockState(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+
+	var blkBytes []byte
+
+	blkBytes, err := s.cfg.VCStore.GetState()
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCBlockNotFound,
+			Message: "Block not found",
+		}
+	}
+
+	vcs := &validatechain.ValidateChainState{}
+	br := bytes.NewReader(blkBytes)
+	utils.ReadElements(br, &vcs.LatestHeight, &vcs.LatestHash)
+
+	stateReply := btcjson.GetVCBlockStateResult{
+		Height: vcs.LatestHeight,
+		Hash:   vcs.LatestHash.String(),
+	}
+
+	return stateReply, nil
+}
+
+func handleGetVCBlockHash(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
+	c := cmd.(*btcjson.GetVCBlockHashCmd)
+
+	hash, err := s.cfg.VCStore.GetVCBlockHash(c.Height)
+	if err != nil {
+		return nil, &btcjson.RPCError{
+			Code:    btcjson.ErrRPCBlockNotFound,
+			Message: "Block not found",
+		}
+	}
+	blockReply := btcjson.GetVCBlockHashResult{
+		Height: c.Height,
+		Hash:   hash.String(),
+	}
+
+	return blockReply, nil
+}
+
+func (s *rpcServer) SetVCStore(vcStore *validatechaindb.ValidateChainStore) {
+	s.cfg.VCStore = vcStore
+}
 func init() {
 	rpcHandlers = rpcHandlersBeforeInit
 	rand.Seed(time.Now().UnixNano())

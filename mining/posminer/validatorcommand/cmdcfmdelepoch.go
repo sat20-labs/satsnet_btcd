@@ -67,8 +67,8 @@ func (msg *MsgConfirmDelEpoch) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgConfirmDelEpoch) MaxPayloadLength(pver uint32) uint32 {
-	// validatorId 8 bytes + DelValidatorId 8 bytes + DelCode 4 bytes + EpochIndex 4 bytes + Result 4 bytes + timestamp 8 bytes + token 256 bytes
-	return 36 + 256
+	// validatorId 8 bytes + DelValidatorId 8 bytes + DelCode 4 bytes + EpochIndex 8 bytes + Result 4 bytes + timestamp 8 bytes + token 256 bytes
+	return 40 + 256
 }
 
 func (msg *MsgConfirmDelEpoch) LogCommandInfo(log btclog.Logger) {

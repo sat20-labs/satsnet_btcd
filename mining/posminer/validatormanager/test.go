@@ -18,7 +18,7 @@ func (vm *ValidatorManager) TestingVcState() {
 	testingHeight := int64(3)
 	testinghash, _ := chainhash.NewHashFromStr("5d2cffd29005647d364898a47ce26e2a1e6b7779d9e81b721ed078790f66d8f6")
 
-	currentState := vm.validateChian.GetCurrentState()
+	currentState := vm.validateChain.GetCurrentState()
 	log.Debugf("Current State: %v", currentState)
 
 	if currentState.LatestHeight == testingHeight && currentState.LatestHash.IsEqual(testinghash) {
@@ -28,7 +28,7 @@ func (vm *ValidatorManager) TestingVcState() {
 	}
 	currentState.LatestHeight = testingHeight
 	currentState.LatestHash = *testinghash
-	vm.validateChian.UpdateCurrentState(currentState)
+	vm.validateChain.UpdateCurrentState(currentState)
 
 	log.Debugf("Testing updated.")
 }
@@ -57,7 +57,7 @@ func (vm *ValidatorManager) TestingVcBlocks() {
 	copy(newEpochData.PublicKey[:], publicKey1)
 	newEpochData.EpochIndex = 0
 	newEpochData.CreateTime = time.Now().Unix()
-	newEpochData.Reason = validatechain.Reason_EpochCreate
+	newEpochData.Reason = validatechain.NewEpochReason_EpochCreate
 	newEpochData.EpochItemList = make([]epoch.EpochItem, 0)
 
 	item1 := epoch.EpochItem{ValidatorId: validatorId1}
@@ -91,13 +91,13 @@ func (vm *ValidatorManager) TestingVcBlocks() {
 
 	log.Debugf("Testing NewEpochBlock Hash: %x", blockHash)
 
-	err = vm.validateChian.SaveVCBlock(newEpochBlock)
+	err = vm.validateChain.SaveVCBlock(newEpochBlock)
 	if err != nil {
 		log.Errorf("Testing NewEpochBlock SaveBlock failed: %v", err)
 		return
 	}
 
-	newBlock, err := vm.validateChian.GetVCBlock(blockHash)
+	newBlock, err := vm.validateChain.GetVCBlock(blockHash)
 	if err != nil {
 		log.Errorf("Testing NewEpochBlock GetBlock failed: %v", err)
 		return

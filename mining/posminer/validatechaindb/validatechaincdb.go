@@ -63,9 +63,10 @@ func DBIoConfig() *IoConfig {
 }
 
 var (
-	vcBlocksBucket = []byte("vcblocks") // 所有validateChain的区块数据
-	epBlocksBucket = []byte("epblocks") // 记录epoch投票投票数据的区块数据
-	vcStateBucket  = []byte("vcstate")  // validateChain链的状态
+	vcBlocksBucket    = []byte("vcblocks")    // 所有validateChain的区块数据
+	epBlocksBucket    = []byte("epblocks")    // 记录epoch投票投票数据的区块数据
+	vcStateBucket     = []byte("vcstate")     // validateChain链的状态
+	vcBlockHashBucket = []byte("vcblockhash") // validateChain块对应的Hash值
 	// stateSummaryBucket  = []byte("state-summary")
 	// chainMetadataBucket = []byte("chain-metadata")
 	// checkpointBucket    = []byte("check-point")
@@ -119,6 +120,7 @@ var Buckets = [][]byte{
 	vcBlocksBucket,
 	epBlocksBucket,
 	vcStateBucket,
+	vcBlockHashBucket,
 }
 
 // KVStoreOption is a functional option that modifies a kv.Store.

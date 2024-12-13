@@ -45,7 +45,7 @@ type LocalPeerInterface interface {
 	GetLocalEpoch(uint64) (*epoch.Epoch, *epoch.Epoch, error)
 
 	// Req new epoch from remote peer
-	ReqNewEpoch(uint64, uint32) (*epoch.Epoch, error)
+	ReqNewEpoch(uint64, int64, uint32) (*chainhash.Hash, error)
 
 	// OnNextEpoch from local peer to manager to change epoch to next
 	OnNextEpoch(*epoch.HandOverEpoch)
@@ -72,13 +72,13 @@ type LocalPeerInterface interface {
 	OnNotifyHandover(uint64, net.Addr)
 
 	// Received get vc state command
-	GetVCState(uint64) (*validatorcommand.MsgGetVCState, error)
+	GetVCState(uint64) (*validatorcommand.MsgVCState, error)
 
 	// Received get vc list command
-	GetVCList(uint64, int64, int64) (*validatorcommand.MsgGetVCList, error)
+	GetVCList(uint64, int64, int64) (*validatorcommand.MsgVCList, error)
 
 	// Received get vc block command
-	GetVCBlock(uint64, uint32, chainhash.Hash) (*validatorcommand.MsgGetVCBlock, error)
+	GetVCBlock(uint64, uint32, chainhash.Hash) (*validatorcommand.MsgVCBlock, error)
 
 	// Received a vc block command
 	OnVCBlock(*validatorcommand.MsgVCBlock, net.Addr)
@@ -667,7 +667,7 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 		p.HandleNextEpoch(cmd, connReq)
 
 	case *validatorcommand.MsgUpdateEpoch:
-		log.Debugf("----------[LocalPeer]Receive MsgNextEpoch command, will notify validatorManager for change to next epoch. ")
+		log.Debugf("----------[LocalPeer]Receive MsgUpdateEpoch command, will notify validatorManager for update epoch. ")
 		//cmd.LogCommandInfo(log)
 		p.HandleUpdateEpoch(cmd, connReq)
 
@@ -697,7 +697,7 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 		p.handleDelEpochMember(cmd, connReq)
 
 	case *validatorcommand.MsgNotifyHandover:
-		log.Debugf("----------[LocalPeer]Receive MsgReqDelEpochMember command, will notify validatorManager for delete epoch member. ")
+		log.Debugf("----------[LocalPeer]Receive MsgNotifyHandover command, will notify validatorManager for handover. ")
 		cmd.LogCommandInfo(log)
 		p.handleNotifyHandover(cmd, connReq)
 
@@ -880,14 +880,14 @@ func (p *LocalPeer) HandleGetEpoch(getEpochCmd *validatorcommand.MsgGetEpoch, co
 }
 
 func (p *LocalPeer) HandleReqEpoch(getEpochCmd *validatorcommand.MsgReqEpoch, connReq *ConnReq) {
-	newEpoch, err := p.cfg.LocalValidator.ReqNewEpoch(getEpochCmd.ValidatorId, getEpochCmd.EpochIndex)
+	epBlockHash, err := p.cfg.LocalValidator.ReqNewEpoch(getEpochCmd.ValidatorId, getEpochCmd.EpochIndex, getEpochCmd.Reason)
 	if err != nil {
 		log.Errorf("----------[LocalPeer]ReqNewEpoch error: %s", err.Error())
 		return
 	} else {
-		log.Debugf("----------[LocalPeer]ReqNewEpoch success: %v", newEpoch)
+		log.Debugf("----------[LocalPeer]ReqNewEpoch success: %s", epBlockHash.String())
 	}
-	respNewEpoch := validatorcommand.NewMsgNewEpoch(p.cfg.ValidatorId, newEpoch)
+	respNewEpoch := validatorcommand.NewMsgNewEpoch(p.cfg.ValidatorId, epBlockHash)
 
 	log.Debugf("----------[LocalPeer]Send MsgNewEpoch command")
 	respNewEpoch.LogCommandInfo(log)

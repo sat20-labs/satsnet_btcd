@@ -133,7 +133,9 @@ func (connReq *ConnReq) isInactive() bool {
 }
 
 func (connReq *ConnReq) logConnInfo(desc string) {
-	log.Debugf("——————————————————Conn info: %s——————————————————", desc)
+	if desc != "" {
+		log.Debugf("——————————————————Conn info: %s——————————————————", desc)
+	}
 	log.Debugf("Conn id: %d", connReq.id)
 	log.Debugf("Conn LocalAddr: %s", connReq.LocalAddr)
 	log.Debugf("Conn RemoteAddr: %s", connReq.RemoteAddr)
@@ -152,8 +154,9 @@ func (connReq *ConnReq) logConnInfo(desc string) {
 	// 	command := e.Value.(*validatorcommand.Message)
 	// 	log.Debugf("Pending Command: %s", command.Command())
 	// }
-
-	log.Debugf("——————————————————Conn info: %s End——————————————————", desc)
+	if desc != "" {
+		log.Debugf("——————————————————Conn info: %s End——————————————————", desc)
+	}
 }
 
 func (connReq *ConnReq) SendCommand(command validatorcommand.Message) error {

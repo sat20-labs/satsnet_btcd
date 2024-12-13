@@ -20,7 +20,8 @@ import (
 type MsgReqEpoch struct {
 	// Request validator id
 	ValidatorId uint64
-	EpochIndex  uint32
+	EpochIndex  int64
+	Reason      uint32
 }
 
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
@@ -37,7 +38,7 @@ func (msg *MsgReqEpoch) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := utils.ReadElements(buf, &msg.ValidatorId, &msg.EpochIndex)
+	err := utils.ReadElements(buf, &msg.ValidatorId, &msg.EpochIndex, &msg.Reason)
 	if err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func (msg *MsgReqEpoch) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgReqEpoch) BtcEncode(w io.Writer, pver uint32) error {
-	err := utils.WriteElements(w, msg.ValidatorId, msg.EpochIndex)
+	err := utils.WriteElements(w, msg.ValidatorId, msg.EpochIndex, msg.Reason)
 	if err != nil {
 		return err
 	}
@@ -65,26 +66,28 @@ func (msg *MsgReqEpoch) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgReqEpoch) MaxPayloadLength(pver uint32) uint32 {
-	// validatorId 8 bytes + EpochIndex 4bytes
-	return 12
+	// validatorId 8 bytes + EpochIndex 8 bytes + Reason 4 bytes
+	return 20
 }
 
 func (msg *MsgReqEpoch) LogCommandInfo(log btclog.Logger) {
 	log.Debugf("Command MsgReqEpoch:")
 	log.Debugf("ValidatorId: %d", msg.ValidatorId)
 	log.Debugf("EpochIndex: %d", msg.EpochIndex)
+	log.Debugf("Reason: %d", msg.Reason)
 }
 
 // NewMsgReqEpoch returns a new bitcoin version message that conforms to the
 // Message interface using the passed parameters and defaults for the remaining
 // fields.
-func NewMsgReqEpoch(validatorId uint64, epochIndex uint32) *MsgReqEpoch {
+func NewMsgReqEpoch(validatorId uint64, epochIndex int64, reason uint32) *MsgReqEpoch {
 
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
 	return &MsgReqEpoch{
 		ValidatorId: validatorId,
 		EpochIndex:  epochIndex,
+		Reason:      reason,
 	}
 
 }
