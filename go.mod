@@ -16,8 +16,8 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tyler-smith/go-bip39 v1.1.0
 	go.etcd.io/bbolt v1.3.11
-	golang.org/x/crypto v0.22.0
-	golang.org/x/sys v0.27.0
+	golang.org/x/crypto v0.31.0
+	golang.org/x/sys v0.28.0
 )
 
 require (
