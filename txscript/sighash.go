@@ -205,7 +205,8 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 		return nil, fmt.Errorf("idx %d but %d txins", idx, len(tx.TxIn))
 	}
 
-	sigHashBytes := chainhash.DoubleHashRaw(func(w io.Writer) error {
+	sigHashBytes := chainhash.DoubleHashRaw(func(w1 io.Writer) error {
+		w := &bytes.Buffer{}
 		var scratch [8]byte
 
 		// First write out, then encode the transaction's version
@@ -321,8 +322,13 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 		binary.LittleEndian.PutUint32(scratch[:], uint32(hashType))
 		w.Write(scratch[:4])
 
+		data := w.Bytes()
+		fmt.Printf("data: %x\n", data)
+		w1.Write(data)
 		return nil
 	})
+
+	fmt.Printf("sigHash: %x\n", sigHashBytes[:])
 
 	return sigHashBytes[:], nil
 }
