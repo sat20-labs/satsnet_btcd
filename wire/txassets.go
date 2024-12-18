@@ -1,8 +1,10 @@
 package wire
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 )
@@ -142,9 +144,13 @@ func (p *TxAssets) findIndex(name *AssetName) (int, bool) {
 }
 
 func (p *TxAssets) Equal(another *TxAssets) bool {
+	if p == nil && another == nil{
+		return true
+	}
 	if len(*p) != len(*another) {
 		return false
 	}
+	
 	for i, asset := range *p {
 		if asset != (*another)[i] {
 			return false
@@ -277,6 +283,110 @@ func (p *TxAssets) GetBindingSatAmout() int64 {
 		}
 	}
 	return amount
+}
+
+func (p *TxAssets) Serialize() ([]byte, error) {
+	var w bytes.Buffer
+
+	buf := binarySerializer.Borrow()
+	defer binarySerializer.Return(buf)
+
+	err := AssetsWriteToBuf(&w, 0, *p, buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return w.Bytes(), nil
+}
+
+func (p *TxAssets) Deserialize(r []byte) (error) {
+
+	buf := binarySerializer.Borrow()
+	defer binarySerializer.Return(buf)
+
+	sbuf := scriptPool.Borrow()
+	defer scriptPool.Return(sbuf)
+
+	assets, err := AssetsReadFromBuf(bytes.NewReader(r), 0, buf, sbuf[:])
+	if err != nil {
+		return err
+	}
+
+	*p = assets
+	return nil
+}
+
+
+func AssetsWriteToBuf(w io.Writer, pver uint32, assets TxAssets, buf []byte) error {
+	// get count for sats range, and write to w
+	assetsCount := uint64(len(assets))
+	err := WriteVarIntBuf(w, pver, assetsCount, buf)
+	if err != nil {
+		return err
+	}
+
+	for _, asset := range assets {
+		// Write asset, Name（Protocol，Type，Ticker）, Amount, BindingSat
+		err = WriteVarBytesBuf(w, pver, []byte(asset.Name.Protocol), buf)
+		if err != nil {
+			return err
+		}
+		err = WriteVarBytesBuf(w, pver, []byte(asset.Name.Type), buf)
+		if err != nil {
+			return err
+		}
+		err = WriteVarBytesBuf(w, pver, []byte(asset.Name.Ticker), buf)
+		if err != nil {
+			return err
+		}
+		err = WriteVarIntBuf(w, pver, uint64(asset.Amount), buf)
+		if err != nil {
+			return err
+		}
+		err = WriteVarIntBuf(w, pver, uint64(asset.BindingSat), buf)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func AssetsReadFromBuf(r io.Reader, pver uint32, buf, s []byte) (TxAssets, error) {
+	// count fr sats range
+	count, err := ReadVarIntBuf(r, pver, buf)
+	if err != nil {
+		return nil, err
+	}
+
+	assets := make(TxAssets, 0)
+	for i := uint64(0); i < count; i++ {
+		newAsset := AssetInfo{}
+		// Get sats start and size
+		newAsset.Name.Protocol, err = readString(r, pver, buf, s, "asset protocol")
+		if err != nil {
+			return nil, err
+		}
+		newAsset.Name.Type, err = readString(r, pver, buf, s, "asset type")
+		if err != nil {
+			return nil, err
+		}
+		newAsset.Name.Ticker, err = readString(r, pver, buf, s, "asset ticker")
+		if err != nil {
+			return nil, err
+		}
+		amount, err := ReadVarIntBuf(r, pver, buf)
+		if err != nil {
+			return nil, err
+		}
+		newAsset.Amount = int64(amount)
+		bindingSat, err := ReadVarIntBuf(r, pver, buf)
+		if err != nil {
+			return nil, err
+		}
+		newAsset.BindingSat = uint16(bindingSat)
+		assets = append(assets, newAsset)
+	}
+	return assets, nil
 }
 
 // TxOut defines a bitcoin transaction output.

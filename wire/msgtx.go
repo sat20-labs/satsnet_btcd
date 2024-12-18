@@ -1190,39 +1190,9 @@ func readTxOutBuf(r io.Reader, pver uint32, version int32, to *TxOut,
 
 	to.Value = int64(littleEndian.Uint64(buf))
 
-	// count fr sats range
-	count, err := ReadVarIntBuf(r, pver, buf)
+	to.Assets, err = AssetsReadFromBuf(r, pver, buf, s)
 	if err != nil {
 		return err
-	}
-
-	to.Assets = make(TxAssets, 0)
-	for i := uint64(0); i < count; i++ {
-		newAsset := AssetInfo{}
-		// Get sats start and size
-		newAsset.Name.Protocol, err = readString(r, pver, buf, s, "asset protocol")
-		if err != nil {
-			return err
-		}
-		newAsset.Name.Type, err = readString(r, pver, buf, s, "asset type")
-		if err != nil {
-			return err
-		}
-		newAsset.Name.Ticker, err = readString(r, pver, buf, s, "asset ticker")
-		if err != nil {
-			return err
-		}
-		amount, err := ReadVarIntBuf(r, pver, buf)
-		if err != nil {
-			return err
-		}
-		newAsset.Amount = int64(amount)
-		bindingSat, err := ReadVarIntBuf(r, pver, buf)
-		if err != nil {
-			return err
-		}
-		newAsset.BindingSat = uint16(bindingSat)
-		to.Assets = append(to.Assets, newAsset)
 	}
 
 	to.PkScript, err = readScriptBuf(
@@ -1260,35 +1230,9 @@ func WriteTxOutBuf(w io.Writer, pver uint32, version int32, to *TxOut,
 		return err
 	}
 
-	// get count for sats range, and write to w
-	assetsCount := uint64(len(to.Assets))
-	err = WriteVarIntBuf(w, pver, assetsCount, buf)
+	err = AssetsWriteToBuf(w, pver, to.Assets, buf)
 	if err != nil {
 		return err
-	}
-
-	for _, asset := range to.Assets {
-		// Write asset, Name（Protocol，Type，Ticker）, Amount, BindingSat
-		err = WriteVarBytesBuf(w, pver, []byte(asset.Name.Protocol), buf)
-		if err != nil {
-			return err
-		}
-		err = WriteVarBytesBuf(w, pver, []byte(asset.Name.Type), buf)
-		if err != nil {
-			return err
-		}
-		err = WriteVarBytesBuf(w, pver, []byte(asset.Name.Ticker), buf)
-		if err != nil {
-			return err
-		}
-		err = WriteVarIntBuf(w, pver, uint64(asset.Amount), buf)
-		if err != nil {
-			return err
-		}
-		err = WriteVarIntBuf(w, pver, uint64(asset.BindingSat), buf)
-		if err != nil {
-			return err
-		}
 	}
 
 	return WriteVarBytesBuf(w, pver, to.PkScript, buf)
