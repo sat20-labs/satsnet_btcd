@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/bootstrapnode"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
@@ -20,6 +21,8 @@ type LocalValidator struct {
 	validatorKey *ValidatorKey
 	localPeer    *validatorpeer.LocalPeer
 	myGenerator  *generator.Generator
+
+	isBootStrapNode bool // current node is or not bootstrap node
 }
 
 func NewValidator(config *validator.Config, addrs []net.Addr) (*LocalValidator, error) {
@@ -46,10 +49,13 @@ func NewValidator(config *validator.Config, addrs []net.Addr) (*LocalValidator, 
 
 	validatorInfo := validatorinfo.ValidatorInfo{
 		ValidatorId: localValidator.Cfg.LocalValidatorId,
+		CreateTime:  time.Now(),
 	}
 	copy(validatorInfo.PublicKey[:], publicKey[:])
 
-	localValidator.UpdateValidatorInfo(&validatorInfo, validatorinfo.MaskValidatorId|validatorinfo.MaskPublicKey)
+	localValidator.UpdateValidatorInfo(&validatorInfo, validatorinfo.MaskValidatorId|validatorinfo.MaskPublicKey|validatorinfo.MaskCreateTime)
+
+	localValidator.isBootStrapNode = bootstrapnode.IsBootStrapNode(validatorInfo.ValidatorId, validatorInfo.PublicKey[:])
 
 	log.Debugf("Local validator ID: %d", localValidator.Cfg.LocalValidatorId)
 	log.Debugf("Local validator PublicKey: %x", publicKey)
@@ -176,9 +182,13 @@ func (v *LocalValidator) GetLocalValidatorInfo(uint64) *validatorinfo.ValidatorI
 	return &v.ValidatorInfo
 }
 
+func (v *LocalValidator) IsBootStrapNode() bool {
+	return v.isBootStrapNode
+}
+
 func (v *LocalValidator) BecomeGenerator(height int32, handOverTime time.Time) error {
 	log.Debugf("[LocalValidator]BecomeGenerator...")
-	myGenerator := generator.NewGenerator(&v.ValidatorInfo, height, 0, "")
+	myGenerator := generator.NewGenerator(&v.ValidatorInfo, height, handOverTime.Unix(), "")
 
 	err := myGenerator.SetHandOverTime(handOverTime)
 	if err != nil {

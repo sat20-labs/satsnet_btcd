@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
@@ -50,6 +49,7 @@ func (msg *MsgVCList) BtcDecode(r io.Reader, pver uint32) error {
 
 	err := utils.ReadElements(buf, &count)
 	if err != nil {
+		log.Errorf("MsgVCList:ReadElements failed: %v", err)
 		return err
 	}
 
@@ -57,6 +57,7 @@ func (msg *MsgVCList) BtcDecode(r io.Reader, pver uint32) error {
 		item := &VCItem{}
 		err = utils.ReadElements(buf, &item.Height, &item.Hash)
 		if err != nil {
+			log.Errorf("MsgVCList:ReadElements failed: %v", err)
 			return err
 		}
 		msg.VCList = append(msg.VCList, item)
@@ -76,6 +77,7 @@ func (msg *MsgVCList) BtcEncode(w io.Writer, pver uint32) error {
 
 	err := utils.WriteElements(w, count)
 	if err != nil {
+		log.Errorf("MsgVCList:WriteElements failed: %v", err)
 		return err
 	}
 
@@ -83,6 +85,7 @@ func (msg *MsgVCList) BtcEncode(w io.Writer, pver uint32) error {
 		item := msg.VCList[i]
 		err = utils.WriteElements(w, item.Height, item.Hash)
 		if err != nil {
+			log.Errorf("MsgVCList:WriteElements failed: %v", err)
 			return err
 		}
 	}
@@ -103,7 +106,7 @@ func (msg *MsgVCList) MaxPayloadLength(pver uint32) uint32 {
 	return 4 + 40*MaxVCList
 }
 
-func (msg *MsgVCList) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgVCList) LogCommandInfo() {
 	log.Debugf("Command MsgVCList:")
 	log.Debugf("VCList count: %d", len(msg.VCList))
 	for _, item := range msg.VCList {

@@ -10,7 +10,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
@@ -85,7 +84,7 @@ func (msg *MsgGenerator) MaxPayloadLength(pver uint32) uint32 {
 	return 16 + MaxGeneratorTokenSize
 }
 
-func (msg *MsgGenerator) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgGenerator) LogCommandInfo() {
 	log.Debugf("Command MsgGenerator:")
 	log.Debugf("GeneratorId: %d", msg.GeneratorInfo.GeneratorId)
 	timeStamp := time.Unix(msg.GeneratorInfo.Timestamp, 0)

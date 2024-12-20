@@ -11,6 +11,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/localvalidator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechaindb"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatormanager"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorpeer"
 )
@@ -40,5 +41,6 @@ func UseLogger(logger btclog.Logger) {
 	validatorpeer.UseLogger(logger)    // validator peer
 	epoch.UseLogger(logger)            // epoch
 	generator.UseLogger(logger)        // generator
-	validatechaindb.UseLogger(logger) // validatechaindb
+	validatechaindb.UseLogger(logger)  // validatechaindb
+	validatorcommand.UseLogger(logger) //validatorcommand
 }

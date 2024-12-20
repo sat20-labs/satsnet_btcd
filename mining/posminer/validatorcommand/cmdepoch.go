@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
@@ -122,7 +123,8 @@ func ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
 			&generator.GeneratorId,
 			&generator.Timestamp,
 			&generator.Height,
-			&generator.Token)
+			&generator.Token,
+			(*utils.Int64Time)(&generator.MinerTime))
 		if err != nil {
 			return nil, err
 		}
@@ -134,6 +136,15 @@ func ReadEpoch(buf *bytes.Buffer) (*epoch.Epoch, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// read epoch change info
+	var blockHash chainhash.Hash
+	err = utils.ReadElements(buf, (*utils.Int64Time)(&receivedEpoch.LastChangeTime), &receivedEpoch.VCBlockHeight, &blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	receivedEpoch.VCBlockHash = &blockHash
 
 	return receivedEpoch, nil
 
@@ -228,7 +239,9 @@ func WriteEpoch(w io.Writer, epoch *epoch.Epoch) error {
 			epoch.Generator.GeneratorId,
 			epoch.Generator.Timestamp,
 			epoch.Generator.Height,
-			epoch.Generator.Token)
+			epoch.Generator.Token,
+			epoch.Generator.MinerTime.Unix(),
+		)
 		if err != nil {
 			return err
 		}
@@ -236,6 +249,16 @@ func WriteEpoch(w io.Writer, epoch *epoch.Epoch) error {
 
 	// write CurGeneratorPos
 	err = utils.WriteElements(w, epoch.CurGeneratorPos)
+	if err != nil {
+		return err
+	}
+
+	// write epoch change info
+	var blockHash chainhash.Hash
+	if epoch.VCBlockHash != nil {
+		blockHash = *epoch.VCBlockHash
+	}
+	err = utils.WriteElements(w, epoch.LastChangeTime.Unix(), epoch.VCBlockHeight, blockHash)
 	if err != nil {
 		return err
 	}
@@ -257,7 +280,7 @@ func (msg *MsgEpoch) MaxPayloadLength(pver uint32) uint32 {
 	return MaxMsgEpochLength
 }
 
-func (msg *MsgEpoch) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgEpoch) LogCommandInfo() {
 	log.Debugf("Command MsgEpoch:")
 	showEpoch(log, "MsgEpoch: CurrentEpoch", msg.CurrentEpoch)
 	showEpoch(log, "MsgEpoch: NexEpoch", msg.NextEpoch)

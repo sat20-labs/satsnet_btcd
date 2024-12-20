@@ -7,7 +7,6 @@ package validatorcommand
 import (
 	"io"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
@@ -67,7 +66,7 @@ func (msg *MsgPing) MaxPayloadLength(pver uint32) uint32 {
 	return plen
 }
 
-func (msg *MsgPing) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgPing) LogCommandInfo() {
 	log.Debugf("Command Ping, Nonce: %d", msg.Nonce)
 }
 

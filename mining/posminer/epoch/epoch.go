@@ -35,7 +35,10 @@ type Epoch struct {
 	ItemList        []*EpochItem         // 当前Epoch包含的验证者列表，（已排序）， 在一个Epoch结束前不会改变
 	Generator       *generator.Generator // 当前Generator
 	CurGeneratorPos int32                // 当前Generator在ItemList中的位置
-	//	CurrentHeight uint64               // 当前Block chain的高度
+	//	CurrentHeight uint64             // 当前Block chain的高度
+	LastChangeTime time.Time       // 最后一次改变的时间, 用于判断是否需要更新， Epoch的改变包括创建， 转正，generator流转，成员删除
+	VCBlockHeight  int64           // 记录当前epoch改变的的VCblock高度
+	VCBlockHash    *chainhash.Hash // 记录当前epoch改变的的VCblock hash
 }
 
 type NewEpochVote struct {
@@ -133,6 +136,13 @@ func (e *Epoch) DelEpochMember(validatorId uint64) error {
 		if e.ItemList[i].ValidatorId == validatorId {
 			// The validator is found, remove it
 			e.ItemList = append(e.ItemList[:i], e.ItemList[i+1:]...)
+			if int32(i) == e.CurGeneratorPos {
+				// Current generator is removed, reset it
+				e.Generator = nil
+			} else if int32(i) < e.CurGeneratorPos {
+				e.CurGeneratorPos--
+			}
+			log.Debugf("Remove validator (%d) from epoch", validatorId)
 			return nil
 		}
 	}

@@ -396,6 +396,30 @@ func main() {
 
 			ShowBlocks(start, end)
 			continue
+		} else if method == "showblock" {
+			start := int64(0)
+			end := int64(-1)
+			if length >= 2 {
+				number, err := strconv.ParseInt(words[1], 10, 64)
+
+				if err != nil {
+					fmt.Printf("parse height error, need int\n")
+				}
+
+				start = number
+			}
+			if length >= 3 {
+				number, err := strconv.ParseInt(words[2], 10, 64)
+
+				if err != nil {
+					fmt.Printf("parse height error, need int\n")
+				}
+
+				end = number
+			}
+
+			ShowBlocks(start, end)
+			continue
 		} else if method == "showvcblocks" {
 			start := int64(0)
 			end := int64(-1)

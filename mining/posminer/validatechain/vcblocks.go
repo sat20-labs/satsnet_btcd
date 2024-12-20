@@ -44,6 +44,13 @@ type EpochVoteItem struct {
 	Hash        chainhash.Hash // 投票的块Hash epBlockHash
 }
 
+type EpochDelConfirmItem struct {
+	ValidatorId uint64                               // 用户ID
+	PublicKey   [btcec.PubKeyBytesLenCompressed]byte // 用户公钥
+	Result      uint32                               // 用户确认的结果
+	Token       string                               // 投票的Token
+}
+
 // Epoch创建：
 type DataNewEpoch struct {
 	CreatorId     uint64                               // 创建者ID
@@ -53,6 +60,17 @@ type DataNewEpoch struct {
 	Reason        uint32                               // 发起原因（Epoch创立，Epoch轮换，当前Epoch停摆）
 	EpochItemList []epoch.EpochItem                    // 该Epoch最终的ItemList
 	EpochVoteList []EpochVoteItem                      // 所有用户的投票数据
+}
+
+// Epoch删除成员：
+type DataEpochDelMember struct {
+	RequestId           uint64                               // 创建者ID
+	PublicKey           [btcec.PubKeyBytesLenCompressed]byte // 创建者公钥
+	EpochIndex          int64                                // Epoch Index
+	CreateTime          int64                                // 创建时间
+	Reason              uint32                               // Epoch 删除只有一个原因， 成员离线
+	EpochItemList       []epoch.EpochItem                    // 该Epoch最终的ItemList
+	EpochDelConfirmList []EpochDelConfirmItem                // 所有用户的投票数据
 }
 
 // Epoch更新：
@@ -203,6 +221,8 @@ func (vcb *VCBlock) EncodeData() ([]byte, error) {
 	case *DataGeneratorHandOver:
 		err = vcd.Encode(&bw)
 	case *DataMinerNewBlock:
+		err = vcd.Encode(&bw)
+	case *DataEpochDelMember:
 		err = vcd.Encode(&bw)
 	}
 	if err != nil {
@@ -514,6 +534,112 @@ func (ue *DataUpdateEpoch) Decode(r io.Reader) error {
 		&ue.GeneratorPos)
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// Epoch删除一个成员：
+// type DataEpochDelMember struct {
+// 	RequestId           uint64                               // 创建者ID
+// 	PublicKey           [btcec.PubKeyBytesLenCompressed]byte // 创建者公钥
+// 	EpochIndex          int64                                // Epoch Index
+// 	CreateTime          int64                                // 创建时间
+// 	Reason              uint32                               // Epoch 删除只有一个原因， 成员离线
+// 	EpochItemList       []epoch.EpochItem                    // 该Epoch最终的ItemList
+// 	EpochDelConfirmList []EpochDelConfirmItem                // 所有用户的投票数据
+// }
+
+func (edm *DataEpochDelMember) Encode(w io.Writer) error {
+	// Encode update epoch data.
+	err := utils.WriteElements(w,
+		edm.RequestId,
+		edm.PublicKey,
+		edm.EpochIndex,
+		edm.CreateTime,
+		edm.Reason)
+	if err != nil {
+		return err
+	}
+
+	// Encode epoch item list.
+	err = utils.WriteVarInt(w, uint64(len(edm.EpochItemList)))
+	if err != nil {
+		return err
+	}
+	for _, item := range edm.EpochItemList {
+		err := utils.WriteElements(w,
+			item.ValidatorId,
+			item.PublicKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Encode Del confirm list.
+	err = utils.WriteVarInt(w, uint64(len(edm.EpochDelConfirmList)))
+	if err != nil {
+		return err
+	}
+	for _, item := range edm.EpochDelConfirmList {
+		err := utils.WriteElements(w,
+			item.ValidatorId,
+			item.PublicKey,
+			item.Result,
+			item.Token)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (edm *DataEpochDelMember) Decode(r io.Reader) error {
+	// Encode New epoch data.
+	err := utils.ReadElements(r,
+		&edm.RequestId,
+		&edm.PublicKey,
+		&edm.EpochIndex,
+		&edm.CreateTime,
+		&edm.Reason)
+	if err != nil {
+		return err
+	}
+
+	// Decode epoch item list.
+	count, err := utils.ReadVarInt(r)
+	if err != nil {
+		return err
+	}
+	edm.EpochItemList = make([]epoch.EpochItem, 0)
+	for i := 0; i < int(count); i++ {
+		item := epoch.EpochItem{}
+		err := utils.ReadElements(r,
+			&item.ValidatorId,
+			&item.PublicKey)
+		if err != nil {
+			return err
+		}
+		edm.EpochItemList = append(edm.EpochItemList, item)
+	}
+
+	// Decode Del confirm list..
+	count, err = utils.ReadVarInt(r)
+	if err != nil {
+		return err
+	}
+	edm.EpochDelConfirmList = make([]EpochDelConfirmItem, 0)
+	for i := 0; i < int(count); i++ {
+		item := EpochDelConfirmItem{}
+		err := utils.ReadElements(r,
+			&item.ValidatorId,
+			&item.PublicKey,
+			&item.Result,
+			&item.Token)
+		if err != nil {
+			return err
+		}
+		edm.EpochDelConfirmList = append(edm.EpochDelConfirmList, item)
 	}
 
 	return nil

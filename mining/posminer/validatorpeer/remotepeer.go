@@ -359,10 +359,14 @@ func (p *RemotePeer) OnConnDisconnected(connReq *ConnReq) {
 	p.connLock.Unlock()
 
 	// The connection is disconnected, will try to connect again
-	err := p.Connect()
-	if err != nil {
-		log.Debugf("----------[RemotePeer]Reconnect to validator peer failed: %v", err)
-		p.Disconnect()
+	if p.pingHandleStarted == true {
+		err := p.Connect()
+		if err != nil {
+			log.Debugf("----------[RemotePeer]Reconnect to validator peer failed: %v", err)
+			p.Disconnect()
+			p.cfg.RemoteValidatorListener.OnPeerDisconnected(p.addr)
+		}
+	} else {
 		p.cfg.RemoteValidatorListener.OnPeerDisconnected(p.addr)
 	}
 	log.Debugf("----------[RemotePeer]OnConnDisconnected End")
@@ -564,12 +568,13 @@ func (p *RemotePeer) Disconnect() error {
 	}
 
 	p.connLock.RLock()
-	defer p.connLock.RUnlock()
+	connReq := p.connReq
+	p.connLock.RUnlock()
 
-	if p.connReq == nil || p.connReq.isInactive() {
+	if connReq == nil || connReq.isInactive() {
 		return nil
 	}
-	p.connReq.Close()
+	connReq.Close()
 	return nil
 }
 
@@ -691,7 +696,7 @@ func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Me
 	switch cmd := command.(type) {
 	case *validatorcommand.MsgGetInfo:
 		log.Debugf("----------[RemotePeer]Receive MsgGetInfo command, will response MsgPeerInfo command")
-		cmd.LogCommandInfo(log)
+		cmd.LogCommandInfo()
 		// Handle command ping, it will response "PeerInfo" message
 		validatorInfo := p.cfg.RemoteValidatorListener.GetLocalValidatorInfo(p.cfg.RemoteValidatorId)
 		cmdPeerInfo := validatorcommand.NewMsgPeerInfo(validatorInfo)
@@ -701,14 +706,14 @@ func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Me
 
 	case *validatorcommand.MsgPeerInfo:
 		log.Debugf("----------[RemotePeer]Receive MsgPeerInfo command")
-		cmd.LogCommandInfo(log)
+		cmd.LogCommandInfo()
 
 		p.HandleRemotePeerInfo(cmd, connReq)
 
 	case *validatorcommand.MsgPing:
 
 		log.Debugf("----------[RemotePeer]Receive ping command, will response pong command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		// Handle command ping, it will response "pong" message
 		cmdPong := validatorcommand.NewMsgPong(cmd.Nonce)
 		connReq.SendCommand(cmdPong)
@@ -716,52 +721,52 @@ func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Me
 	case *validatorcommand.MsgPong:
 
 		log.Debugf("----------[RemotePeer]Receive pong command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		// Handle command ping, it will response "pong" message
 		p.handlePongMsg(cmd, connReq)
 
 	case *validatorcommand.MsgGetValidators:
 		log.Debugf("----------[RemotePeer]Receive GetValidators command, it's invalid command for remote peer")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 
 	case *validatorcommand.MsgValidators:
 		log.Debugf("----------[RemotePeer]Receive Validators command, will notify validatorManager for sync validators")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleValidatorsResponse(cmd, connReq)
 
 	case *validatorcommand.MsgEpoch:
 		log.Debugf("----------[RemotePeer]Receive Epoch command, will notify validatorManager for sync Epoch")
-		cmd.LogCommandInfo(log)
+		cmd.LogCommandInfo()
 		p.HandleEpochResponse(cmd, connReq)
 
 	case *validatorcommand.MsgGenerator:
 		log.Debugf("----------[RemotePeer]Receive Generator command, will notify validatorManager for sync Generator")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleGeneratorResponse(cmd, connReq)
 
 	case *validatorcommand.MsgNewEpoch:
 		log.Debugf("----------[RemotePeer]Receive MsgNewEpoch command, will  notify validatorManager for handle MsgNewEpoch command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleNewEpoch(cmd, connReq)
 
 	case *validatorcommand.MsgConfirmDelEpoch:
 		log.Debugf("----------[RemotePeer]Receive MsgConfirmDelEpoch command, will  notify validatorManager for handle MsgConfirmDelEpoch command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleConfirmDelEpoch(cmd, connReq)
 
 	case *validatorcommand.MsgVCState:
 		log.Debugf("----------[RemotePeer]Receive MsgVCState command, will  notify validatorManager for handle MsgVCState command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleVCState(cmd, connReq)
 
 	case *validatorcommand.MsgVCList:
 		log.Debugf("----------[RemotePeer]Receive MsgVCList command, will  notify validatorManager for handle MsgVCList command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleVCList(cmd, connReq)
 
 	case *validatorcommand.MsgVCBlock:
 		log.Debugf("----------[RemotePeer]Receive MsgVCBlock command, will  notify validatorManager for handle MsgVCBlock command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleVCBlock(cmd, connReq)
 
 	default:

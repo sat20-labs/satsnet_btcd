@@ -31,6 +31,16 @@ func (vm *ValidatorManager) getSeed(chainParams *chaincfg.Params) ([]net.Addr, e
 	return addrs, nil
 }
 
+func (vm *ValidatorManager) getSeedHostList(chainParams *chaincfg.Params) ([]string, error) {
+
+	hostList := make([]string, 0, len(chainParams.DNSSeeds))
+	for _, dnsseed := range chainParams.DNSSeeds {
+		hostList = append(hostList, dnsseed.Host)
+	}
+
+	return hostList, nil
+}
+
 func (vm *ValidatorManager) getLocalAddr() ([]net.Addr, error) {
 	localAddrsList := make([]net.Addr, 0)
 	addrs, _ := net.InterfaceAddrs()

@@ -7,7 +7,6 @@ package posminer
 import (
 	"errors"
 	"fmt"
-	"io"
 	"math/rand"
 	"net"
 	"sync"
@@ -86,6 +85,10 @@ type Config struct {
 	// It typically must run the provided block through the same set of
 	// rules and handling as any other block coming from the network.
 	ProcessBlock func(*btcutil.Block, blockchain.BehaviorFlags) (bool, error)
+
+	// OnNewBlockMined is a notify message from posminer for notifying the satsnet
+	// when a new block mined and record it in validatechain.
+	OnNewBlockMined func(blockHash *chainhash.Hash, blockHeight int32)
 
 	// ConnectedCount defines the function to use to obtain how many other
 	// peers the server is connected to.  This is used by the automatic
@@ -692,10 +695,15 @@ func (m *POSMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 	}
 }
 
+var (
+	lastValidBlockHash chainhash.Hash
+)
+
 // New returns a new instance of a POS miner for the provided configuration.
 // Use Start to begin the mining process.  See the documentation for POSMiner
 // type for more details.
 func New(cfg *Config) *POSMiner {
+	lastValidBlockHash = cfg.BlockTemplateGenerator.BestSnapshot().Hash // For test
 	return &POSMiner{
 		g:                 cfg.BlockTemplateGenerator,
 		cfg:               *cfg,
@@ -713,33 +721,52 @@ func (m *POSMiner) OnTimeGenerateBlock() (*chainhash.Hash, int32, error) {
 	return m.GenerateNewTestBlock()
 }
 
+// OnTimeGenerateBlock is invoke when time to generate block.
+func (m *POSMiner) OnNewBlockMined(blockHash *chainhash.Hash, blockHeight int32) {
+	log.Debugf("[POSMiner]OnNewBlockMined ......")
+
+	m.cfg.OnNewBlockMined(blockHash, blockHeight)
+
+	//	lastValidBlockHash = m.cfg.BlockTemplateGenerator.BestSnapshot().Hash // For test
+	lastValidBlockHash = *blockHash // For test
+}
+
 func (m *POSMiner) GenerateNewTestBlock() (*chainhash.Hash, int32, error) {
 	log.Debugf("GenerateNewTestBlock ......")
 
 	// return nil, errors.New("Test generate failed.")
 	curHeight := m.g.BestSnapshot().Height
 	if curHeight != 0 && !m.cfg.IsCurrent() {
-		m.submitBlockLock.Unlock()
 		time.Sleep(time.Second)
-		log.Debugf("curHeight = %d and not current.", curHeight)
-		err := fmt.Errorf("The blockchain is not best chain.")
+		log.Debugf("curHeight = %d and not current %d.", curHeight, m.cfg.IsCurrent())
+		err := fmt.Errorf("the blockchain is not best chain")
 		return nil, 0, err
 	}
 
-	blockHash := chainhash.DoubleHashRaw(func(w io.Writer) error {
-		buf := make([]byte, 128)
-		for i := 0; i < 128; i++ {
-			data := rand.Int31()
-			buf[i] = byte(data)
-		}
-		if _, err := w.Write(buf[:]); err != nil {
-			return err
-		}
+	currentBlockHash := m.g.BestSnapshot().Hash // Foe test
+	if lastValidBlockHash.IsEqual(&currentBlockHash) {
+		// No new tx is mind
+		err := fmt.Errorf("no any new tx in mempool")
+		return nil, 0, err
+	}
 
-		return nil
-	})
+	lastValidBlockHash = currentBlockHash
+	return &currentBlockHash, curHeight, nil
 
-	return &blockHash, curHeight + 1, nil
+	// blockHash := chainhash.DoubleHashRaw(func(w io.Writer) error {
+	// 	buf := make([]byte, 128)
+	// 	for i := 0; i < 128; i++ {
+	// 		data := rand.Int31()
+	// 		buf[i] = byte(data)
+	// 	}
+	// 	if _, err := w.Write(buf[:]); err != nil {
+	// 		return err
+	// 	}
+
+	// 	return nil
+	// })
+
+	// return &blockHash, curHeight + 1, nil
 }
 
 func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, int32, error) {

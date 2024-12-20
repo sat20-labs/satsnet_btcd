@@ -10,7 +10,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
@@ -69,7 +68,7 @@ func (msg *MsgNextEpoch) MaxPayloadLength(pver uint32) uint32 {
 	return 280
 }
 
-func (msg *MsgNextEpoch) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgNextEpoch) LogCommandInfo() {
 	log.Debugf("Command MsgNextEpoch:")
 	log.Debugf("ValidatorId: %d", msg.HandoverEpoch.ValidatorId)
 	log.Debugf("Timestamp: %s", time.Unix(msg.HandoverEpoch.Timestamp, 0).Format(time.DateTime))

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 )
@@ -174,7 +173,7 @@ func (msg *MsgValidators) MaxPayloadLength(pver uint32) uint32 {
 	return MaxMsgValidatorsLength
 }
 
-func (msg *MsgValidators) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgValidators) LogCommandInfo() {
 	log.Debugf("Command MsgValidators:")
 	log.Debugf("Validator Count: %d", msg.ValidatorCount)
 	for index, validator := range msg.Validators {

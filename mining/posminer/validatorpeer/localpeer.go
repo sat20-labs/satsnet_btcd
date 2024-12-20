@@ -620,7 +620,7 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 	switch cmd := command.(type) {
 	case *validatorcommand.MsgGetInfo:
 		log.Debugf("----------[LocalPeer]Receive MsgGetInfo command, will response MsgPeerInfo command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 
 		validatorInfo := p.cfg.LocalValidator.GetLocalValidatorInfo(0)
 		// Handle command ping, it will response "PeerInfo" message
@@ -629,100 +629,100 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 
 	case *validatorcommand.MsgPeerInfo:
 		log.Debugf("----------[LocalPeer]Receive MsgPeerInfo command")
-		cmd.LogCommandInfo(log)
+		cmd.LogCommandInfo()
 		// Notify the validator that we have a new connection， And received peer info from the remote peer
 		p.HandleRemotePeerInfoConfirmed(cmd, connReq)
 
 	case *validatorcommand.MsgPing:
 
 		log.Debugf("----------[LocalPeer]Receive ping command, will response pong command")
-		// cmd.LogCommandInfo(log)
+		// cmd.LogCommandInfo()
 		// Handle command ping, it will response "pong" message
 		cmdPong := validatorcommand.NewMsgPong(cmd.Nonce)
 		connReq.SendCommand(cmdPong)
 
 	case *validatorcommand.MsgGetValidators:
 		log.Debugf("----------[LocalPeer]Receive GetValidators command, will response Validators command")
-		// cmd.LogCommandInfo(log)
+		// cmd.LogCommandInfo()
 		p.HandleGetValidators(cmd, connReq)
 
 	case *validatorcommand.MsgValidators:
 		// The command should be boardcast command to all peers when the validators are changed
 		log.Debugf("----------[LocalPeer]Receive Validators command, will notify validatorManager for sync validators")
-		// cmd.LogCommandInfo(log)
+		// cmd.LogCommandInfo()
 
 	case *validatorcommand.MsgGetEpoch:
 		log.Debugf("----------[LocalPeer]Receive MsgGetEpoch command, will response local epoch list to remote peer with MsgEpoch command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleGetEpoch(cmd, connReq)
 
 	case *validatorcommand.MsgReqEpoch:
 		log.Debugf("----------[LocalPeer]Receive MsgReqEpoch command, will response new epoch info to remote peer with MsgNewEpoch command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleReqEpoch(cmd, connReq)
 
 	case *validatorcommand.MsgNextEpoch:
 		log.Debugf("----------[LocalPeer]Receive MsgNextEpoch command, will notify validatorManager for change to next epoch. ")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleNextEpoch(cmd, connReq)
 
 	case *validatorcommand.MsgUpdateEpoch:
 		log.Debugf("----------[LocalPeer]Receive MsgUpdateEpoch command, will notify validatorManager for update epoch. ")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleUpdateEpoch(cmd, connReq)
 
 	case *validatorcommand.MsgGetGenerator:
 		log.Debugf("----------[LocalPeer]Receive MsgGetGetGenerator command, will response local generator list to remote peer with MsgGenerator command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleGetGenerator(cmd, connReq)
 
 	case *validatorcommand.MsgHandOver:
 		log.Debugf("----------[LocalPeer]Receive MsgHandOver command, will notify validatorManager for generator handovered. ")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleHandOverGenerator(cmd, connReq)
 
 	case *validatorcommand.MsgGenerator:
 		log.Debugf("----------[LocalPeer]Receive MsgGenerator command, will notify validatorManager for generator updated. ")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleGeneratorResponse(cmd, connReq)
 
 	case *validatorcommand.MsgConfirmEpoch:
 		log.Debugf("----------[LocalPeer]Receive MsgConfirmEpoch command, will notify validatorManager for the confirm epoch. ")
-		cmd.LogCommandInfo(log)
+		cmd.LogCommandInfo()
 		p.HandleConfirmEpoch(cmd, connReq)
 
 	case *validatorcommand.MsgReqDelEpochMember:
 		log.Debugf("----------[LocalPeer]Receive MsgReqDelEpochMember command, will notify validatorManager for delete epoch member. ")
-		cmd.LogCommandInfo(log)
+		cmd.LogCommandInfo()
 		p.handleDelEpochMember(cmd, connReq)
 
 	case *validatorcommand.MsgNotifyHandover:
 		log.Debugf("----------[LocalPeer]Receive MsgNotifyHandover command, will notify validatorManager for handover. ")
-		cmd.LogCommandInfo(log)
+		cmd.LogCommandInfo()
 		p.handleNotifyHandover(cmd, connReq)
 
 	case *validatorcommand.MsgGetVCState:
 		log.Debugf("----------[LocalPeer]Receive MsgGetVCState command, will response local vc state to remote peer with MsgVCState command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleGetVCState(cmd, connReq)
 
 	case *validatorcommand.MsgGetVCList:
 		log.Debugf("----------[LocalPeer]Receive MsgGetVCList command, will response local vc list to remote peer with MsgVCList command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleGetVCList(cmd, connReq)
 
 	case *validatorcommand.MsgGetVCBlock:
 		log.Debugf("----------[LocalPeer]Receive MsgGetVCBlock command, will response local vs block to remote peer with MsgVCBlock command")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleGetVCBlock(cmd, connReq)
 
 	case *validatorcommand.MsgVCBlock:
 		log.Debugf("----------[LocalPeer]Receive MsgVCBlock broadcast command, will notify validatormanager to process vc block. ")
-		//cmd.LogCommandInfo(log)
+		//cmd.LogCommandInfo()
 		p.HandleVCBlock(cmd, connReq)
 
 	default:
-		cmd.LogCommandInfo(log)
+		cmd.LogCommandInfo()
 		log.Errorf("----------[LocalPeer]Not to handle command [%v] from %d", command.Command(), connReq.id)
 	}
 }
@@ -730,7 +730,7 @@ func (p *LocalPeer) handleCommand(connReq *ConnReq, command validatorcommand.Mes
 // trickleHandler handle inactive conn with timer.  It must be run as a go routine.
 func (p *LocalPeer) trickleHandler() {
 	trickleTicker := time.NewTicker(p.cfg.TrickleInterval)
-	defer trickleTicker.Stop()
+	//defer trickleTicker.Stop()
 
 	// for {
 	// 	select {
@@ -819,7 +819,7 @@ func (p *LocalPeer) SendGetInfoCommand(newConnReq *ConnReq) {
 	validatorInfo := p.cfg.LocalValidator.GetLocalValidatorInfo(0)
 	getInfoCmd := validatorcommand.NewMsgGetInfo(validatorInfo)
 	//log.Debugf("----------[LocalPeer]Will Send GetInfoCommand")
-	//getInfoCmd.LogCommandInfo(log)
+	//getInfoCmd.LogCommandInfo()
 	newConnReq.SendCommand(getInfoCmd)
 }
 
@@ -851,7 +851,7 @@ func (p *LocalPeer) HandleGetValidators(getValidatorsCmd *validatorcommand.MsgGe
 	respValidators := validatorcommand.NewMsgValidators(validators)
 
 	//log.Debugf("----------[LocalPeer]Send MsgValidators command")
-	//respValidators.LogCommandInfo(log)
+	//respValidators.LogCommandInfo()
 	connReq.SendCommand(respValidators)
 }
 
@@ -875,7 +875,7 @@ func (p *LocalPeer) HandleGetEpoch(getEpochCmd *validatorcommand.MsgGetEpoch, co
 	epochCommand := validatorcommand.NewMsgEpoch(currentEpoch, nextEpoch)
 
 	//log.Debugf("----------[LocalPeer]Send MsgValidators command")
-	epochCommand.LogCommandInfo(log)
+	epochCommand.LogCommandInfo()
 	connReq.SendCommand(epochCommand)
 }
 
@@ -890,7 +890,7 @@ func (p *LocalPeer) HandleReqEpoch(getEpochCmd *validatorcommand.MsgReqEpoch, co
 	respNewEpoch := validatorcommand.NewMsgNewEpoch(p.cfg.ValidatorId, epBlockHash)
 
 	log.Debugf("----------[LocalPeer]Send MsgNewEpoch command")
-	respNewEpoch.LogCommandInfo(log)
+	respNewEpoch.LogCommandInfo()
 	connReq.SendCommand(respNewEpoch)
 }
 
@@ -907,7 +907,7 @@ func (p *LocalPeer) HandleGetGenerator(getGeneratorCmd *validatorcommand.MsgGetG
 	respGeneratorCmd := validatorcommand.NewMsgGenerator(generator)
 
 	log.Debugf("----------[LocalPeer]Send MsgGenerator command")
-	respGeneratorCmd.LogCommandInfo(log)
+	respGeneratorCmd.LogCommandInfo()
 	connReq.SendCommand(respGeneratorCmd)
 }
 
@@ -972,7 +972,7 @@ func (p *LocalPeer) HandleGetVCState(getVCState *validatorcommand.MsgGetVCState,
 		return
 	}
 	log.Debugf("----------[LocalPeer]Send MsgVCState command")
-	vcStateCmd.LogCommandInfo(log)
+	vcStateCmd.LogCommandInfo()
 	connReq.SendCommand(vcStateCmd)
 }
 
@@ -983,7 +983,7 @@ func (p *LocalPeer) HandleGetVCList(getVCList *validatorcommand.MsgGetVCList, co
 		return
 	}
 	log.Debugf("----------[LocalPeer]Send MsgVCList command")
-	vcListCmd.LogCommandInfo(log)
+	vcListCmd.LogCommandInfo()
 	connReq.SendCommand(vcListCmd)
 }
 
@@ -994,7 +994,7 @@ func (p *LocalPeer) HandleGetVCBlock(getVCBlock *validatorcommand.MsgGetVCBlock,
 		return
 	}
 	log.Debugf("----------[LocalPeer]Send MsgVCBlock command")
-	vcBlockCmd.LogCommandInfo(log)
+	vcBlockCmd.LogCommandInfo()
 	connReq.SendCommand(vcBlockCmd)
 }
 

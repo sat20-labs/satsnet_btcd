@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
@@ -77,7 +76,7 @@ func (msg *MsgReqDelEpochMember) MaxPayloadLength(pver uint32) uint32 {
 	return 28
 }
 
-func (msg *MsgReqDelEpochMember) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgReqDelEpochMember) LogCommandInfo() {
 	log.Debugf("Command MsgReqDelEpochMember:")
 	log.Debugf("ValidatorId: %d", msg.ValidatorId)
 	log.Debugf("DelValidatorId: %d", msg.DelValidatorId)

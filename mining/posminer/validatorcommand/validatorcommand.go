@@ -10,7 +10,6 @@ import (
 	"io"
 	"unicode/utf8"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/wire"
@@ -82,7 +81,7 @@ type Message interface {
 	BtcEncode(io.Writer, uint32) error
 	Command() string
 	MaxPayloadLength(uint32) uint32
-	LogCommandInfo(log btclog.Logger)
+	LogCommandInfo()
 }
 
 // makeEmptyMessage creates a message of the appropriate concrete type based
@@ -346,6 +345,8 @@ func ReadMessage(r io.Reader, pver uint32, btcnet wire.BitcoinNet) (int, Message
 		err = fmt.Errorf("ReadMessage:unable to read message header: %v", err)
 		return totalBytes, nil, nil, err
 	}
+
+	log.Debugf("ReadMessage: message command: %s", hdr.command)
 
 	// Enforce maximum message payload.
 	if hdr.length > MaxCommandPayload {

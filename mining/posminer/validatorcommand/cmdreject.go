@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
@@ -165,7 +164,7 @@ func (msg *MsgReject) MaxPayloadLength(pver uint32) uint32 {
 	return plen
 }
 
-func (msg *MsgReject) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgReject) LogCommandInfo() {
 	log.Debugf("Command MsgReject:")
 	log.Debugf("Cmd: %s", msg.Cmd)
 	log.Debugf("RejectCode: %s", msg.Code.String())

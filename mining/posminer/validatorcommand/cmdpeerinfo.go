@@ -10,7 +10,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/btcec"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
@@ -82,7 +81,7 @@ func (msg *MsgPeerInfo) MaxPayloadLength(pver uint32) uint32 {
 	return 20 + btcec.PubKeyBytesLenCompressed + MaxHostSize
 }
 
-func (msg *MsgPeerInfo) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgPeerInfo) LogCommandInfo() {
 	log.Debugf("Command MsgPeerInfo:")
 	log.Debugf("ProtocolVersion: %d", msg.ProtocolVersion)
 	log.Debugf("ValidatorId: %d", msg.ValidatorId)

@@ -27,16 +27,15 @@ type DelEpochMember struct {
 	ValidatorId    uint64 // The validator id for confirm epoch member delete
 	DelValidatorId uint64 // The validator id to be deleted
 	DelCode        uint32 // The reason code for delete epoch member
-	EpochIndex     int64 // The epoch index for confirm epoch member delete
+	EpochIndex     int64  // The epoch index for confirm epoch member delete
 	Result         uint32 // The result for confirm, DelEpochMemberResult_NotConfirm, DelEpochMemberResult_Agree, DelEpochMemberResult_Reject
-	Timestamp      int64  // The time of confirm
 	Token          string // The token for epoch handover, it sign by validator to be confirmed
 }
 
 func (he *DelEpochMember) GetDelEpochMemTokenData() []byte {
 
 	// Next epoch Token Data format: "satsnet:delepochmem:validatorid:DelValidatorId:DelCode:EpochIndex:timestamp"
-	tokenData := fmt.Sprintf("satsnet:delepochmem:%d:%d:%d:%d:%d:%d", he.ValidatorId, he.DelValidatorId, he.DelCode, he.EpochIndex, he.Result, he.Timestamp)
+	tokenData := fmt.Sprintf("satsnet:delepochmem:%d:%d:%d:%d:%d", he.ValidatorId, he.DelValidatorId, he.DelCode, he.EpochIndex, he.Result)
 	tokenSource := sha256.Sum256([]byte(tokenData))
 	//return hex.EncodeToString(tokenSource[:])
 

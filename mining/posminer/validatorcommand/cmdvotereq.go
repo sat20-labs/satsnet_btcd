@@ -10,7 +10,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
@@ -106,7 +105,7 @@ func (msg *MsgVoteReq) MaxPayloadLength(pver uint32) uint32 {
 	return 44
 }
 
-func (msg *MsgVoteReq) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgVoteReq) LogCommandInfo() {
 	log.Debugf("Command MsgVoteReq:")
 	log.Debugf("ValidatorId: %d", msg.VoteReqInfo.ValidatorId)
 	voteType := "Unknown type"

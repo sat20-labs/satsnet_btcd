@@ -16,10 +16,11 @@ import (
 var NetParams = chaincfg.TestNet3Params
 
 type LockedInfoInBTCChain struct {
-	TxId string // the txid with locked in lnd
+	Utxo string // the txid with locked in lnd
 	//LockedAddresses []string // the locked addresses, it should be multi sig address
-	pkScript []byte // the pkscript
-	Amount   int64  // the amount with locked in lnd
+	pkScript  []byte // the pkscript
+	Amount    int64  // the amount with locked in lnd
+	AssetInfo []*UtxoAssetInfo
 }
 
 func IsCheckLockedTx() bool {
@@ -58,9 +59,29 @@ func GetLockedInfo(txid string) (*LockedInfoInBTCChain, error) {
 
 	// Only get locked info with first txout
 	out := tx.MsgTx().TxOut[0]
-	lockedInfo.TxId = txid
+	lockedInfo.Utxo = fmt.Sprintf("%s:%d", txid, 0)
 	lockedInfo.pkScript = out.PkScript
 	lockedInfo.Amount = out.Value
+
+	return lockedInfo, nil
+}
+func GetLockedUtxoInfo(utxo string) (*LockedInfoInBTCChain, error) {
+	lockedInfo := &LockedInfoInBTCChain{}
+	host := anchorManager.anchorConfig.IndexerHost
+	net := anchorManager.anchorConfig.IndexerNet
+
+	// Get TxInfo from BTC chain (Layer 1 chain)
+	indexerClient := NewIndexerClient(host, net)
+	utxoAssetsInfo, err := indexerClient.GetTxUtxoAssets(utxo)
+	if err != nil {
+		fmt.Printf("GetRawTx failed: %s\n", err.Error())
+		return nil, err
+	}
+
+	lockedInfo.Utxo = utxo
+	lockedInfo.pkScript = utxoAssetsInfo.OutValue.PkScript
+	lockedInfo.Amount = utxoAssetsInfo.OutValue.Value
+	lockedInfo.AssetInfo = utxoAssetsInfo.AssetInfo
 
 	return lockedInfo, nil
 }

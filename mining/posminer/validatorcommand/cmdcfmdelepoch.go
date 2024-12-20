@@ -8,9 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"time"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
@@ -39,7 +37,7 @@ func (msg *MsgConfirmDelEpoch) BtcDecode(r io.Reader, pver uint32) error {
 
 	msg.DelEpochMember = &epoch.DelEpochMember{}
 
-	err := utils.ReadElements(buf, &msg.DelEpochMember.ValidatorId, &msg.DelEpochMember.DelValidatorId, &msg.DelEpochMember.DelCode, &msg.DelEpochMember.EpochIndex, &msg.DelEpochMember.Result, &msg.DelEpochMember.Timestamp, &msg.DelEpochMember.Token)
+	err := utils.ReadElements(buf, &msg.DelEpochMember.ValidatorId, &msg.DelEpochMember.DelValidatorId, &msg.DelEpochMember.DelCode, &msg.DelEpochMember.EpochIndex, &msg.DelEpochMember.Result, &msg.DelEpochMember.Token)
 	if err != nil {
 		return err
 	}
@@ -50,7 +48,7 @@ func (msg *MsgConfirmDelEpoch) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgConfirmDelEpoch) BtcEncode(w io.Writer, pver uint32) error {
-	err := utils.WriteElements(w, msg.DelEpochMember.ValidatorId, msg.DelEpochMember.DelValidatorId, msg.DelEpochMember.DelCode, msg.DelEpochMember.EpochIndex, msg.DelEpochMember.Result, msg.DelEpochMember.Timestamp, msg.DelEpochMember.Token)
+	err := utils.WriteElements(w, msg.DelEpochMember.ValidatorId, msg.DelEpochMember.DelValidatorId, msg.DelEpochMember.DelCode, msg.DelEpochMember.EpochIndex, msg.DelEpochMember.Result, msg.DelEpochMember.Token)
 	if err != nil {
 		return err
 	}
@@ -67,18 +65,17 @@ func (msg *MsgConfirmDelEpoch) Command() string {
 // MaxPayloadLength returns the maximum length the payload can be for the
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgConfirmDelEpoch) MaxPayloadLength(pver uint32) uint32 {
-	// validatorId 8 bytes + DelValidatorId 8 bytes + DelCode 4 bytes + EpochIndex 8 bytes + Result 4 bytes + timestamp 8 bytes + token 256 bytes
-	return 40 + 256
+	// validatorId 8 bytes + DelValidatorId 8 bytes + DelCode 4 bytes + EpochIndex 8 bytes + Result 4 bytes + + token 256 bytes
+	return 32 + 256
 }
 
-func (msg *MsgConfirmDelEpoch) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgConfirmDelEpoch) LogCommandInfo() {
 	log.Debugf("Command MsgConfirmDelEpoch:")
 	log.Debugf("ValidatorId: %d", msg.DelEpochMember.ValidatorId)
 	log.Debugf("DelValidatorId: %d", msg.DelEpochMember.DelValidatorId)
 	log.Debugf("DelCode: %d", msg.DelEpochMember.DelCode)
 	log.Debugf("EpochIndex: %d", msg.DelEpochMember.EpochIndex)
 	log.Debugf("Result: %d", msg.DelEpochMember.Result)
-	log.Debugf("Timestamp: %s", time.Unix(msg.DelEpochMember.Timestamp, 0).Format(time.DateTime))
 	log.Debugf("Token: %s", msg.DelEpochMember.Token)
 }
 

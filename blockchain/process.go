@@ -242,3 +242,35 @@ func (b *BlockChain) ProcessBlock(block *btcutil.Block, flags BehaviorFlags) (bo
 
 	return isMainChain, false, nil
 }
+
+// OnNewBlockMined is a notify message from posminer for notifying the satsnet
+// when a new block mined and record it in validatechain.
+func (b *BlockChain) OnNewBlockMined(blockHash *chainhash.Hash, blockHeight int32) {
+	log.Debugf("OnNewBlockMined: new block is mined by posminer(%d:%s)", blockHeight, blockHash.String())
+	newBestBlockNode := b.bestChain.nodeByHeight(blockHeight)
+	if newBestBlockNode == nil {
+		log.Errorf("OnNewBlockMined: can't find block(%d:%s) in best chain", blockHeight, blockHash.String())
+		return
+	}
+
+	newBestBlockNodeParent := newBestBlockNode.parent
+	if newBestBlockNodeParent == nil {
+		log.Errorf("OnNewBlockMined: can't find parent of block(%d:%s) in best chain", blockHeight, blockHash.String())
+		return
+	}
+	log.Debugf("OnNewBlockMined: new best block parent is(%d:%s)", newBestBlockNodeParent.height, newBestBlockNodeParent.hash.String())
+
+	log.Debugf("Current best block is(%d:%s)", b.BestSnapshot().Height, b.BestSnapshot().Hash.String())
+	curBestBlockNode := b.bestChain.nodeByHeight(b.BestSnapshot().Height)
+	if curBestBlockNode == nil {
+		log.Errorf("OnNewBlockMined: can't find block(%d:%s) in best chain", blockHeight, blockHash.String())
+		return
+	}
+
+	curBestBlockNodeParent := curBestBlockNode.parent
+	if newBestBlockNodeParent == nil {
+		log.Errorf("OnNewBlockMined: can't find parent of block(%d:%s) in best chain", blockHeight, blockHash.String())
+		return
+	}
+	log.Debugf("OnNewBlockMined: cur best block parent is(%d:%s)", curBestBlockNodeParent.height, curBestBlockNodeParent.hash.String())
+}

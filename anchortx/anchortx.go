@@ -56,8 +56,9 @@ var anchorManager AnchorManager
 type LockedTxInfo struct {
 	TxId          string // the txid with locked in lnd
 	Index         int32
-	WitnessScript []byte // WitnessScript for locked in lnd
-	Amount        int64  // the amount with locked in lnd
+	WitnessScript []byte         // WitnessScript for locked in lnd
+	Amount        int64          // the amount with locked in lnd
+	TxAssets      *wire.TxAssets // The assets locked
 }
 
 func StartAnchorManager(config *AnchorConfig) bool {
@@ -74,7 +75,7 @@ func StartAnchorManager(config *AnchorConfig) bool {
 	// Default， the node will check anchor tx
 	anchorManager.verifyAnchorTx = true
 	if anchorManager.anchorConfig.IndexerHost == "" || anchorManager.anchorConfig.IndexerNet == "" {
-		anchorManager.verifyAnchorTx = false
+		//anchorManager.verifyAnchorTx = false
 		log.Debugf("The node not config indexer infomation, will not check anchor tx")
 	}
 
@@ -105,7 +106,7 @@ func CheckAnchorTxValid(tx *wire.MsgTx) error {
 	// Check the Anchor tx has completed, all the assets is locked in lnd will be mapped to sats net only one times
 	lockedInfo, err := checkAnchorPkScript(AnchorScript)
 	if err != nil {
-		log.Debugf("invalid Anchor tx, invalid Anchor script: %s", tx.TxHash().String())
+		log.Debugf("invalid Anchor tx, invalid Anchor script: %s, err: %s", tx.TxHash().String(), err.Error())
 		return err
 	}
 
@@ -198,6 +199,24 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 		return nil, err
 	}
 	amount := scriptNum.Int32()
+
+	// The Third opcode must be a canonical data push, The data is
+	// serialized as assets
+	if !tokenizer.Next() ||
+		!isCanonicalPush(tokenizer.Opcode(), tokenizer.Data()) {
+		err := fmt.Errorf("invalid Anchor tx script for witnessScript")
+		return nil, err
+	}
+	assetsData := tokenizer.Data()
+
+	txAssets := &wire.TxAssets{}
+	if assetsData != nil {
+		err = txAssets.Deserialize(assetsData)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// The witness program is valid if there are no more opcodes, and we
 	// terminated without a parsing error.
 	//valid := tokenizer.Done() && tokenizer.Err() == nil
@@ -212,6 +231,7 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 		Index:         int32(outputIndex),
 		WitnessScript: witnessScript,
 		Amount:        int64(amount),
+		TxAssets:      txAssets,
 	}
 	return info, nil
 }
@@ -353,7 +373,8 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 
 	if IsCheckLockedTx() == true {
 		// 检查BTC锁定交易, 只有定义了anchorManager.anchorConfig.IndexerHost, anchorManager.anchorConfig.IndexerNet才检查
-		lockedInfoInBTC, err := GetLockedInfo(lockedTxInfo.TxId)
+		utxoLocked := fmt.Sprintf("%s:%d", lockedTxInfo.TxId, lockedTxInfo.Index)
+		lockedInfoInBTC, err := GetLockedUtxoInfo(utxoLocked)
 		if err != nil {
 			return nil, err
 		}
@@ -363,9 +384,54 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 		if !bytes.Equal(lockedInfoInBTC.pkScript, pkScript) {
 			return nil, fmt.Errorf("invalid pkscript")
 		}
+
+		if isSameAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) == false {
+			return nil, fmt.Errorf("invalid assets")
+		}
 	}
 
 	return lockedTxInfo, nil
+}
+
+func isSameAssets(utxoAssetInfo []*UtxoAssetInfo, txAssets *wire.TxAssets) bool {
+	if utxoAssetInfo == nil && txAssets == nil {
+		return true
+	}
+
+	if utxoAssetInfo == nil || txAssets == nil {
+		log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
+		return false
+	}
+
+	if len(utxoAssetInfo) != len(*txAssets) {
+		log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
+		return false
+	}
+
+	for i := 0; i < len(utxoAssetInfo); i++ {
+		if utxoAssetInfo[i].Asset.Name.Protocol != (*txAssets)[i].Name.Protocol {
+			log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
+			return false
+		}
+		if utxoAssetInfo[i].Asset.Name.Type != (*txAssets)[i].Name.Type {
+			log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
+			return false
+		}
+		if utxoAssetInfo[i].Asset.Name.Ticker != (*txAssets)[i].Name.Ticker {
+			log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
+			return false
+		}
+		if utxoAssetInfo[i].Asset.Amount != (*txAssets)[i].Amount {
+			log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
+			return false
+		}
+		if utxoAssetInfo[i].Asset.BindingSat != (*txAssets)[i].BindingSat {
+			log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
+			return false
+		}
+	}
+
+	return true
 }
 
 func isSuperPublic(publicKey []byte) bool {

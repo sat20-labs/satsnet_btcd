@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
@@ -68,7 +67,7 @@ func (msg *MsgGetEpoch) MaxPayloadLength(pver uint32) uint32 {
 	return 8
 }
 
-func (msg *MsgGetEpoch) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgGetEpoch) LogCommandInfo() {
 	log.Debugf("Command MsgGetEpoch:")
 	log.Debugf("ValidatorId: %d", msg.ValidatorId)
 }

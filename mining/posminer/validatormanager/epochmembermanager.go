@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sat20-labs/satsnet_btcd/btcec"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
@@ -27,7 +28,13 @@ type DisconnectEpochMember struct {
 }
 
 type DelEpochMemberResult struct {
-	ResultList map[uint64]uint32
+	PublicKey [btcec.PubKeyBytesLenCompressed]byte
+	Result    uint32
+	Token     string
+}
+
+type DelEpochMemberCollection struct {
+	ResultList map[uint64]*DelEpochMemberResult
 	StartTime  time.Time
 }
 
@@ -40,7 +47,7 @@ type EpochMemberManager struct {
 	DisconnectedList    map[uint64]*DisconnectEpochMember
 	disconnectedListMtx sync.RWMutex
 
-	receivedDelEpochMemberResult map[uint64]*DelEpochMemberResult
+	receivedDelEpochMemberResult map[uint64]*DelEpochMemberCollection
 }
 
 func CreateEpochMemberManager(validatorMgr *ValidatorManager) *EpochMemberManager {
@@ -48,7 +55,7 @@ func CreateEpochMemberManager(validatorMgr *ValidatorManager) *EpochMemberManage
 		ValidatorMgr:                 validatorMgr,
 		disconnectedListMtx:          sync.RWMutex{},
 		connectedListMtx:             sync.RWMutex{},
-		receivedDelEpochMemberResult: make(map[uint64]*DelEpochMemberResult),
+		receivedDelEpochMemberResult: make(map[uint64]*DelEpochMemberCollection),
 	}
 }
 
@@ -273,24 +280,38 @@ func (em *EpochMemberManager) ReqDelEpochMember(delValidatorID uint64) {
 	// vm.newEpochMgr = CreateNewEpochManager(vm)
 	//em.ValidatorMgr.BroadcastCommand(CmdReqDelEpochMember)
 
-	delValidatorResult := &DelEpochMemberResult{
-		ResultList: make(map[uint64]uint32),
+	delMemberCollection := &DelEpochMemberCollection{
+		ResultList: make(map[uint64]*DelEpochMemberResult),
 		StartTime:  time.Now(),
 	}
 
-	em.receivedDelEpochMemberResult[delValidatorID] = delValidatorResult
+	em.receivedDelEpochMemberResult[delValidatorID] = delMemberCollection
 
 	em.connectedListMtx.Lock()
 	defer em.connectedListMtx.Unlock()
 
 	log.Debugf("Will broadcast DelEpoch command from all connected validators...")
 	for validatorId, validator := range em.ConnectedList {
-		delValidatorResult.ResultList[validatorId] = epoch.DelEpochMemberResult_NotConfirm
+		delMemberCollection.ResultList[validatorId] = &DelEpochMemberResult{PublicKey: validator.ValidatorInfo.PublicKey, Result: epoch.DelEpochMemberResult_NotConfirm, Token: ""}
 		validator.SendCommand(CmdReqDelEpochMember)
 	}
 
 	// Add local validator confirm result
-	delValidatorResult.ResultList[em.ValidatorMgr.Cfg.ValidatorId] = epoch.DelEpochMemberResult_Agree
+	delEpochMember := &epoch.DelEpochMember{
+		ValidatorId:    em.ValidatorMgr.myValidator.ValidatorInfo.ValidatorId,
+		DelValidatorId: delValidatorID,
+		DelCode:        epoch.DelCode_Disconnect,
+		EpochIndex:     em.CurrentEpoch.EpochIndex,
+		Result:         epoch.DelEpochMemberResult_Agree,
+	}
+
+	tokenData := delEpochMember.GetDelEpochMemTokenData()
+	// Sign the token by local validator private key
+	token, err := em.ValidatorMgr.SignToken(tokenData)
+	if err == nil {
+		resultLocal := &DelEpochMemberResult{PublicKey: em.ValidatorMgr.myValidator.ValidatorInfo.PublicKey, Result: epoch.DelEpochMemberResult_Agree, Token: token}
+		delMemberCollection.ResultList[em.ValidatorMgr.myValidator.ValidatorInfo.ValidatorId] = resultLocal
+	}
 
 	go em.delEpochMemberHandler(delValidatorID)
 }
@@ -310,20 +331,21 @@ func (em *EpochMemberManager) OnConfirmedDelEpochMember(delEpochMember *epoch.De
 		return
 	}
 	verified := delEpochMember.VerifyToken(confirmedValidator.ValidatorInfo.PublicKey[:])
-	if verified == false {
+	if !verified {
 		// The confirm command isnot verified
 		return
 	}
 
 	delValidatorID := delEpochMember.DelValidatorId
 
-	delValidatorResult, ok := em.receivedDelEpochMemberResult[delValidatorID]
+	delValidatorCollection, ok := em.receivedDelEpochMemberResult[delValidatorID]
 	if !ok {
 		return
 	}
 
 	// record validator confirm result
-	delValidatorResult.ResultList[confirmedValidatorId] = delEpochMember.Result
+	result := &DelEpochMemberResult{PublicKey: confirmedValidator.ValidatorInfo.PublicKey, Result: delEpochMember.Result, Token: delEpochMember.Token}
+	delValidatorCollection.ResultList[confirmedValidatorId] = result
 }
 
 func (em *EpochMemberManager) delEpochMemberHandler(delValidatorID uint64) {
@@ -346,15 +368,15 @@ func (em *EpochMemberManager) delEpochMemberHandler(delValidatorID uint64) {
 
 func (em *EpochMemberManager) handleDelEpochMember(delValidatorID uint64) {
 
-	delValidatorResult, ok := em.receivedDelEpochMemberResult[delValidatorID]
+	delValidatorCollection, ok := em.receivedDelEpochMemberResult[delValidatorID]
 	if !ok {
 		return
 	}
 
-	totalCount := len(delValidatorResult.ResultList)
+	totalCount := len(delValidatorCollection.ResultList)
 	agreeCount := 0
-	for _, result := range delValidatorResult.ResultList {
-		if result == epoch.DelEpochMemberResult_Agree {
+	for _, result := range delValidatorCollection.ResultList {
+		if result.Result == epoch.DelEpochMemberResult_Agree {
 			agreeCount++
 		}
 	}
@@ -370,11 +392,16 @@ func (em *EpochMemberManager) handleDelEpochMember(delValidatorID uint64) {
 		// Del the member and broadcast for Update epoch
 		//em.NotifyEpochMemberDeleted(delValidatorID)
 		em.CurrentEpoch.DelEpochMember(delValidatorID)
+		em.ValidatorMgr.ConfirmDelEpoch(em.CurrentEpoch, delValidatorCollection)
+		//
 		updateEpochCmd := validatorcommand.NewMsgUpdateEpoch(em.CurrentEpoch)
 		em.ValidatorMgr.BroadcastCommand(updateEpochCmd)
 
 		// Call local validator for handle this action
 		em.ValidatorMgr.OnUpdateEpoch(em.CurrentEpoch)
+	} else {
+		// Disagree for del validatorID from epoch member
+		log.Debugf("[EpochMemberManager]Disagree for del validatorID from epoch member: %d", delValidatorID)
 	}
 }
 
@@ -475,7 +502,6 @@ func (em *EpochMemberManager) NewConfirmDelMember(delValidatorId uint64, reqDelE
 		DelCode:        reqDelEpochMember.DelCode,
 		EpochIndex:     reqDelEpochMember.EpochIndex,
 		Result:         result,
-		Timestamp:      time.Now().Unix(),
 	}
 
 	tokenData := delEpochMember.GetDelEpochMemTokenData()

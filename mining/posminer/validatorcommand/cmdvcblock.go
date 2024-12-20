@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
@@ -44,6 +43,7 @@ func (msg *MsgVCBlock) BtcDecode(r io.Reader, pver uint32) error {
 
 	err := utils.ReadElements(buf, &msg.Hash, &msg.BlockType, (*utils.VarByte)(&msg.Payload))
 	if err != nil {
+		log.Errorf("MsgVCBlock:ReadElements failed: %v", err)
 		return err
 	}
 
@@ -56,6 +56,7 @@ func (msg *MsgVCBlock) BtcEncode(w io.Writer, pver uint32) error {
 
 	err := utils.WriteElements(w, msg.Hash, msg.BlockType, (utils.VarByte)(msg.Payload))
 	if err != nil {
+		log.Errorf("MsgVCBlock:WriteElements failed: %v", err)
 		return err
 	}
 
@@ -75,7 +76,7 @@ func (msg *MsgVCBlock) MaxPayloadLength(pver uint32) uint32 {
 	return 36 + MaxSize_Payload
 }
 
-func (msg *MsgVCBlock) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgVCBlock) LogCommandInfo() {
 	log.Debugf("Command MsgVCBlock:")
 	log.Debugf("BlockHash: %s", msg.Hash.String())
 	log.Debugf("BlockType: %d", msg.BlockType)

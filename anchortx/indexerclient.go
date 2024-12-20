@@ -44,6 +44,44 @@ type IndexerTxResp struct {
 	Data string `json:"data"`
 }
 
+type AssetName struct {
+	Protocol string `json:"Protocol"` // 必填，比如ordx, ordinals, brc20，runes，eth，等等
+	Type     string `json:"Type"`     // 可选，默认是ft，参考indexer的定义
+	Ticker   string `json:"Ticker"`   // 如果Type是nft类型，ticker是合集名称#铭文序号（或者聪序号）
+}
+
+type AssetInfo struct {
+	Name       AssetName `json:"Name"`
+	Amount     int64     `json:"Amount"`     // 资产数量
+	BindingSat uint16    `json:"BindingSat"` // 非0 -> 绑定聪, 0 -> 不绑定聪
+}
+type AssetOffsets struct {
+	Start int64 `json:"start"`
+	End   int64 `json:"end"`
+}
+
+type TxOut struct {
+	Value    int64  `json:"Value"`
+	PkScript []byte `json:"PkScript"`
+}
+
+type UtxoAssetInfo struct {
+	Asset   AssetInfo    `json:"asset"`
+	Offsets AssetOffsets `json:"offsets"`
+}
+
+type TxUtxoInfo struct {
+	OutPoint  string           `json:"outpoint"`
+	OutValue  TxOut            `json:"outvalue"`
+	AssetInfo []*UtxoAssetInfo `json:"assets"`
+}
+
+type IndexerUtxoInfoResp struct {
+	Code int         `json:"code" example:"0"`
+	Msg  string      `json:"msg" example:"ok"`
+	Data *TxUtxoInfo `json:"data"`
+}
+
 // btcutil.Tx
 func (p *IndexerClient) GetRawTx(tx string) (string, error) {
 	path := p.getUrl("/btc/rawtx/" + tx)
@@ -65,6 +103,31 @@ func (p *IndexerClient) GetRawTx(tx string) (string, error) {
 	if result.Code != 0 {
 		err := fmt.Errorf("%s response failed: %s", path, result.Msg)
 		return "", err
+	}
+
+	return result.Data, nil
+}
+
+func (p *IndexerClient) GetTxUtxoAssets(utxo string) (*TxUtxoInfo, error) {
+	path := p.getUrl("/v2/utxo/info/" + utxo)
+	rsp, err := p.SendGetRequest(path)
+	if err != nil {
+		//Log.Errorf("SendGetRequest %v failed. %v", url, err)
+		return nil, err
+	}
+
+	fmt.Printf("%v response: %s", path, string(rsp))
+
+	// Unmarshal the response.
+	var result IndexerUtxoInfoResp
+	if err := json.Unmarshal(rsp, &result); err != nil {
+		err := fmt.Errorf("%s response data format failed: %s", path, string(rsp))
+		return nil, err
+	}
+
+	if result.Code != 0 {
+		err := fmt.Errorf("%s response failed: %s", path, result.Msg)
+		return nil, err
 	}
 
 	return result.Data, nil

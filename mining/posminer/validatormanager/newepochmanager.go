@@ -160,8 +160,7 @@ func (nem *NewEpochManager) handleNewEpoch() {
 
 	for _, validItem := range result.validEpoch {
 		if validItem.EpochCount >= minValidCount {
-			log.Debugf("valid epoch:")
-			log.Debugf("epoch count: %d", validItem.EpochCount)
+			log.Debugf("valid epoch vote count: %d", validItem.EpochCount)
 			//showEpoch("valid epoch:", validItem.epoch)
 
 			// The new epoch is confirmed, the result will be sent to all validators

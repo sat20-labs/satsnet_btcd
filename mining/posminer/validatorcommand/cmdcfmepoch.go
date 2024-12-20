@@ -10,7 +10,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/btcsuite/btclog"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
@@ -31,6 +31,10 @@ type MsgConfirmEpoch struct {
 	CreateHeight int32             // 创建Epoch时当前Block的高度
 	CreateTime   time.Time         // 当前Epoch的创建时间
 	ItemList     []epoch.EpochItem // 当前Epoch包含的验证者列表，（已排序）， 在一个Epoch结束前不会改变
+
+	LastChangeTime time.Time      // 最后一次改变的时间, 用于判断是否需要更新， Epoch的改变包括创建， 转正，generator流转，成员删除
+	VCBlockHeight  int64          // 记录当前epoch改变的的VCblock高度
+	VCBlockHash    chainhash.Hash // 记录当前epoch改变的的VCblock hash
 }
 
 // BtcDecode decodes r using the bitcoin protocol encoding into the receiver.
@@ -81,6 +85,11 @@ func (msg *MsgConfirmEpoch) BtcDecode(r io.Reader, pver uint32) error {
 		msg.ItemList = append(msg.ItemList, epochItem)
 	}
 
+	err = utils.ReadElements(buf, (*utils.Int64Time)(&msg.LastChangeTime), &msg.VCBlockHeight, &msg.VCBlockHash)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -123,6 +132,11 @@ func (msg *MsgConfirmEpoch) BtcEncode(w io.Writer, pver uint32) error {
 
 	}
 
+	err = utils.WriteElements(w, msg.LastChangeTime.Unix(), msg.VCBlockHeight, msg.VCBlockHash)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -136,12 +150,12 @@ func (msg *MsgConfirmEpoch) Command() string {
 // receiver.  This is part of the Message interface implementation.
 func (msg *MsgConfirmEpoch) MaxPayloadLength(pver uint32) uint32 {
 	//  ValidatorId 8 bytes + EpochIndex 8 bytes + CreateHeight 4 bytes + CreateTime 8 bytes + ValidatorCount 4 bytes
-	//  Max validator count is 256 (Max Epoch Size) , EpochItem is 60 bytes
-	return 32 + 256*60 // 69 len of validatorinfo.ValidatorInfo to be sent
+	//  Max validator count is 256 (Max Epoch Size) , EpochItem is 60 bytes + LastChangeTime 8 bytes + VCBlockHeight 8 bytes + VCBlockHash 32 bytes
+	return 32 + 256*60 + 48 // 69 len of validatorinfo.ValidatorInfo to be sent
 
 }
 
-func (msg *MsgConfirmEpoch) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgConfirmEpoch) LogCommandInfo() {
 	log.Debugf("Command MsgConfirmEpoch:")
 	log.Debugf("Validator Id: %d", msg.ValidatorId)
 
@@ -158,6 +172,10 @@ func (msg *MsgConfirmEpoch) LogCommandInfo(log btclog.Logger) {
 		log.Debugf("Validator Index: %d", validator.Index)
 		log.Debugf("")
 	}
+
+	log.Debugf("Last Change Time: %s", msg.LastChangeTime.Format(time.DateTime))
+	log.Debugf("VC Block Height: %d", msg.VCBlockHeight)
+	log.Debugf("VC Block Hash: %s", msg.VCBlockHash.String())
 	log.Debugf("——————————————————————————————————")
 }
 
@@ -169,11 +187,14 @@ func NewMsgConfirmEpoch(validatorId uint64, newEpoch *epoch.Epoch) *MsgConfirmEp
 	// Limit the timestamp to one second precision since the protocol
 	// doesn't support better.
 	newEpochMsg := &MsgConfirmEpoch{
-		ValidatorId:  validatorId,
-		EpochIndex:   newEpoch.EpochIndex,
-		CreateHeight: newEpoch.CreateHeight,
-		CreateTime:   newEpoch.CreateTime,
-		ItemList:     make([]epoch.EpochItem, 0),
+		ValidatorId:    validatorId,
+		EpochIndex:     newEpoch.EpochIndex,
+		CreateHeight:   newEpoch.CreateHeight,
+		CreateTime:     newEpoch.CreateTime,
+		ItemList:       make([]epoch.EpochItem, 0),
+		LastChangeTime: newEpoch.LastChangeTime,
+		VCBlockHash:    *newEpoch.VCBlockHash,
+		VCBlockHeight:  newEpoch.VCBlockHeight,
 	}
 
 	for _, epochItem := range newEpoch.ItemList {

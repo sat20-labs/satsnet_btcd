@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 )
 
@@ -73,7 +72,7 @@ func (msg *MsgUpdateEpoch) MaxPayloadLength(pver uint32) uint32 {
 	return MaxMsgUpdateEpochLength
 }
 
-func (msg *MsgUpdateEpoch) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgUpdateEpoch) LogCommandInfo() {
 	log.Debugf("Command MsgUpdateEpoch:")
 	// log.Debugf("Validator Count: %d", msg.ValidatorCount)
 	// for index, validator := range msg.Validators {

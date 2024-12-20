@@ -10,7 +10,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
@@ -52,6 +51,7 @@ func (msg *MsgHandOver) BtcDecode(r io.Reader, pver uint32) error {
 		&msg.HandOverInfo.Height,
 		&msg.HandOverInfo.Token)
 	if err != nil {
+		log.Errorf("MsgHandOver:ReadElements failed: %v", err)
 		return err
 	}
 
@@ -70,6 +70,7 @@ func (msg *MsgHandOver) BtcEncode(w io.Writer, pver uint32) error {
 		msg.HandOverInfo.Height,
 		msg.HandOverInfo.Token)
 	if err != nil {
+		log.Errorf("MsgHandOver:WriteElements failed: %v", err)
 		return err
 	}
 
@@ -89,7 +90,7 @@ func (msg *MsgHandOver) MaxPayloadLength(pver uint32) uint32 {
 	return 32 + MaxHandOverTokenSize
 }
 
-func (msg *MsgHandOver) LogCommandInfo(log btclog.Logger) {
+func (msg *MsgHandOver) LogCommandInfo() {
 	log.Debugf("Command MsgHandOver:")
 	log.Debugf("ValidatorId: %d", msg.HandOverInfo.ValidatorId)
 	handoverType := "Unknown type"
