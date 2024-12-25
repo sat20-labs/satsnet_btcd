@@ -67,8 +67,12 @@ func (em *EpochMemberManager) UpdateCurrentEpoch(currentEpoch *epoch.Epoch) {
 
 func (em *EpochMemberManager) GetEpochMember(validatorID uint64) (*validator.Validator, bool) {
 
+	log.Debugf("connectedListMtx4 Locked")
 	em.connectedListMtx.RLock()
-	defer em.connectedListMtx.RUnlock()
+	defer func() {
+		em.connectedListMtx.RUnlock()
+		log.Debugf("connectedListMtx4 Unocked")
+	}()
 
 	if em.ConnectedList != nil {
 		validatorItem, ok := em.ConnectedList[validatorID]
@@ -77,8 +81,12 @@ func (em *EpochMemberManager) GetEpochMember(validatorID uint64) (*validator.Val
 		}
 	}
 
+	log.Debugf("disconnectedListMtx1 Locked")
 	em.disconnectedListMtx.RLock()
-	defer em.disconnectedListMtx.RUnlock()
+	defer func() {
+		defer em.disconnectedListMtx.RUnlock()
+		log.Debugf("disconnectedListMtx1 Unocked")
+	}()
 
 	if em.DisconnectedList != nil {
 		disconnectItem, ok := em.DisconnectedList[validatorID]
@@ -92,18 +100,30 @@ func (em *EpochMemberManager) GetEpochMember(validatorID uint64) (*validator.Val
 
 func (em *EpochMemberManager) updateValidatorsList() {
 
+	log.Debugf("[EpochMemberManager]Update validators list...")
 	// 将原来的数据清空
+	log.Debugf("connectedListMtx5 Locked")
 	em.connectedListMtx.Lock()
-	defer em.connectedListMtx.Unlock()
+	defer func() {
+		em.connectedListMtx.Unlock()
+		log.Debugf("connectedListMtx5 Unocked")
+	}()
 
+	log.Debugf("disconnectedListMtx2 Locked")
 	em.disconnectedListMtx.Lock()
-	defer em.disconnectedListMtx.Unlock()
+	defer func() {
+		defer em.disconnectedListMtx.Unlock()
+		log.Debugf("disconnectedListMtx2 Unocked")
+	}()
 
 	em.ConnectedList = make(map[uint64]*validator.Validator)
 	em.DisconnectedList = make(map[uint64]*DisconnectEpochMember)
 
+	log.Debugf("[EpochMemberManager]Old validators list has cleared.")
+
 	if em.CurrentEpoch == nil {
 		// 当前没有需要管理的epoch
+		log.Debugf("[EpochMemberManager]Empty current epoch, not to be managed.")
 		return
 	}
 
@@ -140,14 +160,19 @@ func (em *EpochMemberManager) updateValidatorsList() {
 		// Disconnected list is not empty, try to reconnect
 		go em.reconnectEpochHandler()
 	}
+	log.Debugf("[EpochMemberManager]Update validators list Done.")
 }
 
 func (em *EpochMemberManager) OnValidatorDisconnected(validatorID uint64) {
 
 	log.Debugf("[EpochMemberManager]A epoch member is disconnected: %d", validatorID)
 
+	log.Debugf("connectedListMtx6 Locked")
 	em.connectedListMtx.Lock()
-	defer em.connectedListMtx.Unlock()
+	defer func() {
+		em.connectedListMtx.Unlock()
+		log.Debugf("connectedListMtx6 Unocked")
+	}()
 
 	if em.ConnectedList == nil || em.DisconnectedList == nil {
 		log.Errorf("[EpochMemberManager]Invalid epoch manager for em.ConnectedList = %v or em.DisconnectedList = %v", em.ConnectedList, em.DisconnectedList)
@@ -166,8 +191,12 @@ func (em *EpochMemberManager) OnValidatorDisconnected(validatorID uint64) {
 	// remove it from connected list
 	delete(em.ConnectedList, validatorID)
 
+	log.Debugf("disconnectedListMtx3 Locked")
 	em.disconnectedListMtx.Lock()
-	defer em.disconnectedListMtx.Unlock()
+	defer func() {
+		defer em.disconnectedListMtx.Unlock()
+		log.Debugf("disconnectedListMtx3 Unocked")
+	}()
 
 	// and add it to disconnected list
 	em.DisconnectedList[validatorID] = &DisconnectEpochMember{
@@ -205,8 +234,12 @@ exit:
 
 func (em *EpochMemberManager) reconnectEpochMember() bool {
 
+	log.Debugf("disconnectedListMtx4 Locked")
 	em.disconnectedListMtx.Lock()
-	defer em.disconnectedListMtx.Unlock()
+	defer func() {
+		defer em.disconnectedListMtx.Unlock()
+		log.Debugf("disconnectedListMtx4 Unocked")
+	}()
 
 	if em.DisconnectedList == nil {
 		return true
@@ -240,6 +273,10 @@ func (em *EpochMemberManager) reconnectEpochMember() bool {
 
 					if posDisconnected == int32(memCount-1) {
 						reqPos = posDisconnected - 1
+					}
+
+					if reqPos < 0 {
+						continue
 					}
 
 					if em.CurrentEpoch.ItemList[reqPos].ValidatorId == em.ValidatorMgr.Cfg.ValidatorId {
@@ -287,8 +324,12 @@ func (em *EpochMemberManager) ReqDelEpochMember(delValidatorID uint64) {
 
 	em.receivedDelEpochMemberResult[delValidatorID] = delMemberCollection
 
+	log.Debugf("connectedListMtx1 Locked")
 	em.connectedListMtx.Lock()
-	defer em.connectedListMtx.Unlock()
+	defer func() {
+		em.connectedListMtx.Unlock()
+		log.Debugf("connectedListMtx1 Unocked")
+	}()
 
 	log.Debugf("Will broadcast DelEpoch command from all connected validators...")
 	for validatorId, validator := range em.ConnectedList {
@@ -323,8 +364,12 @@ func (em *EpochMemberManager) OnConfirmedDelEpochMember(delEpochMember *epoch.De
 
 	confirmedValidatorId := delEpochMember.ValidatorId
 
+	log.Debugf("connectedListMtx2 Locked")
 	em.connectedListMtx.Lock()
-	defer em.connectedListMtx.Unlock()
+	defer func() {
+		em.connectedListMtx.Unlock()
+		log.Debugf("connectedListMtx2 Unocked")
+	}()
 
 	confirmedValidator := em.ConnectedList[confirmedValidatorId]
 	if confirmedValidator == nil {
@@ -414,8 +459,12 @@ func (em *EpochMemberManager) NotifyEpochMemberDeleted(delValidatorID uint64) {
 
 	log.Debugf("Will broadcast ReqEpoch command from all connected validators...")
 
+	log.Debugf("connectedListMtx3 Locked")
 	em.connectedListMtx.Lock()
-	defer em.connectedListMtx.Unlock()
+	defer func() {
+		em.connectedListMtx.Unlock()
+		log.Debugf("connectedListMtx3 Unocked")
+	}()
 
 	for _, validator := range em.ConnectedList {
 		validator.SendCommand(CmdConfirmDelEpochMember)

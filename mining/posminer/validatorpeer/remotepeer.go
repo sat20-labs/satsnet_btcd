@@ -648,7 +648,7 @@ out:
 				} else {
 					log.Debugf("**********last ping to validator peer [%s] with nonce=%d has received.", p, nonce)
 					p.reconnectTimes = 0
-					if currentInterval != urgent_ping_interval {
+					if currentInterval != pingInterval {
 						currentInterval = pingInterval
 						pingTicker.Reset(currentInterval)
 					}

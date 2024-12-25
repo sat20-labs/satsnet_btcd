@@ -21,7 +21,7 @@ type MinerInterface interface {
 const (
 	// If the generator id is NoGeneratorId, it means the generator is not saved in the peer
 	NoGeneratorId = uint64(0xffffffffffffffff)
-	MinerInterval = 40 * time.Second
+	MinerInterval = 12 * time.Second
 )
 
 type Generator struct {

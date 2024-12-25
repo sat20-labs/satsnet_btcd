@@ -1,1 +1,1 @@
-.\btcd_client.exe --homedir d:\data\satsnet_btcd
+.\btcd_client.exe --homedir d:\data\satsnet_btcd2

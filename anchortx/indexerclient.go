@@ -66,8 +66,8 @@ type TxOut struct {
 }
 
 type UtxoAssetInfo struct {
-	Asset   AssetInfo    `json:"asset"`
-	Offsets AssetOffsets `json:"offsets"`
+	Asset   AssetInfo       `json:"asset"`
+	Offsets []*AssetOffsets `json:"offsets"`
 }
 
 type TxUtxoInfo struct {

@@ -300,6 +300,13 @@ func newServerPeer(s *server, isPersistent bool) *serverPeer {
 	}
 }
 
+func (sp *serverPeer) String() string {
+	if sp.Peer != nil {
+		return sp.Peer.String()
+	}
+	return "peer with invalid addr"
+}
+
 // newestBlock returns the current best block hash and height using the format
 // required by the configuration for the peer package.
 func (sp *serverPeer) newestBlock() (*chainhash.Hash, int32, error) {
@@ -1891,6 +1898,7 @@ func (s *server) handleBanPeerMsg(state *peerState, sp *serverPeer) {
 // known to have it.  It is invoked from the peerHandler goroutine.
 func (s *server) handleRelayInvMsg(state *peerState, msg relayMsg) {
 	state.forAllPeers(func(sp *serverPeer) {
+		peerLog.Debugf("Relay inventory msg %v to %s", msg, sp.String())
 		if !sp.Connected() {
 			return
 		}

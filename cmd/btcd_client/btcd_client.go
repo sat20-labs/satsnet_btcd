@@ -457,6 +457,14 @@ func main() {
 			txid := words[1]
 			testGetBlocksWithTx(txid)
 			continue
+		} else if method == "getlockedutxoinfo" {
+			if length < 2 {
+				fmt.Printf("showtx need txid\n")
+				continue
+			}
+			utxo := words[1]
+			testGetLockedUtxoInfo(utxo)
+			continue
 		}
 
 		// Ensure the number of arguments are within bounds.

@@ -3549,6 +3549,7 @@ func handleSendRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan st
 		hexStr = "0" + hexStr
 	}
 
+	rpcsLog.Debugf("Tx Raw:%s", hexStr)
 	serializedTx, err := hex.DecodeString(hexStr)
 	if err != nil {
 		return nil, rpcDecodeHexError(hexStr)

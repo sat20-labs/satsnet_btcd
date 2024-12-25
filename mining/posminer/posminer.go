@@ -46,7 +46,7 @@ const (
 	// while they are actively searching for a solution.  This is done to
 	// reduce the amount of syncs between the workers that must be done to
 	// keep track of the hashes per second.
-	blockGenerateSecs = 12
+	blockGenerateSecs = 60
 )
 
 var (
@@ -718,7 +718,9 @@ func New(cfg *Config) *POSMiner {
 func (m *POSMiner) OnTimeGenerateBlock() (*chainhash.Hash, int32, error) {
 	log.Debugf("Timeup for OnTimeGenerateBlock ......")
 
-	return m.GenerateNewTestBlock()
+	//return m.GenerateNewTestBlock()
+
+	return m.GenerateNewBlock()
 }
 
 // OnTimeGenerateBlock is invoke when time to generate block.
@@ -783,6 +785,7 @@ func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, int32, error) {
 	// submission, since the current block will be changing and
 	// this would otherwise end up building a new block template on
 	// a block that is in the process of becoming stale.
+	log.Debugf("GenerateNewBlock by VC ...")
 	m.submitBlockLock.Lock()
 	log.Debugf("Lock block ...")
 	curHeight := m.g.BestSnapshot().Height

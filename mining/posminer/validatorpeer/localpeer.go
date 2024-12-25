@@ -578,11 +578,10 @@ func (p *LocalPeer) listenHandler(listener net.Listener) {
 			p.connMapMtx.Lock()
 			delete(p.connMap, connReq.id)
 			p.connMapMtx.Unlock()
-		} else {
-			// The remote peer is new peer connected
-			p.SendGetInfoCommand(newConnReq)
 		}
 
+		// The remote peer is connected
+		p.SendGetInfoCommand(newConnReq)
 		p.addConn(newConnReq)
 
 		// Start to listen the command from this conn

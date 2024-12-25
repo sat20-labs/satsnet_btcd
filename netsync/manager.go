@@ -123,6 +123,14 @@ type processBlockMsg struct {
 	reply chan processBlockResponse
 }
 
+// newBlockMinedMsg is a message type to be sent across the message channel
+// for notifying the sync manager of a new block mined by posminer and record it
+// in validatechain.
+type newBlockMinedMsg struct {
+	blockHash   *chainhash.Hash
+	blockHeight int32
+}
+
 // isCurrentMsg is a message type to be sent across the message channel for
 // requesting whether or not the sync manager believes it is synced with the
 // currently connected peers.
@@ -1430,6 +1438,8 @@ out:
 					isOrphan: isOrphan,
 					err:      nil,
 				}
+			case newBlockMinedMsg:
+				sm.chain.OnNewBlockMined(msg.blockHash, msg.blockHeight)
 
 			case isCurrentMsg:
 				msg.reply <- sm.current()
@@ -1678,6 +1688,16 @@ func (sm *SyncManager) ProcessBlock(block *btcutil.Block, flags blockchain.Behav
 	sm.msgChan <- processBlockMsg{block: block, flags: flags, reply: reply}
 	response := <-reply
 	return response.isOrphan, response.err
+}
+
+// ProcessBlock makes use of ProcessBlock on an internal instance of a block
+// chain.
+func (sm *SyncManager) OnNewBlockMined(blockHash *chainhash.Hash, blockHeight int32) {
+	newBlockMinedMsg := newBlockMinedMsg{
+		blockHash:   blockHash,
+		blockHeight: blockHeight,
+	}
+	sm.msgChan <- newBlockMinedMsg
 }
 
 // IsCurrent returns whether or not the sync manager believes it is synced with
