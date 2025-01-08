@@ -184,25 +184,25 @@ func BuildMerkleTreeStore(transactions []*btcutil.Tx, witness bool) []*chainhash
 // also presents an additional case wherein the wtxid of the coinbase transaction
 // is the zeroHash.
 func CalcMerkleRoot(transactions []*btcutil.Tx, witness bool) chainhash.Hash {
-	log.Debugf("CalcMerkleRoot: %d transactions, witness: %v", len(transactions), witness)
-	for i := range transactions {
-		tx := transactions[i]
-		logMsgTx(tx.MsgTx())
+	// log.Debugf("CalcMerkleRoot: %d transactions, witness: %v", len(transactions), witness)
+	// for i := range transactions {
+	// 	tx := transactions[i]
+	// 	logMsgTx(tx.MsgTx())
 
-		rawBytes := tx.GetRawBytes()
-		if rawBytes == nil {
-			log.Debugf("tx rawBytes is nil")
-		} else {
-			log.Debugf("tx rawBytes: %x", rawBytes)
-		}
+	// 	rawBytes := tx.GetRawBytes()
+	// 	if rawBytes == nil {
+	// 		log.Debugf("tx rawBytes is nil")
+	// 	} else {
+	// 		log.Debugf("tx rawBytes: %x", rawBytes)
+	// 	}
 
-		log.Debugf("CalcMerkleRoot Tx (%d) hash: %s", i, tx.Hash().String())
-		log.Debugf("CalcMerkleRoot Tx (%d) witness hash: %s", i, tx.WitnessHash().String())
-	}
+	// 	log.Debugf("CalcMerkleRoot Tx (%d) hash: %s", i, tx.Hash().String())
+	// 	log.Debugf("CalcMerkleRoot Tx (%d) witness hash: %s", i, tx.WitnessHash().String())
+	// }
 	s := newRollingMerkleTreeStore(uint64(len(transactions)))
 	merkleHash := s.calcMerkleRoot(transactions, witness)
 
-	log.Debugf("merkleHash: %s", merkleHash.String())
+	// log.Debugf("merkleHash: %s", merkleHash.String())
 	return merkleHash
 }
 

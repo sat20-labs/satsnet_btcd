@@ -236,16 +236,15 @@ func (em *EpochMemberManager) reconnectEpochMember() bool {
 
 	log.Debugf("disconnectedListMtx4 Locked")
 	em.disconnectedListMtx.Lock()
-	defer func() {
-		defer em.disconnectedListMtx.Unlock()
-		log.Debugf("disconnectedListMtx4 Unocked")
-	}()
+	disConnectedList := em.DisconnectedList
+	em.disconnectedListMtx.Unlock()
+	log.Debugf("disconnectedListMtx4 Unocked")
 
-	if em.DisconnectedList == nil {
+	if disConnectedList == nil {
 		return true
 	}
 
-	for validatorID, validatorItem := range em.DisconnectedList {
+	for validatorID, validatorItem := range disConnectedList {
 		log.Debugf("[EpochMemberManager]Try to reconnect validator: %d...", validatorID)
 
 		if validatorItem.Validator.IsConnected() == false {
@@ -256,7 +255,7 @@ func (em *EpochMemberManager) reconnectEpochMember() bool {
 
 				if validatorItem.ReconnectTimes > EpochReconnectMaxTimes {
 					// 已经确认离线，不再尝试重连
-					delete(em.DisconnectedList, validatorID)
+					delete(disConnectedList, validatorID)
 
 					// 得到已经离线的成员的POS
 					posGenerator := em.CurrentEpoch.GetCurGeneratorPos()
@@ -283,8 +282,10 @@ func (em *EpochMemberManager) reconnectEpochMember() bool {
 						// 需要发起剔除成员的请求的成员是自己， 则申请剔除离线成员
 						log.Debugf("[EpochMemberManager]Request to delete validator from epoch list: %d...", validatorID)
 
-						// 在多次尝试重连失败后，需要剔除成员
-						em.ReqDelEpochMember(validatorID)
+						if em.ValidatorMgr.myValidator.IsBootStrapNode() {
+							// 在多次尝试重连失败后，需要剔除成员
+							em.ReqDelEpochMember(validatorID)
+						}
 						continue
 					}
 				}
@@ -295,11 +296,22 @@ func (em *EpochMemberManager) reconnectEpochMember() bool {
 		log.Debugf("[EpochMemberManager]Reconnected to validator: %d...", validatorID)
 
 		// remove it from connected list
-		delete(em.DisconnectedList, validatorID)
+		delete(disConnectedList, validatorID)
 
+		log.Debugf("connectedListMtx8 Locked")
+		em.connectedListMtx.Lock()
 		// and add it to disconnected list
 		em.ConnectedList[validatorID] = validatorItem.Validator
+		em.connectedListMtx.Unlock()
+		log.Debugf("connectedListMtx8 Unocked")
+
 	}
+
+	log.Debugf("disconnectedListMtx8 Locked")
+	em.disconnectedListMtx.Lock()
+	em.DisconnectedList = disConnectedList
+	em.disconnectedListMtx.Unlock()
+	log.Debugf("disconnectedListMtx8 Unocked")
 
 	// Disconnected list is empty, exit
 	if len(em.DisconnectedList) == 0 {
@@ -479,23 +491,27 @@ func (em *EpochMemberManager) ConfirmDelEpochMember(reqDelEpochMember *validator
 		return nil
 	}
 
+	log.Debugf("[ValidatorManager]ConfirmDelEpochMember Will confirm the [%s] is or not connected?", reqDelEpochMember.DelValidatorId)
+
 	switch reqDelEpochMember.Target {
 	case validatorcommand.CmdDelEpochMemberTarget_Consult:
-		// 需要Check指定的validator是否已经离线， 如果确认离线， 则回复确认消息
-		validator, isConnected := em.GetEpochMember(reqDelEpochMember.ValidatorId)
+		// 需要Check指定要删除的validator是否已经离线， 如果确认离线， 则回复确认消息
+		delValidator, isConnected := em.GetEpochMember(reqDelEpochMember.DelValidatorId)
 		if !isConnected {
 			// 回复同意删除消息
-			log.Debugf("The validator [%d] is not connected", reqDelEpochMember.ValidatorId)
-			confirmDelMember := em.NewConfirmDelMember(reqDelEpochMember.ValidatorId, reqDelEpochMember, epoch.DelEpochMemberResult_Agree)
+			log.Debugf("The validator [%d] is not connected", reqDelEpochMember.DelValidatorId)
+			confirmDelMember := em.NewConfirmDelMember(reqDelEpochMember.DelValidatorId, reqDelEpochMember, epoch.DelEpochMemberResult_Agree)
 			return confirmDelMember
 		}
-		nonce, _ := wire.RandomUint64()
-		validator.SendCommand(validatorcommand.NewMsgPing(nonce))
 
-		em.checkMemberConnectedHandler(validator, reqDelEpochMember)
+		// 发送一个ping消息给要删除的validator， 确认是否已经离线
+		nonce, _ := wire.RandomUint64()
+		delValidator.SendCommand(validatorcommand.NewMsgPing(nonce))
+
+		em.checkMemberConnectedHandler(delValidator, reqDelEpochMember)
 	case validatorcommand.CmdDelEpochMemberTarget_Confirm:
 		// 已经确认删除，从本地的Epoch中删除validator
-		em.CurrentEpoch.DelEpochMember(reqDelEpochMember.ValidatorId)
+		em.CurrentEpoch.DelEpochMember(reqDelEpochMember.DelValidatorId)
 		return nil
 	}
 	return nil
@@ -532,14 +548,14 @@ func (em *EpochMemberManager) handleCheckMemberConnected(delValidator *validator
 	// 判断是否小于1秒
 	if duration < time.Second {
 		log.Debugf("[EpochMemberManager]The member is response in 1 second, it's connected .")
-		// 回复同意删除消息
-		confirmDelMember := em.NewConfirmDelMember(reqDelEpochMember.ValidatorId, reqDelEpochMember, epoch.DelEpochMemberResult_Agree)
+		// 回复不同意删除消息
+		confirmDelMember := em.NewConfirmDelMember(reqDelEpochMember.ValidatorId, reqDelEpochMember, epoch.DelEpochMemberResult_Reject)
 		return confirmDelMember
 
 	} else {
 		log.Debugf("[EpochMemberManager]The member is not response pong in 1 second, it's disconnected .")
-		// 回复不同意删除消息
-		confirmDelMember := em.NewConfirmDelMember(reqDelEpochMember.ValidatorId, reqDelEpochMember, epoch.DelEpochMemberResult_Reject)
+		// 回复同意删除消息
+		confirmDelMember := em.NewConfirmDelMember(reqDelEpochMember.ValidatorId, reqDelEpochMember, epoch.DelEpochMemberResult_Agree)
 		return confirmDelMember
 	}
 }

@@ -928,8 +928,8 @@ type GetTxSpendingPrevOutResult struct {
 }
 
 type GetAnchorTxInfoResult struct {
-	LockedTxid string `json:"lockedTxid"`
-	AnchorTxid string `json:"anchorTxid"`
+	LockedUtxo string `json:"lockedutxo"`
+	AnchorTxid string `json:"anchortxid"`
 	Witness    string `json:"witness"`
 	Amount     int64  `json:"amount"`
 }

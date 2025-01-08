@@ -304,7 +304,7 @@ out:
 				// An existing connection was located, mark as
 				// disconnected and execute disconnection
 				// callback.
-				log.Debugf("Disconnected from %v", connReq)
+				log.Debugf("Disconnected [%d] %s", connReq.id, connReq.Addr.String())
 				delete(conns, msg.id)
 
 				if connReq.conn != nil {
@@ -373,6 +373,12 @@ func (cm *ConnManager) NewConnReq() {
 		return
 	}
 
+	connCount := atomic.LoadUint64(&cm.connReqCount)
+	if connCount >= uint64(cm.cfg.TargetOutbound) {
+		log.Errorf("NewConnReq: Already have %d connections, target is %d", connCount, cm.cfg.TargetOutbound)
+		return
+	}
+
 	c := &ConnReq{}
 	atomic.StoreUint64(&c.id, atomic.AddUint64(&cm.connReqCount, 1))
 
@@ -415,10 +421,61 @@ func (cm *ConnManager) NewConnReq() {
 	cm.Connect(c)
 }
 
+// NewConnReq creates a new connection request and connects to the
+// corresponding address.
+func (cm *ConnManager) ConnectSpecificAddress(addr net.Addr) {
+	if atomic.LoadInt32(&cm.stop) != 0 {
+		return
+	}
+
+	c := &ConnReq{}
+	atomic.StoreUint64(&c.id, atomic.AddUint64(&cm.connReqCount, 1))
+	c.Addr = addr
+	log.Debugf("New specific connection request with id (%d) with addr (%s)", c.id, addr.String())
+
+	// Submit a request of a pending connection attempt to the connection
+	// manager. By registering the id before the connection is even
+	// established, we'll be able to later cancel the connection via the
+	// Remove method.
+	done := make(chan struct{})
+	select {
+	case cm.requests <- registerPending{c, done}:
+	case <-cm.quit:
+		return
+	}
+
+	// Wait for the registration to successfully add the pending conn req to
+	// the conn manager's internal state.
+	select {
+	case <-done:
+	case <-cm.quit:
+		return
+	}
+
+	log.Debugf("Registered connection (%d) to pending list with addr", c.id, c.Addr.String())
+
+	// addr, err := cm.cfg.GetNewAddress()
+	// if err != nil {
+	// 	select {
+	// 	case cm.requests <- handleFailed{c, err}:
+	// 	case <-cm.quit:
+	// 	}
+	// 	log.Debugf("No new address for connection (%d)", c.id)
+	// 	return
+	// }
+
+	//c.Addr = addr
+	log.Debugf("Start to connect <%s> with conn (%d) ", addr, c.id)
+
+	cm.Connect(c)
+}
+
 // Connect assigns an id and dials a connection to the address of the
 // connection request.
 func (cm *ConnManager) Connect(c *ConnReq) {
+	log.Debugf("[ConnManager]Connect...")
 	if atomic.LoadInt32(&cm.stop) != 0 {
+		log.Debugf("[ConnManager]CM has stopped...")
 		return
 	}
 
@@ -456,6 +513,8 @@ func (cm *ConnManager) Connect(c *ConnReq) {
 
 	conn, err := cm.cfg.Dial(c.Addr)
 	if err != nil {
+		log.Debugf("[ConnManager]dail failed with addr: %s.", c.Addr.String())
+
 		select {
 		case cm.requests <- handleFailed{c, err}:
 		case <-cm.quit:
@@ -467,6 +526,8 @@ func (cm *ConnManager) Connect(c *ConnReq) {
 	case cm.requests <- handleConnected{c, conn}:
 	case <-cm.quit:
 	}
+
+	log.Debugf("[ConnManager]Connect success with addr: [%d]%s.", c.id, c.Addr.String())
 }
 
 // Disconnect disconnects the connection corresponding to the given connection

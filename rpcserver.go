@@ -2491,7 +2491,7 @@ func handleGetAnchorTxInfo(s *rpcServer, cmd interface{}, closeChan <-chan struc
 	}
 
 	result := btcjson.GetAnchorTxInfoResult{
-		LockedTxid: anchorInfo.LockedTxid,
+		LockedUtxo: anchorInfo.LockedUtxo,
 		AnchorTxid: anchorInfo.AnchorTxid,
 		Witness:    hex.EncodeToString(anchorInfo.WitnessScript),
 		Amount:     anchorInfo.Amount,

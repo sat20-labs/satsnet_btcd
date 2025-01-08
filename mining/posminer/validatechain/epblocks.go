@@ -21,7 +21,7 @@ type EPBlockHeader struct {
 type DataEpochVote struct {
 	VotorId       uint64                               // 投票者ID
 	PublicKey     [btcec.PubKeyBytesLenCompressed]byte // 投票者公钥
-	EpochIndex    int64                               // 要投票Epoch Index
+	EpochIndex    int64                                // 要投票Epoch Index
 	CreateTime    int64                                // 要投票的Epoch创建时间
 	Reason        uint32                               // 要投票的Epoch发起原因（Epoch创立，Epoch轮换，当前Epoch停摆）
 	EpochItemList []epoch.EpochItem                    // 选择的Epoch的ItemList
@@ -184,7 +184,8 @@ func (ev *DataEpochVote) Encode(w io.Writer) error {
 	for _, item := range ev.EpochItemList {
 		err := utils.WriteElements(w,
 			item.ValidatorId,
-			item.PublicKey)
+			item.PublicKey,
+			item.Host)
 		if err != nil {
 			return err
 		}
@@ -221,7 +222,8 @@ func (ev *DataEpochVote) Decode(r io.Reader) error {
 		item := epoch.EpochItem{}
 		err := utils.ReadElements(r,
 			&item.ValidatorId,
-			&item.PublicKey)
+			&item.PublicKey,
+			&item.Host)
 		if err != nil {
 			return err
 		}

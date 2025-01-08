@@ -1527,19 +1527,22 @@ func (b *BlockChain) BlockByHash(hash *chainhash.Hash) (*btcutil.Block, error) {
 //
 // The serialized format is:
 //
-//   <LockedTxid><AnchorTxid><pkscript><amount>
+//   <lenLockedUtxo><LockedUtxo><lenAnchorTxid><AnchorTxid><lenWitnessScript><WitnessScript><amount>
 //
 //   Field             Type             Size
-//   LockedTxid        string           64 bytes
-//   AnchorTxid        string           64 bytes
-//   pkscript          bytes            34 bytes  // only for p2tr
+//   lenLockedUtxo     uint32			4 bytes
+//   LockedUtxo        string
+//   lenAnchorTxid     uint32			4 bytes
+//   AnchorTxid        string
+//   lenWitnessScript  uint32			4 bytes
+//   WitnessScript     bytes
 //   amount            int64            8 bytes
 // -----------------------------------------------------------------------------
 
 // bestChainState represents the data to be stored the database for the current
 // best chain state.
 type AnchorTxInfo struct {
-	LockedTxid    string
+	LockedUtxo    string
 	AnchorTxid    string
 	WitnessScript []byte
 	Amount        int64
@@ -1548,17 +1551,28 @@ type AnchorTxInfo struct {
 // serializeAnchorTxInfo returns the serialization of the passed Anchor Tx info.
 // This is data to be stored in the anchor tx info bucket.
 func serializeAnchorTxInfo(anchorTxInfo *AnchorTxInfo) []byte {
+	lenLockedUtxo := len(anchorTxInfo.LockedUtxo)
+	lenAnchorTxid := len(anchorTxInfo.AnchorTxid)
 	lenWitnessScript := len(anchorTxInfo.WitnessScript)
 	// Calculate the full size needed to serialize the AnchorTxInfo.
-	serializedLen := 64 + 64 + 4 + lenWitnessScript + 8
+	serializedLen := 4 + lenLockedUtxo + 4 + lenAnchorTxid + 4 + lenWitnessScript + 8
 
 	// Serialize the chain state.
 	serializedData := make([]byte, serializedLen)
-	copy(serializedData[0:64], []byte(anchorTxInfo.LockedTxid))
-	copy(serializedData[64:128], []byte(anchorTxInfo.AnchorTxid))
-	byteOrder.PutUint32(serializedData[128:], uint32(lenWitnessScript))
-	copy(serializedData[132:132+lenWitnessScript], anchorTxInfo.WitnessScript[:])
-	byteOrder.PutUint64(serializedData[132+lenWitnessScript:], uint64(anchorTxInfo.Amount))
+	pos := 0
+	byteOrder.PutUint32(serializedData[pos:4], uint32(lenLockedUtxo))
+	pos += 4
+	copy(serializedData[pos:pos+lenLockedUtxo], []byte(anchorTxInfo.LockedUtxo))
+	pos += lenLockedUtxo
+	byteOrder.PutUint32(serializedData[pos:pos+4], uint32(lenAnchorTxid))
+	pos += 4
+	copy(serializedData[pos:pos+lenAnchorTxid], []byte(anchorTxInfo.AnchorTxid))
+	pos += lenAnchorTxid
+	byteOrder.PutUint32(serializedData[pos:pos+4], uint32(lenWitnessScript))
+	pos += 4
+	copy(serializedData[pos:pos+lenWitnessScript], anchorTxInfo.WitnessScript[:])
+	pos += lenWitnessScript
+	byteOrder.PutUint64(serializedData[pos:], uint64(anchorTxInfo.Amount))
 	return serializedData
 }
 
@@ -1568,7 +1582,7 @@ func serializeAnchorTxInfo(anchorTxInfo *AnchorTxInfo) []byte {
 // block.
 func deserializeAnchorTxInfo(serializedData []byte) (*AnchorTxInfo, error) {
 	// Ensure the serialized data has enough bytes to properly deserialize
-	serializedMinLen := 64 + 64 + 4 + 8 + 26 // pkScript min size is 26
+	serializedMinLen := 4 + 66 + 4 + 64 + 4 + 8 + 26 // pkScript min size is 26
 	if len(serializedData) < serializedMinLen {
 		return nil, database.Error{
 			ErrorCode:   database.ErrCorruption,
@@ -1577,19 +1591,30 @@ func deserializeAnchorTxInfo(serializedData []byte) (*AnchorTxInfo, error) {
 	}
 
 	anchorTxInfo := &AnchorTxInfo{}
-	idBytes := make([]byte, 64)
-	copy(idBytes[:], serializedData[0:64])
-	anchorTxInfo.LockedTxid = string(idBytes)
+	pos := 0
+	lenLockedUtxo := byteOrder.Uint32(serializedData[pos : pos+4])
+	pos += 4
+	anchorTxInfo.LockedUtxo = string(serializedData[pos : pos+int(lenLockedUtxo)])
+	pos += int(lenLockedUtxo)
 
-	copy(idBytes[:], serializedData[64:128])
-	anchorTxInfo.AnchorTxid = string(idBytes)
+	lenAnchorTxid := byteOrder.Uint32(serializedData[pos : pos+4])
+	pos += 4
+	anchorTxInfo.AnchorTxid = string(serializedData[pos : pos+int(lenAnchorTxid)])
+	pos += int(lenAnchorTxid)
+	// idBytes := make([]byte, 64)
+	// copy(idBytes[:], serializedData[0:64])
+	// anchorTxInfo.LockedTxid = string(idBytes)
 
-	lenScript := byteOrder.Uint32(serializedData[128:132])
+	// copy(idBytes[:], serializedData[64:128])
+	// anchorTxInfo.AnchorTxid = string(idBytes)
 
-	anchorTxInfo.WitnessScript = make([]byte, lenScript)
-	copy(anchorTxInfo.WitnessScript[:], serializedData[132:132+lenScript])
+	lenWitnessScript := byteOrder.Uint32(serializedData[pos : pos+4])
+	pos += 4
+	anchorTxInfo.WitnessScript = make([]byte, lenWitnessScript)
+	copy(anchorTxInfo.WitnessScript[:], serializedData[pos:pos+int(lenWitnessScript)])
+	pos += int(lenWitnessScript)
 
-	amount := byteOrder.Uint64(serializedData[132+lenScript : 132+lenScript+8])
+	amount := byteOrder.Uint64(serializedData[pos : pos+8])
 	anchorTxInfo.Amount = int64(amount)
 	return anchorTxInfo, nil
 }
@@ -1607,7 +1632,7 @@ func dbPutAnchorTxInfo(dbTx database.Tx, anchorTxInfo *AnchorTxInfo) error {
 		return fmt.Errorf("Bucket anchor tx info not found")
 	}
 
-	return anchorTxInfoBucket.Put([]byte(anchorTxInfo.LockedTxid), serializedData)
+	return anchorTxInfoBucket.Put([]byte(anchorTxInfo.LockedUtxo), serializedData)
 }
 
 // func dbPutAnchorTxInfo(dbTx database.Tx, anchorTxid string, lockedTxid string, pkScript []byte, amount int64) error {

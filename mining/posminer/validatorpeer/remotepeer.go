@@ -419,6 +419,11 @@ func (p *RemotePeer) SendCommand(command validatorcommand.Message) error {
 			err = errors.New("validator peer is inactive")
 			return err
 		}
+
+		// reconnect success, get the new connReq
+		p.connLock.RLock()
+		connReq = p.connReq
+		p.connLock.RUnlock()
 	}
 
 	connReq.SendCommand(command)
@@ -696,7 +701,7 @@ func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Me
 	switch cmd := command.(type) {
 	case *validatorcommand.MsgGetInfo:
 		log.Debugf("----------[RemotePeer]Receive MsgGetInfo command, will response MsgPeerInfo command")
-		cmd.LogCommandInfo()
+		//cmd.LogCommandInfo()
 		// Handle command ping, it will response "PeerInfo" message
 		validatorInfo := p.cfg.RemoteValidatorListener.GetLocalValidatorInfo(p.cfg.RemoteValidatorId)
 		cmdPeerInfo := validatorcommand.NewMsgPeerInfo(validatorInfo)
@@ -706,7 +711,7 @@ func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Me
 
 	case *validatorcommand.MsgPeerInfo:
 		log.Debugf("----------[RemotePeer]Receive MsgPeerInfo command")
-		cmd.LogCommandInfo()
+		//cmd.LogCommandInfo()
 
 		p.HandleRemotePeerInfo(cmd, connReq)
 
@@ -736,7 +741,7 @@ func (p *RemotePeer) handleCommand(connReq *ConnReq, command validatorcommand.Me
 
 	case *validatorcommand.MsgEpoch:
 		log.Debugf("----------[RemotePeer]Receive Epoch command, will notify validatorManager for sync Epoch")
-		cmd.LogCommandInfo()
+		//cmd.LogCommandInfo()
 		p.HandleEpochResponse(cmd, connReq)
 
 	case *validatorcommand.MsgGenerator:

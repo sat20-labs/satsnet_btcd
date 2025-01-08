@@ -101,7 +101,7 @@ func testGetAccordingLockedInfo(txid string) {
 	}
 
 	fmt.Printf("Locked TX info: \n")
-	fmt.Printf("Locked TX txid(BTC): %s\n", lockedTxInfo.TxId)
+	fmt.Printf("Locked TX txid(BTC): %s\n", lockedTxInfo.Utxo)
 	fmt.Printf("Locked TX WitnessScript: %v\n", lockedTxInfo.WitnessScript)
 	fmt.Printf("Locked TX Amount: %d\n", lockedTxInfo.Amount)
 
@@ -121,7 +121,7 @@ func testGetAccordingAnchorInfo(lockedTxid string) {
 	//btcwallet.LogMsgTx(result.MsgTx())
 
 	fmt.Printf("According TX info: \n")
-	fmt.Printf("Locked TX txid(BTC): %s\n", result.LockedTxid)
+	fmt.Printf("Locked TX Utxo(BTC): %s\n", result.LockedUtxo)
 	fmt.Printf("Locked TX Witness: %s\n", result.Witness)
 	fmt.Printf("Locked TX Amount: %d\n", result.Amount)
 

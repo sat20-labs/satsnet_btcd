@@ -40,7 +40,7 @@ func (msg *MsgGetVCList) BtcDecode(r io.Reader, pver uint32) error {
 			"*bytes.Buffer")
 	}
 
-	err := utils.ReadElements(buf, &msg.ValidatorId)
+	err := utils.ReadElements(buf, &msg.ValidatorId, &msg.Start, &msg.End)
 	if err != nil {
 		log.Errorf("MsgGetVCList:ReadElements failed: %v", err)
 		return err
@@ -52,7 +52,7 @@ func (msg *MsgGetVCList) BtcDecode(r io.Reader, pver uint32) error {
 // BtcEncode encodes the receiver to w using the bitcoin protocol encoding.
 // This is part of the Message interface implementation.
 func (msg *MsgGetVCList) BtcEncode(w io.Writer, pver uint32) error {
-	err := utils.WriteElements(w, msg.ValidatorId)
+	err := utils.WriteElements(w, msg.ValidatorId, msg.Start, msg.End)
 	if err != nil {
 		log.Errorf("MsgGetVCList:WriteElements failed: %v", err)
 		return err

@@ -5,7 +5,9 @@
 package mempool
 
 import (
+	"bytes"
 	"container/list"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"sync"
@@ -1821,6 +1823,88 @@ func (mp *TxPool) validateRelayFeeMet(tx *btcutil.Tx, txFee, txSize int64,
 	log.Tracef("rate limit: curTotal %v, nextTotal: %v, limit %v",
 		oldTotal, mp.pennyTotal, mp.cfg.Policy.FreeTxRelayLimit*10*1000)
 
+	return nil
+}
+
+func (mp *TxPool) Save(dataDir string) error {
+	log.Infof("Will save TxPool cache to %v", dataDir)
+	mempoolTxDescs := mp.TxDescs()
+	if len(mempoolTxDescs) == 0 {
+		// No any transactions in the mempool, no need to save
+		log.Infof("No any cache to be saved")
+		return nil
+	}
+
+	txCacheList := make([]*TxCacheItem, len(mempoolTxDescs))
+	for i, txDesc := range mempoolTxDescs {
+		tx := txDesc.Tx.MsgTx()
+		txid := tx.TxHash().String()
+
+		txBuf := bytes.NewBuffer(make([]byte, 0, tx.SerializeSize()))
+		if err := tx.Serialize(txBuf); err != nil {
+			log.Errorf("Failed to serialize transaction:%v", err)
+			continue
+		}
+
+		txRaw := txBuf.Bytes()
+		txCacheList[i] = &TxCacheItem{
+			Txid: txid,
+			Raw:  hex.EncodeToString(txRaw),
+		}
+	}
+
+	err := SaveMempoolCahce(dataDir, txCacheList)
+	if err != nil {
+		log.Errorf("Failed to save mempool cache: %v", err)
+		return err
+	}
+
+	log.Infof("Save mempool cache successfully")
+	return err
+}
+
+func (mp *TxPool) Load(dataDir string) error {
+	txCacheList, err := LoadMempoolCahce(dataDir)
+	if err != nil {
+		log.Errorf("Failed to save mempool cache: %v", err)
+		return err
+	}
+
+	if txCacheList == nil || len(txCacheList) == 0 {
+		// No any transactions in the mempool cache, no need to load
+		return nil
+	}
+
+	for _, txCacheItem := range txCacheList {
+		// Add the transaction to the mempool.
+		serializedTx, err := hex.DecodeString(txCacheItem.Raw)
+		if err != nil {
+			log.Errorf("Failed to decode transaction %v: %v", txCacheItem.Txid, err)
+			continue
+		}
+		var msgTx wire.MsgTx
+		err = msgTx.Deserialize(bytes.NewReader(serializedTx))
+		if err != nil {
+			log.Errorf("Failed to deserialize transaction %v: %v", txCacheItem.Txid, err)
+			continue
+		}
+
+		//LogMsgTx("Load a transaction raw:", &msgTx)
+
+		// Use 0 for the tag to represent local node.
+		tx := btcutil.NewTx(&msgTx)
+		_, err = mp.ProcessTransaction(tx, false, false, 0)
+		if err != nil {
+			log.Errorf("Rejected transaction %v: %v", tx.Hash(), err)
+			continue
+		}
+		log.Infof("Accepted transaction %v", tx.Hash())
+	}
+
+	// The TX has loaded to mempool, clear current cache
+	ClearMempoolCahce(dataDir)
+
+	log.Infof("Load mempool cache successfully")
 	return nil
 }
 

@@ -351,6 +351,8 @@ func parseVCBlock(height int64) error {
 		showGeneratorHandOverData(vcd)
 	case *validatechain.DataMinerNewBlock:
 		showMinerNewBlockData(vcd)
+	case *validatechain.DataEpochDelMember:
+		showDelEpochMemberData(vcd)
 	}
 
 	log.Debugf("Parse VC Block done.")
@@ -427,6 +429,38 @@ func showUpdateEpochData(updateEpochData *validatechain.DataUpdateEpoch) {
 	log.Debugf("    Generator Timestamp: %s", time.Unix(updateEpochData.Generator.Timestamp, 0).Format(time.DateTime))
 	log.Debugf("    Generator Token: %s", updateEpochData.Generator.Token)
 	log.Debugf("-------------------------------------------------")
+	log.Debugf("-------------------  Update Epoch Data End  -------------------------")
+}
+
+func showDelEpochMemberData(delEpochMemberData *validatechain.DataEpochDelMember) {
+	log.Debugf("-------------------     Del Epoch member Data   -------------------------")
+	log.Debugf("    RequestId: %d", delEpochMemberData.RequestId)
+	log.Debugf("    PublicKey: %x", delEpochMemberData.PublicKey)
+	log.Debugf("    EpochIndex: %d", delEpochMemberData.EpochIndex)
+	log.Debugf("    CreateTime: %s", time.Unix(delEpochMemberData.CreateTime, 0).Format(time.DateTime))
+	log.Debugf("    Reason: %s", UpdateEpochReason[delEpochMemberData.Reason])
+	log.Debugf("-------------------------------------------------")
+	log.Debugf("---------------  Epoch list after member deleteed  -----------------")
+	log.Debugf("-------------------------------------------------")
+	for index, epochItem := range delEpochMemberData.EpochItemList {
+		log.Debugf("    Index: %d", index)
+		log.Debugf("    Validator ID: %d", epochItem.ValidatorId)
+		log.Debugf("    PublicKey: %x", epochItem.PublicKey)
+		log.Debugf("-------------------------------------------------")
+	}
+
+	log.Debugf("-------------------------------------------------")
+	log.Debugf("---------------    confirmItem list   -----------------")
+	log.Debugf("-------------------------------------------------")
+	for index, confirmItem := range delEpochMemberData.EpochDelConfirmList {
+		log.Debugf("    Index: %d", index)
+		log.Debugf("    Validator ID: %d", confirmItem.ValidatorId)
+		log.Debugf("    PublicKey: %x", confirmItem.PublicKey)
+		log.Debugf("    Result: %d", confirmItem.Result)
+		log.Debugf("    Token: %s", confirmItem.Token)
+		log.Debugf("-------------------------------------------------")
+	}
+
 	log.Debugf("-------------------  Update Epoch Data End  -------------------------")
 }
 

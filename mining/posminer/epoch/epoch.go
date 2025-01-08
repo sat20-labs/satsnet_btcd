@@ -205,6 +205,29 @@ func (e *Epoch) ToNextGenerator(generator *generator.Generator) error {
 
 	return nil
 }
+func (e *Epoch) UpdateCurrentGenerator(generator *generator.Generator) error {
+	if e.CurGeneratorPos == Pos_Epoch_NotStarted {
+		e.CurGeneratorPos = 0
+	}
+	posGenerator := e.CurGeneratorPos
+	if posGenerator >= int32(len(e.ItemList)) {
+		err := fmt.Errorf("Exceed epoch item list length: NextPos= %d, Total = %d ", posGenerator, len(e.ItemList))
+		return err
+	}
+	epochItem := e.ItemList[posGenerator]
+	if epochItem == nil {
+		err := fmt.Errorf("Invalid epoch item in NextPos= %d ", e.CurGeneratorPos)
+		return err
+	}
+	if epochItem.ValidatorId != generator.GeneratorId {
+		err := fmt.Errorf("The generator is not valid: NextPos EpochItem ID = %d, Generator ID = %d ", epochItem.ValidatorId, generator.GeneratorId)
+		return err
+	}
+
+	e.Generator = generator
+
+	return nil
+}
 
 func (e *Epoch) IsLastGenerator() bool {
 	if e.CurGeneratorPos == int32(len(e.ItemList)-1) {

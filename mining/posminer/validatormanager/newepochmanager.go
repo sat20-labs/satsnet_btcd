@@ -2,6 +2,7 @@ package validatormanager
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
@@ -116,7 +117,9 @@ func (nem *NewEpochManager) handleNewEpoch() {
 			continue
 		}
 		voteItem.VoteData = voteItemData.Data
-		//showEpoch(title, epoch)
+
+		title := fmt.Sprintf("Received Epoch vote from %d", validatorId)
+		showVoteData(title, voteItem.VoteData)
 	}
 
 	// view the req epoch result
@@ -154,6 +157,9 @@ func (nem *NewEpochManager) handleNewEpoch() {
 
 	// check the valid epoch result
 	minValidCount := (invitedCount * 2) / 3
+	if minValidCount < 2 {
+		minValidCount = 2 // at least 2 validators
+	}
 
 	log.Debugf("Received Epochs: min valid count:%d", minValidCount)
 	localValidatorId := nem.ValidatorMgr.GetMyValidatorId()
@@ -161,7 +167,7 @@ func (nem *NewEpochManager) handleNewEpoch() {
 	for _, validItem := range result.validEpoch {
 		if validItem.EpochCount >= minValidCount {
 			log.Debugf("valid epoch vote count: %d", validItem.EpochCount)
-			//showEpoch("valid epoch:", validItem.epoch)
+			showVoteData("confirmed epoch vote:", validItem.VoteItem.VoteData)
 
 			// The new epoch is confirmed, the result will be sent to all validators
 			epochConfirmed := &epoch.Epoch{
@@ -171,11 +177,18 @@ func (nem *NewEpochManager) handleNewEpoch() {
 				ItemList:        make([]*epoch.EpochItem, 0),
 			}
 
-			for _, item := range validItem.VoteItem.VoteData.EpochItemList {
+			for index, item := range validItem.VoteItem.VoteData.EpochItemList {
+				item.Index = uint32(index)
 				epochConfirmed.ItemList = append(epochConfirmed.ItemList, &item)
+			}
+			if len(epochConfirmed.ItemList) < 2 {
+				// not enough validators for epoch
+				log.Debugf("Not enough validators for epoch")
+				return
 			}
 
 			// save to vc block, and broadcast to other validators
+			showEpoch("confirmed epoch:", epochConfirmed)
 
 			nem.ValidatorMgr.ConfirmNewEpoch(epochConfirmed, nem.reason, nem.receivedEpoch)
 
@@ -206,6 +219,8 @@ func (nem *NewEpochManager) handleNewEpoch() {
 					}
 					handoverEpoch.Token = token
 					nextEpochCmd := validatorcommand.NewMsgNextEpoch(handoverEpoch)
+
+					time.Sleep(300 * time.Millisecond) // Deply 300ms for next epoch for other validators need process cfm epoch first
 					nem.ValidatorMgr.BroadcastCommand(nextEpochCmd)
 
 					// Notify local peer for changing to next epoch
@@ -226,6 +241,23 @@ func (nem *NewEpochManager) handleNewEpoch() {
 
 	log.Debugf("Received Epochs: summary end.")
 	log.Debugf("****************************************************************************************")
+}
+
+func showVoteData(title string, voteData *validatechain.DataEpochVote) {
+	log.Debugf("--------------- %s -----------------", title)
+	log.Debugf("VotorId: %d", voteData.VotorId)
+	log.Debugf("PublicKey: %x", voteData.PublicKey)
+	log.Debugf("EpochIndex: %d", voteData.EpochIndex)
+	log.Debugf("CreateTime: %s", time.Unix(voteData.CreateTime, 0).Format(time.DateTime))
+	log.Debugf("Reason: %d", voteData.Reason)
+	log.Debugf("Token: %s", voteData.Token)
+	for _, item := range voteData.EpochItemList {
+		log.Debugf("ValidatorId: %d", item.ValidatorId)
+		log.Debugf("PublicKey: %x", item.PublicKey)
+		log.Debugf("Host: %s", item.Host)
+		log.Debugf("Index: %d", item.Index)
+		log.Debugf("----------------------------------------")
+	}
 }
 
 func isValidVote(voteItem *NewEpochVoteItem) bool {

@@ -6,10 +6,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -54,8 +51,9 @@ var anchorManager AnchorManager
 // txscript.NewScriptBuilder().AddData(txid).AddData(WitnessScript).
 // AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
 type LockedTxInfo struct {
-	TxId          string // the txid with locked in lnd
-	Index         int32
+	// TxId          string // the txid with locked in lnd
+	// Index         int32
+	Utxo          string         // the utxo with locked in lnd
 	WitnessScript []byte         // WitnessScript for locked in lnd
 	Amount        int64          // the amount with locked in lnd
 	TxAssets      *wire.TxAssets // The assets locked
@@ -166,16 +164,16 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 	}
 	utxo := tokenizer.Data()
 
-	parts := strings.Split(string(utxo), ":")
-	if len(parts) != 2 {
-		return nil, errors.New("utxo should be of the form txid:index")
-	}
-	txid := parts[0]
+	// parts := strings.Split(string(utxo), ":")
+	// if len(parts) != 2 {
+	// 	return nil, errors.New("utxo should be of the form txid:index")
+	// }
+	// txid := parts[0]
 
-	outputIndex, err := strconv.ParseUint(parts[1], 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("invalid output index: %v", err)
-	}
+	// outputIndex, err := strconv.ParseUint(parts[1], 10, 32)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("invalid output index: %v", err)
+	// }
 
 	// The Second opcode must be a canonical data push, the length of the
 	// data push is bounded to 40 by the initial check on overall script
@@ -227,8 +225,9 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 	//extraNonce := int64(AnchorScript[73:81])
 
 	info := &LockedTxInfo{
-		TxId:          txid, // txid,
-		Index:         int32(outputIndex),
+		// TxId:          txid, // txid,
+		// Index:         int32(outputIndex),
+		Utxo:          string(utxo),
 		WitnessScript: witnessScript,
 		Amount:        int64(amount),
 		TxAssets:      txAssets,
@@ -373,8 +372,8 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 
 	if IsCheckLockedTx() == true {
 		// 检查BTC锁定交易, 只有定义了anchorManager.anchorConfig.IndexerHost, anchorManager.anchorConfig.IndexerNet才检查
-		utxoLocked := fmt.Sprintf("%s:%d", lockedTxInfo.TxId, lockedTxInfo.Index)
-		lockedInfoInBTC, err := GetLockedUtxoInfo(utxoLocked)
+		//utxoLocked := fmt.Sprintf("%s:%d", lockedTxInfo.TxId, lockedTxInfo.Index)
+		lockedInfoInBTC, err := GetLockedUtxoInfo(lockedTxInfo.Utxo)
 		if err != nil {
 			return nil, err
 		}
@@ -385,7 +384,7 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 			return nil, fmt.Errorf("invalid pkscript")
 		}
 
-		if isSameAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) == false {
+		if includeAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) == false {
 			return nil, fmt.Errorf("invalid assets")
 		}
 	}
@@ -429,6 +428,57 @@ func isSameAssets(utxoAssetInfo []*UtxoAssetInfo, txAssets *wire.TxAssets) bool 
 			log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
 			return false
 		}
+	}
+
+	return true
+}
+func includeAssets(utxoAssetInfo []*UtxoAssetInfo, txAssets *wire.TxAssets) bool {
+	if utxoAssetInfo == nil && txAssets == nil {
+		return true
+	}
+
+	if utxoAssetInfo == nil && txAssets != nil {
+		log.Errorf("includeAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
+		return false
+	}
+
+	if len(utxoAssetInfo) < len(*txAssets) {
+		log.Errorf("includeAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
+		return false
+	}
+
+	for _, assetLocked := range *txAssets {
+		assetFound := false
+		for _, assetUtxo := range utxoAssetInfo {
+			if isEqualAsset(assetUtxo, &assetLocked) == true {
+				assetFound = true
+				break
+			}
+		}
+		if assetFound == false {
+			log.Errorf("includeAssets failed, locked Asset: %v not found in utxo", assetLocked)
+			return false
+		}
+	}
+
+	return true
+}
+
+func isEqualAsset(utxoAssetInfo *UtxoAssetInfo, assetLocked *wire.AssetInfo) bool {
+	if utxoAssetInfo.Asset.Name.Protocol != assetLocked.Name.Protocol {
+		return false
+	}
+	if utxoAssetInfo.Asset.Name.Type != assetLocked.Name.Type {
+		return false
+	}
+	if utxoAssetInfo.Asset.Name.Ticker != assetLocked.Name.Ticker {
+		return false
+	}
+	if utxoAssetInfo.Asset.Amount != assetLocked.Amount {
+		return false
+	}
+	if utxoAssetInfo.Asset.BindingSat != assetLocked.BindingSat {
+		return false
 	}
 
 	return true

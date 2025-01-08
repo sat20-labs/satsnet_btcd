@@ -141,6 +141,18 @@ type relayMsg struct {
 	data    interface{}
 }
 
+// displayMsg used to display of peer state.
+type displayMsg struct {
+	inlist         bool
+	outlist        bool
+	banlist        bool
+	persistentList bool
+}
+
+type syncEpochMemberMsg struct {
+	memberHostList []string
+}
+
 // updatePeerHeightsMsg is a message sent from the blockmanager to the server
 // after a new block has been accepted. The purpose of the message is to update
 // the heights of peers that were known to announce the block before we
@@ -227,6 +239,8 @@ type server struct {
 	relayInv             chan relayMsg
 	broadcast            chan broadcastMsg
 	peerHeightsUpdate    chan updatePeerHeightsMsg
+	displaystate         chan displayMsg
+	syncEpochMemPeer     chan syncEpochMemberMsg
 	wg                   sync.WaitGroup
 	quit                 chan struct{}
 	nat                  NAT
@@ -258,6 +272,8 @@ type server struct {
 	// agentWhitelist is a list of whitelisted user agent substrings, no
 	// whitelisting will be applied if the list is empty or nil.
 	agentWhitelist []string
+
+	BtcdDir string
 }
 
 // serverPeer extends the peer to maintain state shared by the server and
@@ -1979,6 +1995,90 @@ func (s *server) handleBroadcastMsg(state *peerState, bmsg *broadcastMsg) {
 	})
 }
 
+func (s *server) handleDisplayStateMsg(state *peerState, bmsg *displayMsg) {
+	srvrLog.Debugf("handleDisplayStateMsg")
+	if bmsg.inlist && len(state.inboundPeers) > 0 {
+		srvrLog.Debugf("-----------------------inbound----------------------------")
+		for k, e := range state.inboundPeers {
+			srvrLog.Debugf("inbound %d peer %s", k, e.String())
+		}
+	}
+
+	if bmsg.outlist && len(state.outboundPeers) > 0 {
+		srvrLog.Debugf("-----------------------outbound----------------------------")
+		for k, e := range state.outboundPeers {
+			srvrLog.Debugf("outbound %d peer %s", k, e.String())
+		}
+	}
+	if bmsg.persistentList && len(state.persistentPeers) > 0 {
+		srvrLog.Debugf("-----------------------persistent----------------------------")
+		for k, e := range state.persistentPeers {
+			srvrLog.Debugf("persistent %d peer %s", k, e.String())
+		}
+	}
+	if bmsg.banlist && len(state.banned) > 0 {
+		srvrLog.Debugf("-----------------------banned----------------------------")
+		for k, t := range state.banned {
+			srvrLog.Debugf("banned %s in %s", k, t.Format("2006-01-02 15:04:05"))
+		}
+	}
+
+	if len(state.outboundGroups) > 0 {
+		srvrLog.Debugf("-----------------------outboundGroups----------------------------")
+		for k, t := range state.outboundGroups {
+			srvrLog.Debugf("outboundGroups %s is %d", k, t)
+		}
+	}
+	srvrLog.Debugf("-----------------------end----------------------------")
+}
+
+func (s *server) handleSyncEpochMemberMsg(state *peerState, semmsg *syncEpochMemberMsg) {
+	srvrLog.Debugf("handleSyncEpochMemberMsg")
+	for _, memberHost := range semmsg.memberHostList {
+		srvrLog.Debugf("member host: %s", memberHost)
+		isConnected := false
+		for _, sp := range state.outboundPeers {
+			addr := sp.Addr()
+			hostpeer, _, err := net.SplitHostPort(addr)
+			if err != nil {
+				srvrLog.Warnf("Failed to get host and port: %v", err)
+				continue
+			}
+			if hostpeer == memberHost {
+				srvrLog.Debugf("sync epoch member %s", memberHost)
+				isConnected = true
+				break
+			}
+		}
+		if !isConnected {
+			srvrLog.Debugf("sync epoch member %s not connected, will connect", memberHost)
+			// Attempt to look up an IP address associated with the parsed host.
+			ips, err := btcdLookup(memberHost)
+			if err != nil {
+				return
+			}
+			if len(ips) == 0 {
+				return
+			}
+			defaultPort, err := strconv.ParseUint(activeNetParams.DefaultPort, 10, 16)
+			if err != nil {
+				srvrLog.Errorf("Can not parse default port %s for active chain: %v",
+					activeNetParams.DefaultPort, err)
+				return
+			}
+
+			addr := &net.TCPAddr{
+				IP:   ips[0],
+				Port: int(defaultPort),
+			}
+			srvrLog.Debugf("will try to connect %s", addr.String())
+			s.connManager.ConnectSpecificAddress(addr)
+		}
+
+	}
+	srvrLog.Debugf("-----------------------end----------------------------")
+}
+
 type getConnCountMsg struct {
 	reply chan int32
 }
@@ -2319,6 +2419,12 @@ out:
 		case bmsg := <-s.broadcast:
 			s.handleBroadcastMsg(state, &bmsg)
 
+		case displayMsg := <-s.displaystate:
+			s.handleDisplayStateMsg(state, &displayMsg)
+
+		case syncEpochMemMsg := <-s.syncEpochMemPeer:
+			s.handleSyncEpochMemberMsg(state, &syncEpochMemMsg)
+
 		case qmsg := <-s.query:
 			s.handleQuery(state, qmsg)
 
@@ -2378,6 +2484,22 @@ func (s *server) BroadcastMessage(msg wire.Message, exclPeers ...*serverPeer) {
 	// broadcast and refrain from broadcasting again.
 	bmsg := broadcastMsg{message: msg, excludePeers: exclPeers}
 	s.broadcast <- bmsg
+}
+
+// DisplayState used to display the current state.
+func (s *server) DisplayState() {
+	// XXX: Need to determine if this is an alert that has already been
+	// broadcast and refrain from broadcasting again.
+	dmsg := displayMsg{inlist: true, outlist: true, persistentList: true, banlist: true}
+	s.displaystate <- dmsg
+}
+
+// DisplayState used to display the current state.
+func (s *server) SyncEpochMemberList(memberHostList []string) {
+	// XXX: Need to determine if this is an alert that has already been
+	// broadcast and refrain from broadcasting again.
+	semmsg := syncEpochMemberMsg{memberHostList: memberHostList}
+	s.syncEpochMemPeer <- semmsg
 }
 
 // ConnectedCount returns the number of currently connected peers.
@@ -2529,6 +2651,13 @@ func (s *server) Start() {
 
 		s.rpcServer.SetVCStore(s.posMiner.GetVCStore())
 	}
+
+	if cfg.SaveMempool {
+		s.loadMempoolCache()
+	}
+
+	go s.monitorCurrentState()
+	go s.syncEpochMemberHandle()
 }
 
 // Stop gracefully shuts down the server by stopping and disconnecting all
@@ -2541,6 +2670,10 @@ func (s *server) Stop() error {
 	}
 
 	srvrLog.Warnf("Server shutting down")
+
+	if cfg.SaveMempool {
+		s.saveMempoolCache()
+	}
 
 	// Stop the CPU miner if needed
 	//s.cpuMiner.Stop()
@@ -2567,6 +2700,14 @@ func (s *server) Stop() error {
 // WaitForShutdown blocks until the main listener and peer handlers are stopped.
 func (s *server) WaitForShutdown() {
 	s.wg.Wait()
+}
+
+func (s *server) saveMempoolCache() {
+	s.txMemPool.Save(s.BtcdDir)
+}
+
+func (s *server) loadMempoolCache() {
+	s.txMemPool.Load(s.BtcdDir)
 }
 
 // ScheduleShutdown schedules a server shutdown after the specified duration.
@@ -2707,6 +2848,62 @@ out:
 	s.wg.Done()
 }
 
+func (s *server) monitorCurrentState() {
+
+	syncInterval := time.Second * 10
+	syncTicker := time.NewTicker(syncInterval)
+	defer syncTicker.Stop()
+
+exit:
+	for {
+		srvrLog.Debugf("[server]Waiting next timer for display peer state...")
+		select {
+		case <-syncTicker.C:
+			s.DisplayState()
+		case <-s.quit:
+			break exit
+		}
+	}
+
+	srvrLog.Debugf("[server]monitorCurrentState done.")
+
+}
+
+func (s *server) syncEpochMemberHandle() {
+
+	syncInterval := time.Second * 50
+	syncTicker := time.NewTicker(syncInterval)
+	defer syncTicker.Stop()
+
+exit:
+	for {
+		srvrLog.Debugf("[server]Waiting next timer for display peer state...")
+		select {
+		case <-syncTicker.C:
+			s.syncEpochMember()
+		case <-s.quit:
+			break exit
+		}
+	}
+
+	srvrLog.Debugf("[server]syncEpochMemberHandle done.")
+
+}
+
+func (s *server) syncEpochMember() {
+	if s.posMiner == nil {
+		return
+	}
+
+	memberList, err := s.posMiner.GetCurrentEpochMember(false)
+	if err != nil {
+		srvrLog.Warnf("Failed to get current epoch member: %v", err)
+		return
+	}
+	s.SyncEpochMemberList(memberList)
+
+}
+
 // setupRPCListeners returns a slice of listeners that are configured for use
 // with the RPC server depending on the configuration settings for listen
 // addresses and TLS.
@@ -2807,6 +3004,8 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 		broadcast:            make(chan broadcastMsg, cfg.MaxPeers),
 		quit:                 make(chan struct{}),
 		modifyRebroadcastInv: make(chan interface{}),
+		displaystate:         make(chan displayMsg),
+		syncEpochMemPeer:     make(chan syncEpochMemberMsg),
 		peerHeightsUpdate:    make(chan updatePeerHeightsMsg),
 		nat:                  nat,
 		db:                   db,
@@ -2817,6 +3016,7 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 		cfCheckptCaches:      make(map[wire.FilterType][]cfHeaderKV),
 		agentBlacklist:       agentBlacklist,
 		agentWhitelist:       agentWhitelist,
+		BtcdDir:              homeDir,
 	}
 
 	// Create the transaction and address indexes if needed.

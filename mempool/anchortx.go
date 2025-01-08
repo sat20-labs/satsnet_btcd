@@ -45,7 +45,7 @@ func (mp *TxPool) CheckAnchorTxValid(tx *wire.MsgTx) error {
 	fmt.Printf("The locked txInfo: %v\n", txInfo)
 
 	// Check the locked tx is is not anchor in sats net
-	anchorTxInfo, err := mp.cfg.FetchAnchorTx(txInfo.TxId)
+	anchorTxInfo, err := mp.cfg.FetchAnchorTx(txInfo.Utxo)
 	if err == nil && anchorTxInfo != nil {
 		fmt.Printf("The anchor is exist, anchor txInfo: %v\n", txInfo)
 		// The anchor tx is found in sats net
@@ -79,7 +79,7 @@ func (mp *TxPool) AddAnchorTx(tx *wire.MsgTx) error {
 	fmt.Printf("The locked txInfo: %v\n", txInfo)
 
 	// Check the locked tx is is not anchor in sats net
-	anchorTxInfo, err := mp.cfg.FetchAnchorTx(txInfo.TxId)
+	anchorTxInfo, err := mp.cfg.FetchAnchorTx(txInfo.Utxo)
 	if err == nil && anchorTxInfo != nil {
 		fmt.Printf("The anchor is exist, anchor txInfo: %v\n", txInfo)
 		// The anchor tx is found in sats net
@@ -89,9 +89,10 @@ func (mp *TxPool) AddAnchorTx(tx *wire.MsgTx) error {
 
 	// Check the locked tx has completed, all the assets is locked in lnd will be mapped to sats net only one times
 
+	//lockedUtxo := fmt.Sprintf("%s:%d", txInfo.TxId, txInfo.Index)
 	// Add the anchor tx to db
 	anchorTxInfo = &blockchain.AnchorTxInfo{
-		LockedTxid:    txInfo.TxId,
+		LockedUtxo:    txInfo.Utxo,
 		WitnessScript: txInfo.WitnessScript,
 		Amount:        txInfo.Amount,
 		AnchorTxid:    tx.TxHash().String(),

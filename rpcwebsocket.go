@@ -535,6 +535,9 @@ out:
 			case *notificationTxAcceptedByMempool:
 				rpcsLog.Debugf("................will send notificationTxAcceptedByMempool...")
 				rpcsLog.Debugf("................txNotifications size = %d...", len(txNotifications))
+				rpcsLog.Debugf("................watchedOutPoints size = %d...", len(watchedOutPoints))
+				rpcsLog.Debugf("................watchedAddrs size = %d...", len(watchedAddrs))
+				rpcsLog.Debugf("................blockNotifications size = %d...", len(blockNotifications))
 
 				if n.isNew && len(txNotifications) != 0 {
 					m.notifyForNewTx(txNotifications, n.tx)
@@ -544,14 +547,32 @@ out:
 
 			case *notificationRegisterBlocks:
 				wsc := (*wsClient)(n)
+				if wsc.conn == nil {
+					rpcsLog.Debugf("notificationRegisterBlocks from: %v", wsc)
+				} else {
+					rpcsLog.Debugf("notificationRegisterBlocks from: %s", wsc.conn.RemoteAddr())
+				}
+
 				blockNotifications[wsc.quit] = wsc
 
 			case *notificationUnregisterBlocks:
 				wsc := (*wsClient)(n)
+				if wsc.conn == nil {
+					rpcsLog.Debugf("notificationUnregisterBlocks from: %v", wsc)
+				} else {
+					rpcsLog.Debugf("notificationUnregisterBlocks from: %s", wsc.conn.RemoteAddr())
+				}
+
 				delete(blockNotifications, wsc.quit)
 
 			case *notificationRegisterClient:
 				wsc := (*wsClient)(n)
+				if wsc.conn == nil {
+					rpcsLog.Debugf("notificationRegisterClient from: %v", wsc)
+				} else {
+					rpcsLog.Debugf("notificationRegisterClient from: %s", wsc.conn.RemoteAddr())
+				}
+
 				clients[wsc.quit] = wsc
 
 			case *notificationUnregisterClient:
@@ -560,6 +581,11 @@ out:
 				// the client itself.
 				delete(blockNotifications, wsc.quit)
 				delete(txNotifications, wsc.quit)
+				if wsc.conn == nil {
+					rpcsLog.Debugf("notificationUnregisterClient from: %v", wsc)
+				} else {
+					rpcsLog.Debugf("notificationUnregisterClient from: %s", wsc.conn.RemoteAddr())
+				}
 				for k := range wsc.spentRequests {
 					op := k
 					m.removeSpentRequest(watchedOutPoints, wsc, &op)
@@ -570,23 +596,55 @@ out:
 				delete(clients, wsc.quit)
 
 			case *notificationRegisterSpent:
+				if n.wsc.conn == nil {
+					rpcsLog.Debugf("notificationRegisterSpent from: %v", n.wsc)
+				} else {
+					rpcsLog.Debugf("notificationRegisterSpent from: %s", n.wsc.conn.RemoteAddr())
+				}
+
 				m.addSpentRequests(watchedOutPoints, n.wsc, n.ops)
 
 			case *notificationUnregisterSpent:
+				if n.wsc.conn == nil {
+					rpcsLog.Debugf("notificationUnregisterSpent from: %v", n.wsc)
+				} else {
+					rpcsLog.Debugf("notificationUnregisterSpent from: %s", n.wsc.conn.RemoteAddr())
+				}
 				m.removeSpentRequest(watchedOutPoints, n.wsc, n.op)
 
 			case *notificationRegisterAddr:
+				if n.wsc.conn == nil {
+					rpcsLog.Debugf("notificationRegisterAddr from: %v", n.wsc)
+				} else {
+					rpcsLog.Debugf("notificationRegisterAddr from: %s", n.wsc.conn.RemoteAddr())
+				}
+
 				m.addAddrRequests(watchedAddrs, n.wsc, n.addrs)
 
 			case *notificationUnregisterAddr:
+				if n.wsc.conn == nil {
+					rpcsLog.Debugf("notificationUnregisterAddr from: %v", n.wsc)
+				} else {
+					rpcsLog.Debugf("notificationUnregisterAddr from: %s", n.wsc.conn.RemoteAddr())
+				}
 				m.removeAddrRequest(watchedAddrs, n.wsc, n.addr)
 
 			case *notificationRegisterNewMempoolTxs:
 				wsc := (*wsClient)(n)
+				if wsc.conn == nil {
+					rpcsLog.Debugf("notificationRegisterNewMempoolTxs from: %v", wsc)
+				} else {
+					rpcsLog.Debugf("notificationRegisterNewMempoolTxs from: %s", wsc.conn.RemoteAddr())
+				}
 				txNotifications[wsc.quit] = wsc
 
 			case *notificationUnregisterNewMempoolTxs:
 				wsc := (*wsClient)(n)
+				if wsc.conn == nil {
+					rpcsLog.Debugf("notificationUnregisterNewMempoolTxs from: %v", wsc)
+				} else {
+					rpcsLog.Debugf("notificationUnregisterNewMempoolTxs from: %s", wsc.conn.RemoteAddr())
+				}
 				delete(txNotifications, wsc.quit)
 
 			default:
@@ -843,6 +901,12 @@ func (m *wsNotificationManager) notifyForNewTx(clients map[chan struct{}]*wsClie
 	var verboseNtfn *btcjson.TxAcceptedVerboseNtfn
 	var marshalledJSONVerbose []byte
 	for _, wsc := range clients {
+		if wsc.conn == nil {
+			rpcsLog.Debugf("notifyForNewTx from: %v", wsc)
+		} else {
+			rpcsLog.Debugf("notifyForNewTx from: %s", wsc.conn.RemoteAddr())
+		}
+
 		if wsc.verboseTxUpdates {
 			if marshalledJSONVerbose != nil {
 				wsc.QueueNotification(marshalledJSONVerbose)
@@ -1027,6 +1091,12 @@ func (m *wsNotificationManager) notifyForTxOuts(ops map[wire.OutPoint]map[chan s
 
 			op := []*wire.OutPoint{wire.NewOutPoint(tx.Hash(), uint32(i))}
 			for wscQuit, wsc := range cmap {
+				if wsc.conn == nil {
+					rpcsLog.Debugf("notifyForTxOuts from: %v", wsc)
+				} else {
+					rpcsLog.Debugf("notifyForTxOuts from: %s", wsc.conn.RemoteAddr())
+				}
+
 				m.addSpentRequests(ops, wsc, op)
 
 				if _, ok := wscNotified[wscQuit]; !ok {
@@ -1056,6 +1126,13 @@ func (m *wsNotificationManager) notifyRelevantTxAccepted(tx *btcutil.Tx,
 			return
 		}
 		for quitChan := range clientsToNotify {
+			wsc := clients[quitChan]
+			if wsc.conn == nil {
+				rpcsLog.Debugf("notifyRelevantTxAccepted from: %v", wsc)
+			} else {
+				rpcsLog.Debugf("notifyRelevantTxAccepted from: %s", wsc.conn.RemoteAddr())
+			}
+
 			clients[quitChan].QueueNotification(marshalled)
 		}
 	}
@@ -1101,6 +1178,12 @@ func (m *wsNotificationManager) notifyForTxIns(ops map[wire.OutPoint]map[chan st
 				continue
 			}
 			for wscQuit, wsc := range cmap {
+				if wsc.conn == nil {
+					rpcsLog.Debugf("notifyForTxIns from: %v", wsc)
+				} else {
+					rpcsLog.Debugf("notifyForTxIns from: %s", wsc.conn.RemoteAddr())
+				}
+
 				if block != nil {
 					m.removeSpentRequest(ops, wsc, prevOut)
 				}

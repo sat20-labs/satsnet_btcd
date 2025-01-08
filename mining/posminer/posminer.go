@@ -843,3 +843,30 @@ func (m *POSMiner) GetVCStore() *validatechaindb.ValidateChainStore {
 	}
 	return m.ValidatorMgr.GetVCStore()
 }
+
+func (m *POSMiner) GetCurrentEpochMember(includeSelf bool) ([]string, error) {
+	if m.ValidatorMgr == nil {
+		return nil, errors.New("Validator Manager is nil")
+	}
+	return m.ValidatorMgr.GetCurrentEpochMember(includeSelf)
+}
+
+func (m *POSMiner) GetMempoolTxSize() int32 {
+
+	if m.g == nil {
+		log.Debugf("[PosMiner] Invalid mempool generator.")
+		return 0
+	}
+	txSource := m.g.TxSource()
+	if txSource == nil {
+		log.Debugf("[PosMiner] Invalid mempool tx source.")
+		return 0
+	}
+	sourceTxns := txSource.MiningDescs()
+
+	txSize := len(sourceTxns)
+
+	log.Debugf("[PosMiner] Current mempool tx size = %d", txSize)
+
+	return int32(txSize)
+}

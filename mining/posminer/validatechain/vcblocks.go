@@ -18,11 +18,13 @@ const (
 	DataType_UpdateEpoch       = 2
 	DataType_GeneratorHandOver = 3
 	DataType_MinerNewBlock     = 4
+	DataType_DelEpochMember    = 5
 
 	// Epoch 投票原因
 	NewEpochReason_EpochCreate   = 1 // 这个用于第一次创建Epoch
 	NewEpochReason_EpochHandOver = 2 // 这个用于Epoch轮换， 即上一个Epoch已经结束，投票产生下一个Epoch
 	NewEpochReason_EpochStopped  = 3 // 这个用于上一个Epoch长时间没有任何更新， 需要投票产生新的Epoch来重新挖矿
+	NewEpochReason_BootStrapNode = 4 // 这个用于有引导节点单独创建Epoch
 
 	// Update Epoch Reason
 	UpdateEpochReason_EpochHandOver     = 1 // Epoch 转正
@@ -272,6 +274,13 @@ func (vcb *VCBlock) Decode(stateData []byte) error {
 			return err
 		}
 		vcb.Data = newBlock
+	case DataType_DelEpochMember:
+		delMember := &DataEpochDelMember{}
+		err = delMember.Decode(br)
+		if err != nil {
+			return err
+		}
+		vcb.Data = delMember
 	}
 
 	return err

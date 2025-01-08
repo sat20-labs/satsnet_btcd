@@ -66,12 +66,12 @@ func (s *AnchorTxCache) addAnchorTxInfos(anchorTxInfos *[]AnchorTxInfo) error {
 	s.anchorTxInfoLock.RLock()
 	defer s.anchorTxInfoLock.RUnlock()
 	for _, anchorTxInfo := range *anchorTxInfos {
-		_, ok := s.anchorTxInfoMap[anchorTxInfo.LockedTxid]
+		_, ok := s.anchorTxInfoMap[anchorTxInfo.LockedUtxo]
 		if ok {
 			err := fmt.Errorf("locked tx has anchor tx info.")
 			return err
 		}
-		s.anchorTxInfoMap[anchorTxInfo.LockedTxid] = &anchorTxInfo
+		s.anchorTxInfoMap[anchorTxInfo.LockedUtxo] = &anchorTxInfo
 	}
 
 	return nil
@@ -81,12 +81,12 @@ func (s *AnchorTxCache) addAnchorTxInfos(anchorTxInfos *[]AnchorTxInfo) error {
 func (s *AnchorTxCache) AddAnchorTx(anchorTxInfo *AnchorTxInfo) error {
 	s.anchorTxInfoLock.RLock()
 	defer s.anchorTxInfoLock.RUnlock()
-	_, ok := s.anchorTxInfoMap[anchorTxInfo.LockedTxid]
+	_, ok := s.anchorTxInfoMap[anchorTxInfo.LockedUtxo]
 	if ok {
 		err := fmt.Errorf("locked tx has anchor tx info.")
 		return err
 	}
-	s.anchorTxInfoMap[anchorTxInfo.LockedTxid] = anchorTxInfo
+	s.anchorTxInfoMap[anchorTxInfo.LockedUtxo] = anchorTxInfo
 
 	return nil
 }
