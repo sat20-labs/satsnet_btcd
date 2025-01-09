@@ -52,6 +52,7 @@ func (vc *ValidateChain) GetCurrentState() *ValidateChainState {
 func (vc *ValidateChain) UpdateCurrentState(state *ValidateChainState) error {
 	vc.currentState.LatestHeight = state.LatestHeight
 	vc.currentState.LatestHash = state.LatestHash
+	vc.currentState.LatestEpochIndex = state.LatestEpochIndex
 
 	stateData, err := vc.currentState.Encode()
 	if err != nil {

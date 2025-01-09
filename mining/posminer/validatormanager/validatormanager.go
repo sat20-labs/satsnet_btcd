@@ -91,6 +91,8 @@ type ValidatorManager struct {
 	vcStore         *validatechaindb.ValidateChainStore // VC Store
 	validateChain   *validatechain.ValidateChain        // VC  --- validate chain
 	vcSyncValidator *validator.Validator                // VC Sync Validator
+
+	saveVCBlockMtx sync.RWMutex
 }
 
 //var validatorMgr *ValidatorManager
@@ -410,6 +412,14 @@ func (vm *ValidatorManager) getValidatorList() []*validatorinfo.ValidatorInfo {
 
 	// Add all remote validators
 	for _, validator := range vm.ConnectedList {
+		if validator == nil {
+			continue
+		}
+		if validator.IsValidInfo() == false {
+			// filter invalid validator
+			log.Errorf("Invalid validator: %s", validator.String())
+			continue
+		}
 		validatorItem := validatorinfo.ValidatorInfo{
 			ValidatorId:     validator.ValidatorInfo.ValidatorId,
 			Host:            validator.ValidatorInfo.Host,
@@ -1746,17 +1756,22 @@ func (vm *ValidatorManager) resetGeneratorMoniter() {
 }
 
 func (vm *ValidatorManager) getCurrentEpochIndex() int64 {
+	log.Debugf("[ValidatorManager]getCurrentEpochIndex...")
 	if vm.CurrentEpoch == nil {
 		// Get from db
 		if vm.validateChain == nil {
+			log.Debugf("[ValidatorManager]No validateChain, start from [0].")
 			return 0
 		}
 		currentState := vm.validateChain.GetCurrentState()
 		if currentState == nil {
+			log.Debugf("[ValidatorManager]Cannot get current state from validateChain, start from [0].")
 			return 0
 		}
+		log.Debugf("[ValidatorManager]LatestEpochIndex [%d] in validateChain.", currentState.LatestEpochIndex)
 		return currentState.LatestEpochIndex
 	}
+	log.Debugf("[ValidatorManager]current epoch index is [%d].", vm.CurrentEpoch.EpochIndex)
 	return vm.CurrentEpoch.EpochIndex
 }
 
@@ -2049,6 +2064,18 @@ func (vm *ValidatorManager) monitorGeneratorHandOver() {
 					// Generator is not connected, del generatorId
 					vm.epochMemberMgr.ReqDelEpochMember(generatorId)
 				}
+			} else {
+				log.Debugf("[ValidatorManager]The new generator %d is connected.", generatorId)
+				pastChangeDuation := vm.getPastTimeFromLastChange()
+				if pastChangeDuation < UnexceptionInterval {
+					// The change time is not unexpected, ignore
+					return
+				}
+
+				// The change time is exceed unexception time, current epoch is not running,will set to next epoch by bootstrap node
+				if vm.myValidator.IsBootStrapNode() {
+					vm.handoverToNextEpoch()
+				}
 			}
 		}
 
@@ -2271,6 +2298,14 @@ func (vm *ValidatorManager) getPastTimeFromLastMiner() time.Duration {
 	}
 
 	return time.Since(vm.CurrentEpoch.Generator.MinerTime)
+}
+
+func (vm *ValidatorManager) getPastTimeFromLastChange() time.Duration {
+	if vm.CurrentEpoch == nil {
+		return 0
+	}
+
+	return time.Since(vm.CurrentEpoch.LastChangeTime)
 }
 
 // syncValidateChain for sync validate chain list from remote peer on a timer
@@ -2681,6 +2716,8 @@ func (vm *ValidatorManager) GetVCStore() *validatechaindb.ValidateChainStore {
 
 func (vm *ValidatorManager) SaveVCBlock(vcBlock *validatechain.VCBlock) error {
 	log.Debugf("[ValidatorManager]SaveVCBlock...")
+	vm.saveVCBlockMtx.Lock()
+	defer vm.saveVCBlockMtx.Unlock()
 	// Save VC Block data to local
 	err := vm.validateChain.SaveVCBlock(vcBlock)
 	if err != nil {

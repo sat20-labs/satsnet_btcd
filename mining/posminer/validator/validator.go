@@ -288,11 +288,13 @@ func (v *Validator) Connect() error {
 		}
 	}
 
-	if v.isValidInfo() == false {
+	if v.IsValidInfo() == false {
 		// Not get remote validator id
 		log.Debugf("The validator Id is invalid, will request validator info from the remote peer")
 		validatorInfo := v.GetLocalValidatorInfo(0)
 		v.peer.RequestValidatorId(validatorInfo)
+
+		go v.checkValidatorValid()
 	}
 
 	return nil
@@ -305,7 +307,7 @@ func (v *Validator) Stop() {
 	v.peer.Disconnect()
 }
 
-func (v *Validator) isValidInfo() bool {
+func (v *Validator) IsValidInfo() bool {
 
 	if v.ValidatorInfo.ValidatorId == 0 {
 		return false
@@ -317,6 +319,35 @@ func (v *Validator) isValidInfo() bool {
 		return false
 	}
 	return true
+}
+
+func (v *Validator) checkValidatorValid() {
+	log.Debugf("[Validator]checkValidatorValid done.")
+	tryCount := 0
+	checkInterval := time.Second * 5
+	checkTicker := time.NewTicker(checkInterval)
+	defer checkTicker.Stop()
+
+exit:
+	for {
+		log.Debugf("[ValidatorManager]Waiting next timer for check validator valid...")
+		<-checkTicker.C
+		if v.IsValidInfo() == false {
+			tryCount++
+			if tryCount > 5 {
+				// The validator info is invalid, will disconnect the peer
+				v.Stop()
+				break exit
+			}
+			validatorInfo := v.GetLocalValidatorInfo(0)
+			v.peer.RequestValidatorId(validatorInfo)
+		} else {
+			// Validator info is valid, will stop the check
+			break exit
+		}
+	}
+
+	log.Debugf("[Validator]checkValidatorValid done.")
 }
 
 // This function is safe for concurrent access.
