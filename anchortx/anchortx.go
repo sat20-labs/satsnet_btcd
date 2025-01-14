@@ -103,6 +103,7 @@ func CheckAnchorTxValid(tx *wire.MsgTx) error {
 
 	// Check the Anchor tx has completed, all the assets is locked in lnd will be mapped to sats net only one times
 	lockedInfo, err := checkAnchorPkScript(AnchorScript)
+	//	err = fmt.Errorf("invalid Anchor tx <%s>, just for test", tx.TxHash().String()) // Just for test
 	if err != nil {
 		log.Debugf("invalid Anchor tx, invalid Anchor script: %s, err: %s", tx.TxHash().String(), err.Error())
 		return err
@@ -377,11 +378,18 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		if lockedInfoInBTC.Amount != lockedTxInfo.Amount {
+		if lockedInfoInBTC.Amount < lockedTxInfo.Amount {
+			log.Debugf("lockedInfoInBTC.Amount: %d, lockedTxInfo.Amount: %d", lockedInfoInBTC.Amount, lockedTxInfo.Amount)
 			return nil, fmt.Errorf("invalid value %d", lockedTxInfo.Amount)
 		}
 		if !bytes.Equal(lockedInfoInBTC.pkScript, pkScript) {
 			return nil, fmt.Errorf("invalid pkscript")
+		}
+
+		bindedValue := lockedTxInfo.TxAssets.GetBindingSatAmout()
+		if bindedValue > lockedTxInfo.Amount {
+			log.Debugf("bindedValue: %d, lockedTxInfo.Amount: %d", bindedValue, lockedTxInfo.Amount)
+			return nil, fmt.Errorf("invalid binded value %d", bindedValue)
 		}
 
 		if includeAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) == false {

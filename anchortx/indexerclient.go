@@ -116,7 +116,7 @@ func (p *IndexerClient) GetTxUtxoAssets(utxo string) (*TxUtxoInfo, error) {
 		return nil, err
 	}
 
-	fmt.Printf("%v response: %s", path, string(rsp))
+	fmt.Printf("%v response: %s\n", path, string(rsp))
 
 	// Unmarshal the response.
 	var result IndexerUtxoInfoResp

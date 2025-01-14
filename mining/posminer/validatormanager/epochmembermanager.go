@@ -454,8 +454,8 @@ func (em *EpochMemberManager) handleDelEpochMember(delValidatorID uint64) {
 		updateEpochCmd := validatorcommand.NewMsgUpdateEpoch(em.CurrentEpoch)
 		em.ValidatorMgr.BroadcastCommand(updateEpochCmd)
 
-		// Call local validator for handle this action
-		em.ValidatorMgr.OnUpdateEpoch(em.CurrentEpoch)
+		// CurrentEpoch has been updated, check continue handover
+		em.ValidatorMgr.CheckContinueHandOver()
 	} else {
 		// Disagree for del validatorID from epoch member
 		log.Debugf("[EpochMemberManager]Disagree for del validatorID from epoch member: %d", delValidatorID)

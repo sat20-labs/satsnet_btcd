@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	// MaxMsgSize is the maximum number of bytes a message can be in bytes
+	// MaxHostSize is the maximum number of host bytes allowed.
 	MaxHostSize = 256
 )
 

@@ -1600,6 +1600,14 @@ func (vm *ValidatorManager) OnUpdateEpoch(currentEpoch *epoch.Epoch) {
 		//vm.epochMemberMgr.UpdateCurrentEpoch(vm.CurrentEpoch)
 		vm.setCurrentEpoch(currentEpoch)
 
+		if vm.NextEpoch != nil {
+			log.Debugf("[ValidatorManager]Check the next epoch is same as current epoch.")
+			if vm.NextEpoch.EpochIndex == currentEpoch.EpochIndex {
+				log.Debugf("[ValidatorManager]The next epoch is handover current epoch.")
+				vm.NextEpoch = nil
+			}
+		}
+
 		log.Debugf("[ValidatorManager]New current epoch Updated.")
 		showEpoch("New current epoch", vm.CurrentEpoch)
 		return
@@ -1645,6 +1653,14 @@ func (vm *ValidatorManager) OnUpdateEpoch(currentEpoch *epoch.Epoch) {
 
 		if vm.CurrentEpoch.GetGenerator().MinerTime == currentEpoch.GetGenerator().MinerTime {
 			log.Debugf("[ValidatorManager]The epoch miner time isnot change, ignored.")
+			return
+		}
+
+		// Check current mempool is empty or not
+		txSizeInMempool := vm.Cfg.PosMiner.GetMempoolTxSize()
+		if txSizeInMempool > 0 {
+			log.Debugf("[ValidatorManager]Current mempool is not empty, cannot update miner time directly.")
+			return
 		}
 
 		// Update new miner timer
@@ -1660,11 +1676,6 @@ func (vm *ValidatorManager) OnUpdateEpoch(currentEpoch *epoch.Epoch) {
 	// vm.CurrentEpoch.Generator = currentEpoch.Generator
 	// vm.CurrentEpoch.CurGeneratorPos = currentEpoch.CurGeneratorPos
 	vm.setCurrentEpoch(currentEpoch)
-
-	if vm.needHandOver {
-		log.Debugf("[ValidatorManager]Handover to next generator after OnUpdateEpoch (next epoch member should be disconnect and removed) ...")
-		vm.HandoverToNextGenerator()
-	}
 
 	if vm.CurrentEpoch.Generator == nil {
 		log.Debugf("[ValidatorManager]No generator in current epoch now, will generate a new generator ...")
@@ -1699,6 +1710,15 @@ func (vm *ValidatorManager) OnUpdateEpoch(currentEpoch *epoch.Epoch) {
 
 	log.Debugf("[ValidatorManager]Current epoch Updated.")
 	showEpoch("Updated current epoch", vm.CurrentEpoch)
+}
+
+func (vm *ValidatorManager) CheckContinueHandOver() {
+	if vm.needHandOver {
+		log.Debugf("[ValidatorManager]Handover to next generator after OnUpdateEpoch (next epoch member should be disconnect and removed) ...")
+		vm.HandoverToNextGenerator()
+	} else {
+		log.Debugf("[ValidatorManager]No continue action .")
+	}
 }
 
 func (vm *ValidatorManager) setCurrentEpoch(currentEpoch *epoch.Epoch) {
@@ -2043,7 +2063,7 @@ func (vm *ValidatorManager) monitorGeneratorHandOver() {
 			nextHeight := vm.Cfg.PosMiner.GetBlockHeight() + 1
 			handoverTime := time.Now()
 
-			vm.SetLocalAsNextGenerator(nextHeight, handoverTime)
+			vm.SetLocalAsCurrentGenerator(nextHeight, handoverTime)
 
 			if vm.NextEpoch == nil && vm.CurrentEpoch.IsLastGenerator() {
 				// current epoch is last generator, and next epoch is nil, the generator should request New Epoch
