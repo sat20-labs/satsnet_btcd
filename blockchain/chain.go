@@ -1211,8 +1211,14 @@ func (b *BlockChain) connectBestChain(node *blockNode, block *btcutil.Block, fla
 			err := b.checkConnectBlock(node, block, view, nil)
 			if err == nil {
 				b.index.SetStatusFlags(node, statusValid)
-			} else if _, ok := err.(RuleError); ok {
-				b.index.SetStatusFlags(node, statusValidateFailed)
+			} else if ruleErr, ok := err.(RuleError); ok {
+				if ruleErr.ErrorCode == ErrAnchorTXVerifyFailed {
+					//  如果是Anchor Verify failed，有网络问题的可能， 需要有重新处理的机会， 因此本地将该块删除
+					b.index.DeleteNode(node)
+					return false, err
+				} else {
+					b.index.SetStatusFlags(node, statusValidateFailed)
+				}
 			} else {
 				return false, err
 			}

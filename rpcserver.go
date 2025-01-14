@@ -2124,6 +2124,8 @@ func chainErrToGBTErrString(err error) string {
 		return "bad-prevblk"
 	case blockchain.ErrPrevBlockNotBest:
 		return "inconclusive-not-best-prvblk"
+	case blockchain.ErrAnchorTXVerifyFailed:
+		return "anchor-tx-verify-failed"
 	}
 
 	return "rejected: " + err.Error()

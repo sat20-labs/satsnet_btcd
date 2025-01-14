@@ -220,6 +220,9 @@ const (
 	// current chain tip. This is not a block validation rule, but is required
 	// for block proposals submitted via getblocktemplate RPC.
 	ErrPrevBlockNotBest
+
+	// ErrAnchorTXVerifyFailed indicates that the anchor transaction verify failed
+	ErrAnchorTXVerifyFailed
 )
 
 // Map of ErrorCode values back to their constant names for pretty printing.
@@ -267,6 +270,7 @@ var errorCodeStrings = map[ErrorCode]string{
 	ErrPreviousBlockUnknown:      "ErrPreviousBlockUnknown",
 	ErrInvalidAncestorBlock:      "ErrInvalidAncestorBlock",
 	ErrPrevBlockNotBest:          "ErrPrevBlockNotBest",
+	ErrAnchorTXVerifyFailed:      "ErrAnchorTXVerifyFailed",
 }
 
 // String returns the ErrorCode as a human-readable name.

@@ -409,6 +409,11 @@ func (bi *blockIndex) AddNode(node *blockNode) {
 	bi.Unlock()
 }
 
+func (bi *blockIndex) DeleteNode(node *blockNode) {
+	delete(bi.index, node.hash)
+	delete(bi.dirty, node)
+}
+
 // addNode adds the provided node to the block index, but does not mark it as
 // dirty. This can be used while initializing the block index.
 //

@@ -968,8 +968,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 		err := anchortx.CheckAnchorTxValid(msgTx)
 		if err != nil {
 			str := fmt.Sprintf("invalid anchor tx with %s", tx.Hash())
-			return 0, nil, ruleError(ErrBadTxInput, str)
-
+			return 0, nil, ruleError(ErrAnchorTXVerifyFailed, str)
 		}
 		return 0, nil, nil
 	}
