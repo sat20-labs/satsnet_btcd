@@ -66,10 +66,10 @@ type DataNewEpoch struct {
 
 // Epoch删除成员：
 type DataEpochDelMember struct {
-	RequestId           uint64                               // 创建者ID
-	PublicKey           [btcec.PubKeyBytesLenCompressed]byte // 创建者公钥
+	RequestId           uint64                               // 请求者ID
+	PublicKey           [btcec.PubKeyBytesLenCompressed]byte // 请求者公钥
 	EpochIndex          int64                                // Epoch Index
-	CreateTime          int64                                // 创建时间
+	CreateTime          int64                                // 请求时间
 	Reason              uint32                               // Epoch 删除只有一个原因， 成员离线
 	EpochItemList       []epoch.EpochItem                    // 该Epoch最终的ItemList
 	EpochDelConfirmList []EpochDelConfirmItem                // 所有用户的投票数据

@@ -906,6 +906,25 @@ func sortsValidatorList(validatorList []*validatorinfo.ValidatorInfo) {
 	})
 }
 
+func getValidatorPos(validators []*validatorinfo.ValidatorInfo, lastEpochMemberId uint64) int {
+
+	if lastEpochMemberId <= 0 {
+		return -1
+	}
+
+	for index, validator := range validators {
+		if validator.ValidatorId == lastEpochMemberId {
+			return index
+		} else if validator.ValidatorId > lastEpochMemberId {
+			// The lastEpochMemberId is not in validators
+			return index - 1
+		}
+	}
+
+	// The lastEpochMemberId is not in validators and the lastEpochMemberId is the last validator
+	return -1
+}
+
 // moniterHandler for show current validator list in local on a timer
 func (vm *ValidatorManager) observeHandler() {
 	observeInterval := time.Second * 10
@@ -1475,10 +1494,25 @@ func (vm *ValidatorManager) ReqNewEpoch(validatorID uint64, epochIndex int64, re
 		Generator:       nil, // will be set by local validator
 	}
 
+	lastEpochMemberId := uint64(0)
+	if vm.CurrentEpoch != nil {
+		lastEpochMemberId = vm.CurrentEpoch.GetLastEpochMemberId()
+	}
+
 	validators := vm.getValidatorList()
 	sortsValidatorList(validators)
+
+	lastEpochMemberPos := getValidatorPos(validators, lastEpochMemberId)
+
+	start := lastEpochMemberPos + 1
+	if start >= len(validators) {
+		start = 0
+	}
+
+	count := 0
+
 	// Fill item to EpochItem list
-	for i := 0; i < len(validators); i++ {
+	for i := start; i < len(validators); i++ {
 		validator := validators[i]
 
 		item := &epoch.EpochItem{
@@ -1488,6 +1522,31 @@ func (vm *ValidatorManager) ReqNewEpoch(validatorID uint64, epochIndex int64, re
 			Index:       uint32(i)}
 
 		newEpoch.ItemList = append(newEpoch.ItemList, item)
+		count++
+
+		if count >= MaxValidatorsCountEachEpoch {
+			break
+		}
+	}
+
+	if start > 0 && count < MaxValidatorsCountEachEpoch {
+		// Fill the rest of item to EpochItem list
+		for i := 0; i < start; i++ {
+			validator := validators[i]
+
+			item := &epoch.EpochItem{
+				ValidatorId: validator.ValidatorId,
+				Host:        validator.Host,
+				PublicKey:   validator.PublicKey,
+				Index:       uint32(i)}
+
+			newEpoch.ItemList = append(newEpoch.ItemList, item)
+			count++
+
+			if count >= MaxValidatorsCountEachEpoch {
+				break
+			}
+		}
 	}
 
 	newEpochVote := epoch.NewEpochVote{

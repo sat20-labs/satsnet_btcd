@@ -285,6 +285,12 @@ func (e *Epoch) GetValidatorPos(validatorId uint64) int32 {
 
 	return -1
 }
+func (e *Epoch) GetLastEpochMemberId() uint64 {
+	if len(e.ItemList) == 0 {
+		return 0
+	}
+	return e.ItemList[len(e.ItemList)-1].ValidatorId
+}
 
 func (nev *NewEpochVote) GetTokenData() []byte {
 

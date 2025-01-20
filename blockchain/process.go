@@ -81,6 +81,8 @@ func (b *BlockChain) blockExists(hash *chainhash.Hash) (bool, error) {
 //
 // This function MUST be called with the chain state lock held (for writes).
 func (b *BlockChain) processOrphans(hash *chainhash.Hash, flags BehaviorFlags) error {
+
+	b.showCurrentOrphans()
 	// Start with processing at least the passed hash.  Leave a little room
 	// for additional orphan blocks that need to be processed without
 	// needing to grow the array in the common case.
@@ -127,6 +129,28 @@ func (b *BlockChain) processOrphans(hash *chainhash.Hash, flags BehaviorFlags) e
 		}
 	}
 	return nil
+}
+
+// orphans      map[chainhash.Hash]*orphanBlock
+// prevOrphans  map[chainhash.Hash][]*orphanBlock
+
+func (b *BlockChain) showCurrentOrphans() {
+	log.Debugf("Current orphans:")
+	log.Debugf("orphans List:")
+	for hash, block := range b.orphans {
+		log.Debugf("Orphan %s: %d", hash.String(), block.block.Height())
+	}
+
+	log.Debugf("---------------------------------------------------------------------------------------")
+
+	log.Debugf("Orphan prev List:")
+	for hash, blocklist := range b.prevOrphans {
+		log.Debugf("Orphan prev hash%s", hash.String())
+		for _, block := range blocklist {
+			log.Debugf("	Connect orphan %s:%d", block.block.Hash().String(), block.block.Height())
+		}
+	}
+	log.Debugf("---------------------------------------------------------------------------------------")
 }
 
 // ProcessBlock is the main workhorse for handling insertion of new blocks into
@@ -227,7 +251,28 @@ func (b *BlockChain) ProcessBlock(block *btcutil.Block, flags BehaviorFlags) (bo
 	// enough to potentially accept it into the block chain.
 	isMainChain, err := b.maybeAcceptBlock(block, flags)
 	if err != nil {
-		return false, false, err
+		ruleErr, ok := err.(RuleError)
+		if !ok {
+			return false, false, err
+		}
+
+		errCode := ruleErr.ErrorCode
+		if errCode == ErrInvalidAncestorBlock {
+			// process orphans from current best block
+			bestChainState := b.BestSnapshot()
+			bestHash := bestChainState.Hash
+			orpErr := b.processOrphans(&bestHash, flags)
+			if orpErr == nil {
+				// Retry to accept the block after processing orphans.
+				isMainChain, err = b.maybeAcceptBlock(block, flags)
+				if err != nil {
+					return false, false, err
+				}
+			}
+		} else {
+			return false, false, err
+		}
+
 	}
 
 	// Accept any orphan blocks that depend on this block (they are
