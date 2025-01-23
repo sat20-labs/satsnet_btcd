@@ -323,12 +323,12 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 		w.Write(scratch[:4])
 
 		data := w.Bytes()
-		fmt.Printf("data: %x\n", data)
+		//fmt.Printf("data: %x\n", data)
 		w1.Write(data)
 		return nil
 	})
 
-	fmt.Printf("sigHash: %x\n", sigHashBytes[:])
+	//fmt.Printf("sigHash: %x\n", sigHashBytes[:])
 
 	return sigHashBytes[:], nil
 }
