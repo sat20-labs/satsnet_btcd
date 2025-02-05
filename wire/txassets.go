@@ -36,7 +36,7 @@ func (p *AssetName) String() string {
 type AssetInfo struct {
 	Name       AssetName
 	Amount     int64  // 资产数量
-	BindingSat uint16 // 非0 -> 绑定聪, 0 -> 不绑定聪
+	BindingSat uint16 // 非0 -> 每一聪绑定的资产的数量, 0 -> 不绑定聪
 }
 
 func (p *AssetInfo) Add(another *AssetInfo) error {
@@ -193,14 +193,14 @@ func (p *TxAssets) Split(another *TxAssets) error {
 func (p *TxAssets) Align(value int64) TxAssets {
 	var result TxAssets
 	for _, asset := range *p {
-		if asset.BindingSat > 0 && asset.Amount > value {
+		if asset.BindingSat > 0 && asset.Amount > value * int64(asset.BindingSat) {
 			sub := AssetInfo{
 				Name: asset.Name,
-				Amount: asset.Amount - value,
+				Amount: asset.Amount - value * int64(asset.BindingSat),
 				BindingSat: asset.BindingSat,
 			}
 			result = append(result, sub)
-			asset.Amount = value
+			asset.Amount = value * int64(asset.BindingSat)
 		}
 	}
 	return result
@@ -277,8 +277,8 @@ func (p *TxAssets) GetBindingSatAmout() int64 {
 	amount := int64(0)
 	for _, asset := range *p {
 		if asset.BindingSat != 0 {
-			if amount < asset.Amount {
-				amount = asset.Amount
+			if amount < asset.Amount / int64(asset.BindingSat) {
+				amount = asset.Amount / int64(asset.BindingSat)
 			}
 		}
 	}
@@ -388,11 +388,3 @@ func AssetsReadFromBuf(r io.Reader, pver uint32, buf, s []byte) (TxAssets, error
 	}
 	return assets, nil
 }
-
-// TxOut defines a bitcoin transaction output.
-// type TxOut struct {
-// 	Value    int64
-// 	PkScript []byte
-// 	Assets   TxAssets // TxOut.Value必须大于等于Assets的GetBindingSatAmout
-// 	Covenant []byte   // 模板合约，默认为空
-// }
