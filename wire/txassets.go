@@ -375,5 +375,8 @@ func AssetsReadFromBuf(r io.Reader, pver uint32, buf, s []byte) (TxAssets, error
 
 // amt的资产需要多少聪
 func GetBindingSatNum(amt int64, n uint16) int64 {
+	if n == 0 {
+		return 0
+	}
 	return (amt + int64(n) - 1)/int64(n)
 }
