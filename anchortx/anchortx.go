@@ -5,6 +5,7 @@ package anchortx
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -55,7 +56,7 @@ type LockedTxInfo struct {
 	// Index         int32
 	Utxo          string         // the utxo with locked in lnd
 	WitnessScript []byte         // WitnessScript for locked in lnd
-	Amount        int64          // the amount with locked in lnd
+	Value         int64          // the amount with locked in lnd
 	TxAssets      *wire.TxAssets // The assets locked
 }
 
@@ -116,8 +117,8 @@ func CheckAnchorTxValid(tx *wire.MsgTx) error {
 		anchorAmount += out.Value
 	}
 
-	if anchorAmount > lockedInfo.Amount {
-		err := fmt.Errorf("invalid Anchor tx, Anchor amount(%d) is exceed the locked amount (%d): %s", anchorAmount, lockedInfo.Amount, tx.TxHash().String())
+	if anchorAmount > lockedInfo.Value {
+		err := fmt.Errorf("invalid Anchor tx, Anchor amount(%d) is exceed the locked amount (%d): %s", anchorAmount, lockedInfo.Value, tx.TxHash().String())
 		return err
 	}
 
@@ -148,6 +149,30 @@ func GetLockedTxInfo(tx *wire.MsgTx) (*LockedTxInfo, error) {
 		return nil, err
 	}
 	return lockedTxInfo, nil
+}
+
+// 从比特币脚本中提取int64值
+func extractScriptInt64(data []byte) int64 {
+	if len(data) == 0 {
+		return 0
+	}
+
+	// 比特币脚本中的整数是最小化编码的
+	isNegative := (data[len(data)-1] & 0x80) != 0
+
+	buf := make([]byte, 8)
+	copy(buf, data)
+
+	if isNegative {
+		buf[len(data)-1] &= 0x7f
+	}
+
+	val := int64(binary.LittleEndian.Uint64(buf))
+	if isNegative {
+		val = -val
+	}
+
+	return val
 }
 
 func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
@@ -191,13 +216,7 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 		err := fmt.Errorf("invalid Anchor tx script for amount")
 		return nil, err
 	}
-	data := tokenizer.Data()
-	scriptNum, err := txscript.MakeScriptNum(data, false, len(data))
-	if err != nil {
-		err := fmt.Errorf("invalid Anchor tx script for parse amount")
-		return nil, err
-	}
-	amount := scriptNum.Int32()
+	value := extractScriptInt64(tokenizer.Data())
 
 	// The Third opcode must be a canonical data push, The data is
 	// serialized as assets
@@ -210,7 +229,7 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 
 	txAssets := &wire.TxAssets{}
 	if assetsData != nil {
-		err = txAssets.Deserialize(assetsData)
+		err := txAssets.Deserialize(assetsData)
 		if err != nil {
 			return nil, err
 		}
@@ -230,7 +249,7 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 		// Index:         int32(outputIndex),
 		Utxo:          string(utxo),
 		WitnessScript: witnessScript,
-		Amount:        int64(amount),
+		Value:         value,
 		TxAssets:      txAssets,
 	}
 	return info, nil
@@ -378,17 +397,17 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		if lockedInfoInBTC.Amount < lockedTxInfo.Amount {
-			log.Debugf("lockedInfoInBTC.Amount: %d, lockedTxInfo.Amount: %d", lockedInfoInBTC.Amount, lockedTxInfo.Amount)
-			return nil, fmt.Errorf("invalid value %d", lockedTxInfo.Amount)
+		if lockedInfoInBTC.Amount < lockedTxInfo.Value {
+			log.Debugf("lockedInfoInBTC.Amount: %d, lockedTxInfo.Amount: %d", lockedInfoInBTC.Amount, lockedTxInfo.Value)
+			return nil, fmt.Errorf("invalid value %d", lockedTxInfo.Value)
 		}
 		if !bytes.Equal(lockedInfoInBTC.pkScript, pkScript) {
 			return nil, fmt.Errorf("invalid pkscript")
 		}
 
 		bindedValue := lockedTxInfo.TxAssets.GetBindingSatAmout()
-		if bindedValue > lockedTxInfo.Amount {
-			log.Debugf("bindedValue: %d, lockedTxInfo.Amount: %d", bindedValue, lockedTxInfo.Amount)
+		if bindedValue > lockedTxInfo.Value {
+			log.Debugf("bindedValue: %d, lockedTxInfo.Amount: %d", bindedValue, lockedTxInfo.Value)
 			return nil, fmt.Errorf("invalid binded value %d", bindedValue)
 		}
 

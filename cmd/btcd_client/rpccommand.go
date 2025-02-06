@@ -103,7 +103,7 @@ func testGetAccordingLockedInfo(txid string) {
 	fmt.Printf("Locked TX info: \n")
 	fmt.Printf("Locked TX txid(BTC): %s\n", lockedTxInfo.Utxo)
 	fmt.Printf("Locked TX WitnessScript: %v\n", lockedTxInfo.WitnessScript)
-	fmt.Printf("Locked TX Amount: %d\n", lockedTxInfo.Amount)
+	fmt.Printf("Locked TX Amount: %d\n", lockedTxInfo.Value)
 
 	fmt.Printf("Anchor TX txid(Satsnet): %s\n", txid)
 }

@@ -2496,7 +2496,7 @@ func handleGetAnchorTxInfo(s *rpcServer, cmd interface{}, closeChan <-chan struc
 		LockedUtxo: anchorInfo.LockedUtxo,
 		AnchorTxid: anchorInfo.AnchorTxid,
 		Witness:    hex.EncodeToString(anchorInfo.WitnessScript),
-		Amount:     anchorInfo.Amount,
+		Amount:     anchorInfo.Value,
 	}
 
 	return result, nil

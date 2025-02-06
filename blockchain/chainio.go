@@ -1527,7 +1527,7 @@ func (b *BlockChain) BlockByHash(hash *chainhash.Hash) (*btcutil.Block, error) {
 //
 // The serialized format is:
 //
-//   <lenLockedUtxo><LockedUtxo><lenAnchorTxid><AnchorTxid><lenWitnessScript><WitnessScript><amount>
+//   <lenLockedUtxo><LockedUtxo><lenAnchorTxid><AnchorTxid><lenWitnessScript><WitnessScript><value>
 //
 //   Field             Type             Size
 //   lenLockedUtxo     uint32			4 bytes
@@ -1536,7 +1536,7 @@ func (b *BlockChain) BlockByHash(hash *chainhash.Hash) (*btcutil.Block, error) {
 //   AnchorTxid        string
 //   lenWitnessScript  uint32			4 bytes
 //   WitnessScript     bytes
-//   amount            int64            8 bytes
+//   value             int64            8 bytes
 // -----------------------------------------------------------------------------
 
 // bestChainState represents the data to be stored the database for the current
@@ -1545,7 +1545,7 @@ type AnchorTxInfo struct {
 	LockedUtxo    string
 	AnchorTxid    string
 	WitnessScript []byte
-	Amount        int64
+	Value         int64
 }
 
 // serializeAnchorTxInfo returns the serialization of the passed Anchor Tx info.
@@ -1572,7 +1572,7 @@ func serializeAnchorTxInfo(anchorTxInfo *AnchorTxInfo) []byte {
 	pos += 4
 	copy(serializedData[pos:pos+lenWitnessScript], anchorTxInfo.WitnessScript[:])
 	pos += lenWitnessScript
-	byteOrder.PutUint64(serializedData[pos:], uint64(anchorTxInfo.Amount))
+	byteOrder.PutUint64(serializedData[pos:], uint64(anchorTxInfo.Value))
 	return serializedData
 }
 
@@ -1615,7 +1615,7 @@ func deserializeAnchorTxInfo(serializedData []byte) (*AnchorTxInfo, error) {
 	pos += int(lenWitnessScript)
 
 	amount := byteOrder.Uint64(serializedData[pos : pos+8])
-	anchorTxInfo.Amount = int64(amount)
+	anchorTxInfo.Value = int64(amount)
 	return anchorTxInfo, nil
 }
 

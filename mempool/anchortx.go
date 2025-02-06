@@ -94,7 +94,7 @@ func (mp *TxPool) AddAnchorTx(tx *wire.MsgTx) error {
 	anchorTxInfo = &blockchain.AnchorTxInfo{
 		LockedUtxo:    txInfo.Utxo,
 		WitnessScript: txInfo.WitnessScript,
-		Amount:        txInfo.Amount,
+		Value:         txInfo.Value,
 		AnchorTxid:    tx.TxHash().String(),
 	}
 	err = mp.cfg.AddAnchorTx(anchorTxInfo)
