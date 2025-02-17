@@ -96,9 +96,7 @@ func upgradeDBPaths() error {
 	// respective networks.  Check for the old database and update it to the
 	// new path introduced with version 0.2.0 accordingly.
 	oldDbRoot := filepath.Join(oldBtcdHomeDir(), "db")
-	upgradeDBPathNet(filepath.Join(oldDbRoot, "btcd.db"), "mainnet")
-	upgradeDBPathNet(filepath.Join(oldDbRoot, "btcd_testnet.db"), "testnet")
-	upgradeDBPathNet(filepath.Join(oldDbRoot, "btcd_regtest.db"), "regtest")
+	upgradeDBPathNet(filepath.Join(oldDbRoot, "satsnet.db"), "mainnet")
 
 	// Remove the old db directory.
 	return os.RemoveAll(oldDbRoot)

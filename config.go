@@ -36,11 +36,11 @@ import (
 )
 
 const (
-	defaultConfigFilename        = "btcd.conf"
+	defaultConfigFilename        = "satsnet.conf"
 	defaultDataDirname           = "data"
 	defaultLogLevel              = "info"
 	defaultLogDirname            = "logs"
-	defaultLogFilename           = "btcd.log"
+	defaultLogFilename           = "satsnet.log"
 	defaultMaxPeers              = 125
 	defaultBanDuration           = time.Hour * 24
 	defaultBanThreshold          = 100
@@ -64,7 +64,7 @@ const (
 	defaultMaxOrphanTxSize       = 100000
 	defaultSigCacheMaxSize       = 100000
 	defaultUtxoCacheMaxSizeMiB   = 250
-	sampleConfigFilename         = "sample-btcd.conf"
+	sampleConfigFilename         = "sample-satsnet.conf"
 	defaultTxIndex               = false
 	defaultAddrIndex             = false
 	pruneMinSize                 = 1536
@@ -460,7 +460,7 @@ func loadConfig() (*config, []string, error) {
 
 	//homeDir = "/data/satsnet/satsnet_btcd/btcddata"
 
-	homeBtcdDir := filepath.Join(homeDir, "btcd")
+	homeBtcdDir := filepath.Join(homeDir, "satsnet")
 	fmt.Println("homeBtcdDir is ", homeBtcdDir)
 	//homeBtcdDir = homeBtcdDir1
 	//fmt.Println(homeBtcdDir)

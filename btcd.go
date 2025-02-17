@@ -262,7 +262,7 @@ func btcdMain(serverChan chan<- *server) error {
 		IndexerNet:  cfg.IndexerNet,
 		ChainParams: activeNetParams.Params,
 	}
-	if anchortx.StartAnchorManager(anchorCfg) == false {
+	if !anchortx.StartAnchorManager(anchorCfg) {
 		btcdLog.Errorf("Unable to start anchor manager")
 		return err
 	}
