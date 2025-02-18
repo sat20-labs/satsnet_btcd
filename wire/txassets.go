@@ -36,7 +36,7 @@ func (p *AssetName) String() string {
 type AssetInfo struct {
 	Name       AssetName
 	Amount     int64  // 资产数量
-	BindingSat uint16 // 非0 -> 每一聪绑定的资产的数量, 0 -> 不绑定聪
+	BindingSat uint32 // 非0 -> 每一聪绑定的资产的数量, 0 -> 不绑定聪
 }
 
 func (p *AssetInfo) Add(another *AssetInfo) error {
@@ -367,14 +367,14 @@ func AssetsReadFromBuf(r io.Reader, pver uint32, buf, s []byte) (TxAssets, error
 		if err != nil {
 			return nil, err
 		}
-		newAsset.BindingSat = uint16(bindingSat)
+		newAsset.BindingSat =uint32(bindingSat)
 		assets = append(assets, newAsset)
 	}
 	return assets, nil
 }
 
 // amt的资产需要多少聪
-func GetBindingSatNum(amt int64, n uint16) int64 {
+func GetBindingSatNum(amt int64, n uint32) int64 {
 	if n == 0 {
 		return 0
 	}

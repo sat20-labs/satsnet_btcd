@@ -53,7 +53,7 @@ type AssetName struct {
 type AssetInfo struct {
 	Name       AssetName `json:"Name"`
 	Amount     int64     `json:"Amount"`     // 资产数量
-	BindingSat uint16    `json:"BindingSat"` // 非0 -> 绑定聪, 0 -> 不绑定聪
+	BindingSat uint32    `json:"BindingSat"` // 非0 -> 绑定聪, 0 -> 不绑定聪
 }
 type AssetOffsets struct {
 	Start int64 `json:"start"`

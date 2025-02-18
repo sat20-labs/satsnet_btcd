@@ -285,7 +285,7 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 			w.Write([]byte(asset.Name.Ticker))
 			binary.LittleEndian.PutUint64(scratch[:], uint64(asset.Amount))
 			w.Write(scratch[:])
-			binary.LittleEndian.PutUint16(scratch[:], asset.BindingSat)
+			binary.LittleEndian.PutUint32(scratch[:], asset.BindingSat)
 			w.Write(scratch[:2])
 		}
 

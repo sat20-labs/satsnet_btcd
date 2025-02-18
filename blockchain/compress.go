@@ -700,7 +700,7 @@ func decodeCompressedTxOut(serialized []byte) (uint64, wire.TxAssets, []byte, in
 				Ticker:   assetTicker,
 			},
 			Amount:     int64(assetAmount),
-			BindingSat: uint16(assetBindingSat),
+			BindingSat: uint32(assetBindingSat),
 		}
 		txAssets = append(txAssets, asset)
 	}

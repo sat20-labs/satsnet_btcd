@@ -179,11 +179,11 @@ func main() {
 						assetAmount = newAssetsAmout
 					}
 				}
-				bindingsSats := uint16(0)
+				bindingsSats := uint32(0)
 				if length >= 7 {
 					newBindingsSats, _ := strconv.ParseInt(words[6], 10, 16)
 					if newBindingsSats != 0 {
-						bindingsSats = uint16(newBindingsSats)
+						bindingsSats = uint32(newBindingsSats)
 					}
 				}
 				asset := wire.AssetInfo{Name: wire.AssetName{Protocol: assetProtocol, Type: assetsType, Ticker: assetsTicker}, Amount: assetAmount, BindingSat: bindingsSats}

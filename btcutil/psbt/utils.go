@@ -335,7 +335,7 @@ func readTxOut(txout []byte) (*wire.TxOut, error) {
 				Ticker:   assetTicker,
 			},
 			Amount:     int64(assetAmount),
-			BindingSat: uint16(assetBindingSat),
+			BindingSat: uint32(assetBindingSat),
 		}
 		assets = append(assets, asset)
 	}
