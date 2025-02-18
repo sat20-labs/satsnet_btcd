@@ -37,7 +37,7 @@ import (
 
 const (
 	defaultConfigFilename        = "satsnet.conf"
-	defaultDataDirname           = "data"
+	defaultDataDirname           = "db"
 	defaultLogLevel              = "info"
 	defaultLogDirname            = "logs"
 	defaultLogFilename           = "satsnet.log"
@@ -460,7 +460,8 @@ func loadConfig() (*config, []string, error) {
 
 	//homeDir = "/data/satsnet/satsnet_btcd/btcddata"
 
-	homeBtcdDir := filepath.Join(homeDir, "satsnet")
+	//homeBtcdDir := filepath.Join(homeDir, "satsnet")
+	homeBtcdDir = homeDir
 	fmt.Println("homeBtcdDir is ", homeBtcdDir)
 	//homeBtcdDir = homeBtcdDir1
 	//fmt.Println(homeBtcdDir)
@@ -471,17 +472,17 @@ func loadConfig() (*config, []string, error) {
 	//newHomeBtcdDir := filepath.Clean(homeBtcdDir)
 	//fmt.Println("newHomeBtcdDir is ", newHomeBtcdDir)
 
-	configFile = filepath.Join(homeBtcdDir, defaultConfigFilename)
+	configFile = filepath.Join("./", defaultConfigFilename)
 	fmt.Println("configFile is ", configFile)
-
-	dataDir = filepath.Join(homeBtcdDir, defaultDataDirname)
-	fmt.Println("dataDir is ", dataDir)
 
 	rpcKeyFile = filepath.Join(homeBtcdDir, "rpc.key")
 	fmt.Println("rpcKeyFile is ", rpcKeyFile)
 
 	rpcCertFile = filepath.Join(homeBtcdDir, "rpc.cert")
 	fmt.Println("rpcCertFile is ", rpcCertFile)
+
+	dataDir = filepath.Join(homeBtcdDir, defaultDataDirname)
+	fmt.Println("dataDir is ", dataDir)
 
 	logDir = filepath.Join(homeBtcdDir, defaultLogDirname)
 	fmt.Println("logDir is ", logDir)

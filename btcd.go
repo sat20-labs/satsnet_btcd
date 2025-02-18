@@ -17,7 +17,6 @@ import (
 
 	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/database"
 	"github.com/sat20-labs/satsnet_btcd/limits"
 	"github.com/sat20-labs/satsnet_btcd/ossec"
@@ -32,7 +31,7 @@ const (
 
 var (
 	cfg            *config
-	defaultHomeDir = btcutil.AppDataDir("satsnet_btcd", false)
+	defaultHomeDir = "./data" //btcutil.AppDataDir("satsnet", false)
 )
 
 // winServiceMain is only invoked on Windows.  It detects when btcd is running
