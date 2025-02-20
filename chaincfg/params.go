@@ -1159,7 +1159,7 @@ var SatsTestNetParams = Params{
 	BIP0034Height:            1,
 	BIP0065Height:            1,
 	BIP0066Height:            1,
-	CoinbaseMaturity:         100,
+	CoinbaseMaturity:         1,
 	SubsidyReductionInterval: 210000,
 	TargetTimespan:           time.Hour * 24 * 14, // 14 days
 	TargetTimePerBlock:       time.Minute * 10,    // 10 minutes
