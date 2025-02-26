@@ -2,7 +2,7 @@ package bootstrapnode
 
 const (
 	// BootstrapCertificateIssuer is the public key of the bootstrap Certificate Issuer.
-	BootstrapCertificateIssuer = "0319f86fa35ef9bcfdca01de56cf65833a2af81c299a40dff88fe7874cb1423d02" //
+	BootstrapCertificateIssuer = "025fb789035bc2f0c74384503401222e53f72eefdebf0886517ff26ac7985f52ad" //
 
 	BootStrapNodeId = 10000104
 )
