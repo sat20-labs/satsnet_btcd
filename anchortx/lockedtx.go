@@ -72,7 +72,7 @@ func logMsgTx(tx *wire.MsgTx) {
 		if txscript.IsNullData(txout.PkScript) {
 			logLine("		txout pkscript is an OP_RETURN script")
 		} else {
-			addr, err := PkScriptToAddr(txout.PkScript)
+			addr, err := pkScriptToAddr(txout.PkScript)
 			if err != nil {
 				logLine("		txout pkscript is an invalidaddress: %s", err)
 			} else {
@@ -90,7 +90,7 @@ func logLine(format string, a ...any) {
 	fmt.Println(logStr)
 }
 
-func PkScriptToAddr(pkScript []byte) (string, error) {
+func pkScriptToAddr(pkScript []byte) (string, error) {
 
 	if len(pkScript) > 0 && pkScript[0] == txscript.OP_RETURN {
 		err := fmt.Errorf("pkscript is OP_RETURN Script")

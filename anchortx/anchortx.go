@@ -6,14 +6,18 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sat20-labs/satsnet_btcd/btcec"
+	"github.com/sat20-labs/satsnet_btcd/btcec/ecdsa"
 	"github.com/sat20-labs/satsnet_btcd/btcec/schnorr"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/bootstrapnode"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -52,12 +56,11 @@ var anchorManager AnchorManager
 // txscript.NewScriptBuilder().AddData(txid).AddData(WitnessScript).
 // AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
 type LockedTxInfo struct {
-	// TxId          string // the txid with locked in lnd
-	// Index         int32
 	Utxo          string         // the utxo with locked in lnd
 	WitnessScript []byte         // WitnessScript for locked in lnd
 	Value         int64          // the amount with locked in lnd
 	TxAssets      *wire.TxAssets // The assets locked
+	Sig           []byte
 }
 
 func StartAnchorManager(config *AnchorConfig) bool {
@@ -93,7 +96,7 @@ func Stop() {
 	}
 }
 
-func CheckAnchorTxValid(tx *wire.MsgTx, checkEgible bool) error {
+func CheckAnchorTxValid(tx *wire.MsgTx) error {
 	if !anchorManager.verifyAnchorTx {
 		log.Debugf("Not check anchor tx.")
 		return nil
@@ -106,7 +109,7 @@ func CheckAnchorTxValid(tx *wire.MsgTx, checkEgible bool) error {
 	AnchorScript := tx.TxIn[0].SignatureScript
 
 	// Check the Anchor tx has completed, all the assets is locked in lnd will be mapped to sats net only one times
-	lockedInfo, err := checkAnchorPkScript(AnchorScript, checkEgible)
+	lockedInfo, err := checkAnchorPkScript(AnchorScript)
 	//	err = fmt.Errorf("invalid Anchor tx <%s>, just for test", tx.TxHash().String()) // Just for test
 	if err != nil {
 		log.Debugf("invalid Anchor tx, invalid Anchor script: %s, err: %s", tx.TxHash().String(), err.Error())
@@ -146,7 +149,7 @@ func GetLockedTxInfo(tx *wire.MsgTx) (*LockedTxInfo, error) {
 
 	fmt.Printf("AnchorScript: %x\n", AnchorScript)
 
-	lockedTxInfo, err := ParseAnchorScript(AnchorScript)
+	lockedTxInfo, err := checkAnchorPkScript(AnchorScript)
 	if err != nil {
 		err := fmt.Errorf("%s : anchortx[%s]", err.Error(), tx.TxHash().String())
 		return nil, err
@@ -227,13 +230,18 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 		}
 	}
 
+	// 读取sig
+	if !tokenizer.Next() {
+		return nil, fmt.Errorf("script too short: missing signature")
+	}
+	sig := tokenizer.Data()
+
 	info := &LockedTxInfo{
-		// TxId:          txid, // txid,
-		// Index:         int32(outputIndex),
 		Utxo:          string(utxo),
 		WitnessScript: witnessScript,
 		Value:         value,
 		TxAssets:      txAssets,
+		Sig:           sig,
 	}
 	return info, nil
 }
@@ -301,7 +309,34 @@ func PublicKeyToTaprootAddress(pubKey *btcec.PublicKey) (*btcutil.AddressTaproot
 	return btcutil.NewAddressTaproot(schnorr.SerializePubKey(taprootPubKey), anchorManager.anchorConfig.ChainParams)
 }
 
-func checkAnchorPkScript(anchorPkScript []byte, bCheckNodeEgible bool) (*LockedTxInfo, error) {
+func StandardAnchorScript(fundingUtxo string, witnessScript []byte, value int64, assets wire.TxAssets) ([]byte, error) {
+	assetsBuf, err := assets.Serialize()
+	if err != nil {
+		return nil, err
+	}
+
+	return txscript.NewScriptBuilder().
+		AddData([]byte(fundingUtxo)).
+		AddData(witnessScript).
+		AddInt64(int64(value)).
+		AddData(assetsBuf).Script()
+}
+
+func VerifyMessage(pubKey *secp256k1.PublicKey, msg []byte, signature *ecdsa.Signature) bool {
+	// Compute the hash of the message.
+	var msgDigest []byte
+	doubleHash := false
+	if doubleHash {
+		msgDigest = chainhash.DoubleHashB(msg)
+	} else {
+		msgDigest = chainhash.HashB(msg)
+	}
+
+	// Verify the signature using the public key.
+	return signature.Verify(msgDigest, pubKey)
+}
+
+func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 	lockedTxInfo, err := ParseAnchorScript(anchorPkScript)
 	if err != nil {
 		return nil, err
@@ -329,34 +364,46 @@ func checkAnchorPkScript(anchorPkScript []byte, bCheckNodeEgible bool) (*LockedT
 		return nil, fmt.Errorf("invalid addr type %d", addrType)
 	}
 
-	if bCheckNodeEgible {
-		// 这个检查有时效性，只有在tx被广播时才需要检查
-		hasSuperNode := false
-		for i, addr := range addresses2 {
-			pubkey, err := BytesToPublicKey(addr.ScriptAddress())
-			if err != nil {
-				return nil, fmt.Errorf("BytesToPublicKey failed. %v", err)
-			}
-	
-			p2trAddr, err := PublicKeyToTaprootAddress(pubkey)
-			if err != nil {
-				return nil, fmt.Errorf("PublicKeyToTaprootAddress failed. %v", err)
-			}
-	
-			log.Infof("wallet %d address: %s\n", i, p2trAddr.EncodeAddress()) // 通道双方，需要检查是否存在super node的地址
-	
+	invoice, err := StandardAnchorScript(lockedTxInfo.Utxo, lockedTxInfo.WitnessScript,
+		lockedTxInfo.Value, *lockedTxInfo.TxAssets)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := ecdsa.ParseDERSignature(lockedTxInfo.Sig)
+	if err != nil {
+		return nil, err
+	}
+
+	hasSuperNode := false
+	for _, addr := range addresses2 {
+		pubkey, err := BytesToPublicKey(addr.ScriptAddress())
+		if err != nil {
+			return nil, fmt.Errorf("BytesToPublicKey failed. %v", err)
+		}
+
+		if VerifyMessage(pubkey, invoice, sig) {
+			// bootstrap or core node
 			// check super node public key: pubkey
-			if isSuperPublic(pubkey.SerializeCompressed()) {
+			if IsCoreNode(pubkey.SerializeCompressed()) {
 				hasSuperNode = true
 				break
 			}
 		}
-	
-		if !hasSuperNode {
-			return nil, fmt.Errorf("NO super node public key in multisig addr")
-		}
+
+		// p2trAddr, err := PublicKeyToTaprootAddress(pubkey)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("PublicKeyToTaprootAddress failed. %v", err)
+		// }
+
+		// log.Infof("wallet %d address: %s\n", i, p2trAddr.EncodeAddress()) // 通道双方，需要检查是否存在super node的地址
+
+		
 	}
-	
+
+	if !hasSuperNode {
+		return nil, fmt.Errorf("NO super node public key in multisig addr")
+	}
 
 	if IsCheckLockedTx() {
 		// 检查BTC锁定交易, 只有定义了anchorManager.anchorConfig.IndexerHost, anchorManager.anchorConfig.IndexerNet才检查
@@ -479,8 +526,121 @@ func isEqualAsset(utxoAssetInfo *UtxoAssetInfo, assetLocked *wire.AssetInfo) boo
 	return true
 }
 
-func isSuperPublic(publicKey []byte) bool {
-	// TODO
+
+// GenMultiSigScript generates the non-p2sh'd multisig script for 2 of 2
+// pubkeys.
+func GenMultiSigScript(aPub, bPub []byte) ([]byte, error) {
+	if len(aPub) != 33 || len(bPub) != 33 {
+		return nil, fmt.Errorf("pubkey size error: compressed " +
+			"pubkeys only")
+	}
+
+	// Swap to sort pubkeys if needed. Keys are sorted in lexicographical
+	// order. The signatures within the scriptSig must also adhere to the
+	// order, ensuring that the signatures for each public key appears in
+	// the proper order on the stack.
+	if bytes.Compare(aPub, bPub) == 1 {
+		aPub, bPub = bPub, aPub
+	}
+
+	// MultiSigSize 71 bytes
+	//	- OP_2: 1 byte
+	//	- OP_DATA: 1 byte (pubKeyAlice length)
+	//	- pubKeyAlice: 33 bytes
+	//	- OP_DATA: 1 byte (pubKeyBob length)
+	//	- pubKeyBob: 33 bytes
+	//	- OP_2: 1 byte
+	//	- OP_CHECKMULTISIG: 1 byte
+	MultiSigSize := 1 + 1 + 33 + 1 + 33 + 1 + 1
+	bldr := txscript.NewScriptBuilder(txscript.WithScriptAllocSize(
+		MultiSigSize,
+	))
+	bldr.AddOp(txscript.OP_2)
+	bldr.AddData(aPub) // Add both pubkeys (sorted).
+	bldr.AddData(bPub)
+	bldr.AddOp(txscript.OP_2)
+	bldr.AddOp(txscript.OP_CHECKMULTISIG)
+	return bldr.Script()
+}
+
+func GetP2WSHscript(a, b []byte) ([]byte, []byte, error) {
+	// 根据闪电网络的规则，小的公钥放前面
+	witnessScript, err := GenMultiSigScript(a, b)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	pkScript, err := WitnessScriptHash(witnessScript)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return witnessScript, pkScript, nil
+}
+
+func GetBTCAddressFromPkScript(pkScript []byte, chainParams *chaincfg.Params) (string, error) {
+	_, addresses, _, err := txscript.ExtractPkScriptAddrs(pkScript, chainParams)
+	if err != nil {
+		return "", err
+	}
+
+	if len(addresses) == 0 {
+		return "", fmt.Errorf("can't generate BTC address")
+	}
+
+	return addresses[0].EncodeAddress(), nil
+}
+
+func GetP2TRAddressFromPubkey(pubKey []byte, chainParams *chaincfg.Params) (string, error) {
+	key, err := btcec.ParsePubKey(pubKey)
+	if err != nil {
+		return "", err
+	}
+
+	taprootPubKey := txscript.ComputeTaprootKeyNoScript(key)
+	addr, err := btcutil.NewAddressTaproot(schnorr.SerializePubKey(taprootPubKey), chainParams)
+	if err != nil {
+		return "", err
+	}
+	return addr.EncodeAddress(), nil
+}
+
+func GetBootstrapPubKey() []byte {
+	pubkey, _ := hex.DecodeString(bootstrapnode.BootstrapCertificateIssuer)
+	return pubkey
+}
+
+func GetCoreNodeChannelAddress(pubkey []byte, chainParams *chaincfg.Params) (string, error) {
+	// 生成P2WSH地址
+	_, pkScript, err := GetP2WSHscript(GetBootstrapPubKey(), pubkey)
+	if err != nil {
+		return "", err
+	}
+
+	// 生成地址
+	address, err := GetBTCAddressFromPkScript(pkScript, chainParams)
+	if err != nil {
+		return "", err
+	}
+
+	return address, nil
+}
+
+
+
+func IsCoreNode(pubKey []byte) bool {
+	if hex.EncodeToString(pubKey) == bootstrapnode.BootstrapCertificateIssuer {
+		return true
+	}
+
+	// 获得通道地址
+	// channelAddr, err := GetCoreNodeChannelAddress(pubKey, anchorManager.anchorConfig.ChainParams)
+	// if err != nil {
+	// 	return false
+	// }
+
+	// 检查是否有质押的资产
+
 	return true
 }
 

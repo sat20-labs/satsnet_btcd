@@ -32,7 +32,7 @@ func (mp *TxPool) CheckAnchorTxValid(tx *wire.MsgTx, txHeight int32) error {
 	fmt.Printf("CheckAnchorTxValid ...\n")
 
 	// Check the locked tx out is valid
-	err := anchortx.CheckAnchorTxValid(tx, mp.cfg.BestHeight() < txHeight)
+	err := anchortx.CheckAnchorTxValid(tx)
 	if err != nil {
 		log.Errorf("invalid Anchor tx: %s", tx.TxHash().String())
 		return err

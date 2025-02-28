@@ -758,7 +758,7 @@ mempoolLoop:
 
 		// Ensure the transaction inputs pass all of the necessary
 		// preconditions before allowing it to be added to the block.
-		_, _, err = blockchain.CheckTransactionInputs(tx, nextBlockHeight, best.Height,
+		_, _, err = blockchain.CheckTransactionInputs(tx, nextBlockHeight,
 			blockUtxos, g.chainParams)
 		if err != nil {
 			log.Debugf("Skipping tx %s due to error in "+
