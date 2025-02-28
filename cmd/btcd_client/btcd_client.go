@@ -312,15 +312,6 @@ func main() {
 
 			testGetRawTransaction(txid)
 			continue
-		} else if method == "getlockedtx" {
-			if length < 2 {
-				fmt.Printf("getlockedtx need txid\n")
-				continue
-			}
-			txid := words[1]
-
-			testGetLockedTx(txid)
-			continue
 		} else if method == "accordinglockedinfo" {
 			if length < 2 {
 				fmt.Printf("accordinglockedinfo need txid\n")

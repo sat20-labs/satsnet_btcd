@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
@@ -34,7 +35,6 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/database"
 	"github.com/sat20-labs/satsnet_btcd/mempool"
 	"github.com/sat20-labs/satsnet_btcd/mining"
-	"github.com/sat20-labs/satsnet_btcd/mining/cpuminer"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer"
 	"github.com/sat20-labs/satsnet_btcd/netsync"
 	"github.com/sat20-labs/satsnet_btcd/peer"
@@ -229,7 +229,7 @@ type server struct {
 	syncManager          *netsync.SyncManager
 	chain                *blockchain.BlockChain
 	txMemPool            *mempool.TxPool
-	cpuMiner             *cpuminer.CPUMiner
+	//cpuMiner             *cpuminer.CPUMiner
 	posMiner             *posminer.POSMiner
 	modifyRebroadcastInv chan interface{}
 	newPeers             chan *serverPeer
@@ -2647,7 +2647,7 @@ func (s *server) Start() {
 			return
 		}
 		srvrLog.Errorf("Start pos miner.")
-		s.posMiner.Start(cfg.TimerGenerate)
+		s.posMiner.Start()
 
 		s.rpcServer.SetVCStore(s.posMiner.GetVCStore())
 	}
@@ -3174,21 +3174,25 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 	blockTemplateGenerator := mining.NewBlkTmplGenerator(&policy,
 		s.chainParams, s.txMemPool, s.chain, s.timeSource,
 		s.sigCache, s.hashCache)
-	s.cpuMiner = cpuminer.New(&cpuminer.Config{
-		ChainParams:            chainParams,
-		BlockTemplateGenerator: blockTemplateGenerator,
-		MiningAddrs:            cfg.miningAddrs,
-		ProcessBlock:           s.syncManager.ProcessBlock,
-		ConnectedCount:         s.ConnectedCount,
-		IsCurrent:              s.syncManager.IsCurrent,
-	})
+	// s.cpuMiner = cpuminer.New(&cpuminer.Config{
+	// 	ChainParams:            chainParams,
+	// 	BlockTemplateGenerator: blockTemplateGenerator,
+	// 	MiningAddrs:            cfg.miningAddrs,
+	// 	ProcessBlock:           s.syncManager.ProcessBlock,
+	// 	ConnectedCount:         s.ConnectedCount,
+	// 	IsCurrent:              s.syncManager.IsCurrent,
+	// })
+
+	miningPubKey, _ := hex.DecodeString(cfg.MiningPubKey)
 
 	s.posMiner = posminer.New(&posminer.Config{
 		ChainParams:            chainParams,
 		Dial:                   btcdDial,
 		Lookup:                 cfg.lookup,
 		BlockTemplateGenerator: blockTemplateGenerator,
-		MiningAddrs:            cfg.miningAddrs,
+		MiningAddr:             cfg.miningAddrs[0],
+		MiningPubKey:           miningPubKey,
+		TimerGenerate:          cfg.TimerGenerate,
 		ProcessBlock:           s.syncManager.ProcessBlock,
 		OnNewBlockMined:        s.syncManager.OnNewBlockMined,
 		ConnectedCount:         s.ConnectedCount,
@@ -3306,7 +3310,8 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 			DB:           db,
 			TxMemPool:    s.txMemPool,
 			Generator:    blockTemplateGenerator,
-			CPUMiner:     s.cpuMiner,
+			//CPUMiner:     s.cpuMiner,
+			PosMiner:     s.posMiner,
 			TxIndex:      s.txIndex,
 			AddrIndex:    s.addrIndex,
 			CfIndex:      s.cfIndex,

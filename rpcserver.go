@@ -38,7 +38,6 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/database"
 	"github.com/sat20-labs/satsnet_btcd/mempool"
 	"github.com/sat20-labs/satsnet_btcd/mining"
-	"github.com/sat20-labs/satsnet_btcd/mining/cpuminer"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechain"
@@ -940,7 +939,7 @@ func handleGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 	// Create a reply
 	reply := make([]string, c.NumBlocks)
 
-	blockHashes, err := s.cfg.CPUMiner.GenerateNBlocks(c.NumBlocks)
+	blockHashes, err := s.cfg.PosMiner.GenerateNBlocks(c.NumBlocks)
 	if err != nil {
 		return nil, &btcjson.RPCError{
 			Code:    btcjson.ErrRPCInternal.Code,
@@ -2318,12 +2317,12 @@ func handleGetDifficulty(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 
 // handleGetGenerate implements the getgenerate command.
 func handleGetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	return s.cfg.CPUMiner.IsMining(), nil
+	return s.cfg.PosMiner.IsMining(), nil
 }
 
 // handleGetHashesPerSec implements the gethashespersec command.
 func handleGetHashesPerSec(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (interface{}, error) {
-	return int64(s.cfg.CPUMiner.HashesPerSecond()), nil
+	return int64(s.cfg.PosMiner.HashesPerSecond()), nil
 }
 
 // handleGetHeaders implements the getheaders command.
@@ -2528,9 +2527,9 @@ func handleGetMiningInfo(s *rpcServer, cmd interface{}, closeChan <-chan struct{
 		CurrentBlockWeight: best.BlockWeight,
 		CurrentBlockTx:     best.NumTxns,
 		Difficulty:         getDifficultyRatio(best.Bits, s.cfg.ChainParams),
-		Generate:           s.cfg.CPUMiner.IsMining(),
-		GenProcLimit:       s.cfg.CPUMiner.NumWorkers(),
-		HashesPerSec:       s.cfg.CPUMiner.HashesPerSecond(),
+		Generate:           s.cfg.PosMiner.IsMining(),
+		GenProcLimit:       s.cfg.PosMiner.NumWorkers(),
+		HashesPerSec:       s.cfg.PosMiner.HashesPerSecond(),
 		NetworkHashPS:      networkHashesPerSec,
 		PooledTx:           uint64(s.cfg.TxMemPool.Count()),
 		TestNet:            cfg.TestNet3,
@@ -3674,7 +3673,7 @@ func handleSetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 	}
 
 	if !generate {
-		s.cfg.CPUMiner.Stop()
+		s.cfg.PosMiner.Stop()
 	} else {
 		// Respond with an error if there are no addresses to pay the
 		// created blocks to.
@@ -3687,8 +3686,8 @@ func handleSetGenerate(s *rpcServer, cmd interface{}, closeChan <-chan struct{})
 		}
 
 		// It's safe to call start even if it's already started.
-		s.cfg.CPUMiner.SetNumWorkers(int32(genProcLimit))
-		s.cfg.CPUMiner.Start()
+		s.cfg.PosMiner.SetNumWorkers(int32(genProcLimit))
+		s.cfg.PosMiner.Start()
 	}
 	return nil, nil
 }
@@ -4965,7 +4964,7 @@ type rpcserverConfig struct {
 	// the CPU.  CPU mining is typically only useful for test purposes when
 	// doing regression or simulation testing.
 	Generator *mining.BlkTmplGenerator
-	CPUMiner  *cpuminer.CPUMiner
+	//CPUMiner  *cpuminer.CPUMiner
 	PosMiner  *posminer.POSMiner
 
 	// These fields define any optional indexes the RPC server can make use

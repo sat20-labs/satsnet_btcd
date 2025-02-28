@@ -28,11 +28,11 @@ const (
 // 	Amount   int64  // the amount with locked in lnd
 // }
 
-func (mp *TxPool) CheckAnchorTxValid(tx *wire.MsgTx) error {
+func (mp *TxPool) CheckAnchorTxValid(tx *wire.MsgTx, txHeight int32) error {
 	fmt.Printf("CheckAnchorTxValid ...\n")
 
 	// Check the locked tx out is valid
-	err := anchortx.CheckAnchorTxValid(tx)
+	err := anchortx.CheckAnchorTxValid(tx, mp.cfg.BestHeight() < txHeight)
 	if err != nil {
 		log.Errorf("invalid Anchor tx: %s", tx.TxHash().String())
 		return err

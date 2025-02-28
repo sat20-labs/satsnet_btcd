@@ -4,10 +4,8 @@
 package anchortx
 
 import (
-	"encoding/hex"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -19,59 +17,22 @@ type LockedInfoInBTCChain struct {
 	Utxo string // the txid with locked in lnd
 	//LockedAddresses []string // the locked addresses, it should be multi sig address
 	pkScript  []byte // the pkscript
-	Amount    int64  // the amount with locked in lnd
+	Value     int64  // the sats with locked in lnd
 	AssetInfo []*UtxoAssetInfo
 }
 
 func IsCheckLockedTx() bool {
-	host := anchorManager.anchorConfig.IndexerHost
-	net := anchorManager.anchorConfig.IndexerNet
-	if host == "" || net == "" {
-		return false
-	}
 	return true
 }
 
-func GetLockedInfo(txid string) (*LockedInfoInBTCChain, error) {
-	lockedInfo := &LockedInfoInBTCChain{}
-	host := anchorManager.anchorConfig.IndexerHost
-	net := anchorManager.anchorConfig.IndexerNet
-
-	// Get TxInfo from BTC chain (Layer 1 chain)
-	indexerClient := NewIndexerClient(host, net)
-	rawTx, err := indexerClient.GetRawTx(txid)
-	if err != nil {
-		fmt.Printf("GetRawTx failed: %s\n", err.Error())
-		return nil, err
-	}
-
-	dataTx, err := hex.DecodeString(rawTx)
-	if err != nil {
-		fmt.Printf("DecodeString raw data failed: %s\n", err.Error())
-		return nil, err
-	}
-	tx, err := btcutil.NewTxFromBytes(dataTx)
-	if err != nil {
-		fmt.Printf("btcutil.NewTxFromBytes failed: %s\n", err.Error())
-		return nil, err
-	}
-	logMsgTx(tx.MsgTx())
-
-	// Only get locked info with first txout
-	out := tx.MsgTx().TxOut[0]
-	lockedInfo.Utxo = fmt.Sprintf("%s:%d", txid, 0)
-	lockedInfo.pkScript = out.PkScript
-	lockedInfo.Amount = out.Value
-
-	return lockedInfo, nil
-}
 func GetLockedUtxoInfo(utxo string) (*LockedInfoInBTCChain, error) {
 	lockedInfo := &LockedInfoInBTCChain{}
+	scheme := anchorManager.anchorConfig.IndexerScheme
 	host := anchorManager.anchorConfig.IndexerHost
 	net := anchorManager.anchorConfig.IndexerNet
 
 	// Get TxInfo from BTC chain (Layer 1 chain)
-	indexerClient := NewIndexerClient(host, net)
+	indexerClient := NewIndexerClient(scheme, host, net)
 	utxoAssetsInfo, err := indexerClient.GetTxUtxoAssets(utxo)
 	if err != nil {
 		fmt.Printf("GetRawTx failed: %s\n", err.Error())
@@ -80,7 +41,7 @@ func GetLockedUtxoInfo(utxo string) (*LockedInfoInBTCChain, error) {
 
 	lockedInfo.Utxo = utxo
 	lockedInfo.pkScript = utxoAssetsInfo.OutValue.PkScript
-	lockedInfo.Amount = utxoAssetsInfo.OutValue.Value
+	lockedInfo.Value = utxoAssetsInfo.OutValue.Value
 	lockedInfo.AssetInfo = utxoAssetsInfo.AssetInfo
 
 	return lockedInfo, nil

@@ -7,7 +7,6 @@ package posminer
 import (
 	"errors"
 	"fmt"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -77,9 +76,11 @@ type Config struct {
 	// generate block templates that the miner will attempt to solve.
 	BlockTemplateGenerator *mining.BlkTmplGenerator
 
-	// MiningAddrs is a list of payment addresses to use for the generated
-	// blocks.  Each generated block will randomly choose one of them.
-	MiningAddrs []btcutil.Address
+	// MiningAddrs is the payment addresses to use for the generated blocks. 
+	MiningAddr btcutil.Address
+	MiningPubKey []byte
+
+	TimerGenerate        bool 
 
 	// ProcessBlock defines the function to call with any solved blocks.
 	// It typically must run the provided block through the same set of
@@ -368,8 +369,9 @@ out:
 			}
 
 			// Choose a payment address at random.
-			rand.Seed(time.Now().UnixNano())
-			payToAddr := m.cfg.MiningAddrs[rand.Intn(len(m.cfg.MiningAddrs))]
+			// rand.Seed(time.Now().UnixNano())
+			// payToAddr := m.cfg.MiningAddrs[rand.Intn(len(m.cfg.MiningAddrs))]
+			payToAddr := m.cfg.MiningAddr
 
 			// Create a new block template using the available transactions
 			// in the memory pool as a source of transactions to potentially
@@ -478,7 +480,7 @@ out:
 // already been started will have no effect.
 //
 // This function is safe for concurrent access.
-func (m *POSMiner) Start(timerGenerate bool) {
+func (m *POSMiner) Start() {
 	m.Lock()
 	defer m.Unlock()
 
@@ -489,7 +491,7 @@ func (m *POSMiner) Start(timerGenerate bool) {
 	}
 
 	m.quit = make(chan struct{})
-	if timerGenerate {
+	if m.cfg.TimerGenerate {
 		log.Infof("POS miner started with timerGenerate")
 		m.wg.Add(1)
 		go m.miningWorkerController()
@@ -657,8 +659,9 @@ func (m *POSMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		curHeight := m.g.BestSnapshot().Height
 
 		// Choose a payment address at random.
-		rand.Seed(time.Now().UnixNano())
-		payToAddr := m.cfg.MiningAddrs[rand.Intn(len(m.cfg.MiningAddrs))]
+		// rand.Seed(time.Now().UnixNano())
+		// payToAddr := m.cfg.MiningAddrs[rand.Intn(len(m.cfg.MiningAddrs))]
+		payToAddr := m.cfg.MiningAddr
 
 		// Create a new block template using the available transactions
 		// in the memory pool as a source of transactions to potentially
@@ -798,8 +801,9 @@ func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, int32, error) {
 	}
 
 	// Choose a payment address at random.
-	rand.Seed(time.Now().UnixNano())
-	payToAddr := m.cfg.MiningAddrs[rand.Intn(len(m.cfg.MiningAddrs))]
+	// rand.Seed(time.Now().UnixNano())
+	// payToAddr := m.cfg.MiningAddrs[rand.Intn(len(m.cfg.MiningAddrs))]
+	payToAddr := m.cfg.MiningAddr
 
 	// Create a new block template using the available transactions
 	// in the memory pool as a source of transactions to potentially

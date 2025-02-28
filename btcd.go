@@ -257,6 +257,7 @@ func btcdMain(serverChan chan<- *server) error {
 
 	// initialize anchor config
 	anchorCfg := &anchortx.AnchorConfig{
+		IndexerScheme: cfg.IndexerScheme,
 		IndexerHost: cfg.IndexerHost,
 		IndexerNet:  cfg.IndexerNet,
 		ChainParams: activeNetParams.Params,

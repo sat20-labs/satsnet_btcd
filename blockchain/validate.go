@@ -955,7 +955,7 @@ func (b *BlockChain) checkBIP0030(node *blockNode, block *btcutil.Block, view *U
 //
 // NOTE: The transaction MUST have already been sanity checked with the
 // CheckTransactionSanity function prior to calling this function.
-func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpoint, chainParams *chaincfg.Params) (int64, wire.TxAssets, error) {
+func CheckTransactionInputs(tx *btcutil.Tx, txHeight, bestHeight int32, utxoView *UtxoViewpoint, chainParams *chaincfg.Params) (int64, wire.TxAssets, error) {
 	// Coinbase transactions have no inputs.
 	msgTx := tx.MsgTx()
 	if IsCoinBaseTx(msgTx) {
@@ -965,7 +965,7 @@ func CheckTransactionInputs(tx *btcutil.Tx, txHeight int32, utxoView *UtxoViewpo
 	// mapping transactions have anchor inputs.
 	if IsAnchorTx(msgTx) {
 		// Check anchor input
-		err := anchortx.CheckAnchorTxValid(msgTx)
+		err := anchortx.CheckAnchorTxValid(msgTx, bestHeight < txHeight)
 		if err != nil {
 			str := fmt.Sprintf("invalid anchor tx with %s", tx.Hash())
 			return 0, nil, ruleError(ErrAnchorTXVerifyFailed, str)
@@ -1275,7 +1275,7 @@ func (b *BlockChain) checkConnectBlock(node *blockNode, block *btcutil.Block, vi
 	var totalFees int64
 	totalFeeAssets := wire.TxAssets{}
 	for _, tx := range transactions {
-		txFee, feeAssets, err := CheckTransactionInputs(tx, node.height, view,
+		txFee, feeAssets, err := CheckTransactionInputs(tx, node.height, b.BestSnapshot().Height, view,
 			b.chainParams)
 		if err != nil {
 			return err

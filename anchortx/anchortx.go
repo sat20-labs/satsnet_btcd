@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -35,13 +34,14 @@ const (
 )
 
 type AnchorConfig struct {
-	IndexerHost string
-	IndexerNet  string
-	ChainParams *chaincfg.Params
+	IndexerScheme string
+	IndexerHost   string
+	IndexerNet    string
+	ChainParams   *chaincfg.Params
 }
 type AnchorManager struct {
 	anchorConfig   *AnchorConfig
-	superNodeList  [][]byte
+	superNodeList  map[string][]byte // address > public key
 	verifyAnchorTx bool
 	quit           chan struct{}
 }
@@ -65,8 +65,10 @@ func StartAnchorManager(config *AnchorConfig) bool {
 		return false
 	}
 
+	anchorManager.superNodeList = make(map[string][]byte)
 	anchorManager.anchorConfig = config
 	anchorManager.quit = make(chan struct{})
+	log.Debugf("AnchorConfig: IndexerScheme: %s", anchorManager.anchorConfig.IndexerScheme)
 	log.Debugf("AnchorConfig: IndexerHost: %s", anchorManager.anchorConfig.IndexerHost)
 	log.Debugf("AnchorConfig: IndexerNet: %s", anchorManager.anchorConfig.IndexerNet)
 	log.Debugf("AnchorConfig: ChainParams: %s", anchorManager.anchorConfig.ChainParams.Name)
@@ -75,7 +77,8 @@ func StartAnchorManager(config *AnchorConfig) bool {
 	anchorManager.verifyAnchorTx = true
 	if anchorManager.anchorConfig.IndexerHost == "" || anchorManager.anchorConfig.IndexerNet == "" {
 		//anchorManager.verifyAnchorTx = false
-		log.Debugf("The node not config indexer infomation, will not check anchor tx")
+		//log.Debugf("The node not config indexer infomation, will not check anchor tx")
+		return false
 	}
 
 	//anchorManager.updateSuperList()
@@ -90,8 +93,8 @@ func Stop() {
 	}
 }
 
-func CheckAnchorTxValid(tx *wire.MsgTx) error {
-	if anchorManager.verifyAnchorTx == false {
+func CheckAnchorTxValid(tx *wire.MsgTx, checkEgible bool) error {
+	if !anchorManager.verifyAnchorTx {
 		log.Debugf("Not check anchor tx.")
 		return nil
 	}
@@ -103,7 +106,7 @@ func CheckAnchorTxValid(tx *wire.MsgTx) error {
 	AnchorScript := tx.TxIn[0].SignatureScript
 
 	// Check the Anchor tx has completed, all the assets is locked in lnd will be mapped to sats net only one times
-	lockedInfo, err := checkAnchorPkScript(AnchorScript)
+	lockedInfo, err := checkAnchorPkScript(AnchorScript, checkEgible)
 	//	err = fmt.Errorf("invalid Anchor tx <%s>, just for test", tx.TxHash().String()) // Just for test
 	if err != nil {
 		log.Debugf("invalid Anchor tx, invalid Anchor script: %s, err: %s", tx.TxHash().String(), err.Error())
@@ -190,17 +193,6 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 	}
 	utxo := tokenizer.Data()
 
-	// parts := strings.Split(string(utxo), ":")
-	// if len(parts) != 2 {
-	// 	return nil, errors.New("utxo should be of the form txid:index")
-	// }
-	// txid := parts[0]
-
-	// outputIndex, err := strconv.ParseUint(parts[1], 10, 32)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("invalid output index: %v", err)
-	// }
-
 	// The Second opcode must be a canonical data push, the length of the
 	// data push is bounded to 40 by the initial check on overall script
 	// length.
@@ -234,15 +226,6 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 			return nil, err
 		}
 	}
-
-	// The witness program is valid if there are no more opcodes, and we
-	// terminated without a parsing error.
-	//valid := tokenizer.Done() && tokenizer.Err() == nil
-
-	// txid := string(AnchorScript[0:32])
-	// outputScript := AnchorScript[32:65]
-	// amount := binary.LittleEndian.Uint64(AnchorScript[65:73])
-	//extraNonce := int64(AnchorScript[73:81])
 
 	info := &LockedTxInfo{
 		// TxId:          txid, // txid,
@@ -318,7 +301,7 @@ func PublicKeyToTaprootAddress(pubKey *btcec.PublicKey) (*btcutil.AddressTaproot
 	return btcutil.NewAddressTaproot(schnorr.SerializePubKey(taprootPubKey), anchorManager.anchorConfig.ChainParams)
 }
 
-func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
+func checkAnchorPkScript(anchorPkScript []byte, bCheckNodeEgible bool) (*LockedTxInfo, error) {
 	lockedTxInfo, err := ParseAnchorScript(anchorPkScript)
 	if err != nil {
 		return nil, err
@@ -345,60 +328,45 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 	if addrType2 != txscript.MultiSigTy {
 		return nil, fmt.Errorf("invalid addr type %d", addrType)
 	}
-	hasSuperNode := false
-	for i, addr := range addresses2 {
-		pubkey, err := BytesToPublicKey(addr.ScriptAddress())
-		if err != nil {
-			return nil, fmt.Errorf("BytesToPublicKey failed. %v", err)
+
+	if bCheckNodeEgible {
+		// 这个检查有时效性，只有在tx被广播时才需要检查
+		hasSuperNode := false
+		for i, addr := range addresses2 {
+			pubkey, err := BytesToPublicKey(addr.ScriptAddress())
+			if err != nil {
+				return nil, fmt.Errorf("BytesToPublicKey failed. %v", err)
+			}
+	
+			p2trAddr, err := PublicKeyToTaprootAddress(pubkey)
+			if err != nil {
+				return nil, fmt.Errorf("PublicKeyToTaprootAddress failed. %v", err)
+			}
+	
+			log.Infof("wallet %d address: %s\n", i, p2trAddr.EncodeAddress()) // 通道双方，需要检查是否存在super node的地址
+	
+			// check super node public key: pubkey
+			if isSuperPublic(pubkey.SerializeCompressed()) {
+				hasSuperNode = true
+				break
+			}
 		}
-
-		p2trAddr, err := PublicKeyToTaprootAddress(pubkey)
-		if err != nil {
-			return nil, fmt.Errorf("PublicKeyToTaprootAddress failed. %v", err)
-		}
-
-		log.Infof("wallet %d address: %s\n", i, p2trAddr.EncodeAddress()) // 通道双方，需要检查是否存在super node的地址
-
-		// check super node public key: pubkey
-		if isSuperPublic(pubkey.SerializeCompressed()) {
-			hasSuperNode = true
-			break
+	
+		if !hasSuperNode {
+			return nil, fmt.Errorf("NO super node public key in multisig addr")
 		}
 	}
+	
 
-	if hasSuperNode == false {
-		return nil, fmt.Errorf("NO super node public key in multisig addr")
-	}
-
-	// rawTx := GetManagerInstance().l1IndexerClient.GetRawTx(txid)
-	// if rawTx == "" {
-	// 	// 可能还没确认，或者其他原因的延迟，需要下次再检查
-	// 	return fmt.Errorf("can't find tx in mainnet: %s", txid)
-	// }
-
-	// tx, err := DecodeStringToTx(rawTx)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // 只检查第一个输出
-	// txOut := tx.MsgTx().TxOut[0]
-	// if txOut.Value != lockedTxInfo.Amount {
-	// 	return fmt.Errorf("invalid value %d", lockedTxInfo.Amount)
-	// }
-	// if !bytes.Equal(txOut.PkScript, pkScript) {
-	// 	return fmt.Errorf("invalid pkscript")
-	// }
-
-	if IsCheckLockedTx() == true {
+	if IsCheckLockedTx() {
 		// 检查BTC锁定交易, 只有定义了anchorManager.anchorConfig.IndexerHost, anchorManager.anchorConfig.IndexerNet才检查
 		//utxoLocked := fmt.Sprintf("%s:%d", lockedTxInfo.TxId, lockedTxInfo.Index)
 		lockedInfoInBTC, err := GetLockedUtxoInfo(lockedTxInfo.Utxo)
 		if err != nil {
 			return nil, err
 		}
-		if lockedInfoInBTC.Amount < lockedTxInfo.Value {
-			log.Debugf("lockedInfoInBTC.Amount: %d, lockedTxInfo.Amount: %d", lockedInfoInBTC.Amount, lockedTxInfo.Value)
+		if lockedInfoInBTC.Value != lockedTxInfo.Value {
+			log.Debugf("lockedInfoInBTC.Amount: %d, lockedTxInfo.Amount: %d", lockedInfoInBTC.Value, lockedTxInfo.Value)
 			return nil, fmt.Errorf("invalid value %d", lockedTxInfo.Value)
 		}
 		if !bytes.Equal(lockedInfoInBTC.pkScript, pkScript) {
@@ -411,7 +379,7 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 			return nil, fmt.Errorf("invalid binded value %d", bindedValue)
 		}
 
-		if includeAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) == false {
+		if !includeAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) {
 			return nil, fmt.Errorf("invalid assets")
 		}
 	}
@@ -477,12 +445,12 @@ func includeAssets(utxoAssetInfo []*UtxoAssetInfo, txAssets *wire.TxAssets) bool
 	for _, assetLocked := range *txAssets {
 		assetFound := false
 		for _, assetUtxo := range utxoAssetInfo {
-			if isEqualAsset(assetUtxo, &assetLocked) == true {
+			if isEqualAsset(assetUtxo, &assetLocked) {
 				assetFound = true
 				break
 			}
 		}
-		if assetFound == false {
+		if !assetFound {
 			log.Errorf("includeAssets failed, locked Asset: %v not found in utxo", assetLocked)
 			return false
 		}
@@ -512,21 +480,18 @@ func isEqualAsset(utxoAssetInfo *UtxoAssetInfo, assetLocked *wire.AssetInfo) boo
 }
 
 func isSuperPublic(publicKey []byte) bool {
+	// TODO
 	return true
 }
 
 // updateSuperList for sync super list from indexer
 func (m *AnchorManager) updateSuperList() {
-	m.superNodeList = make([][]byte, 0)
-
-	publicKey, _ := hex.DecodeString("027e4e20121cd42053d971944ddd24d8442707062e4815d2b4090b7a62a18c411a")
-
-	m.superNodeList = append(m.superNodeList, publicKey)
+	
 }
 
 // syncSuperListHandler for sync super list from indexer on a timer
 func (m *AnchorManager) syncSuperListHandler() {
-	syncInterval := time.Second * 60
+	syncInterval := time.Second * 20
 	syncTicker := time.NewTicker(syncInterval)
 	defer syncTicker.Stop()
 
