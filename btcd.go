@@ -20,6 +20,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/database"
 	"github.com/sat20-labs/satsnet_btcd/limits"
 	"github.com/sat20-labs/satsnet_btcd/ossec"
+	"github.com/sat20-labs/satsnet_btcd/stp"
 )
 
 const (
@@ -286,6 +287,13 @@ func btcdMain(serverChan chan<- *server) error {
 		server.WaitForShutdown()
 		srvrLog.Infof("Server shutdown complete")
 	}()
+
+	err = stp.LoadSTP()
+	if err != nil {
+		btcdLog.Errorf("Unable to load STP: %v", err)
+		return err
+	}
+
 	server.Start()
 	if serverChan != nil {
 		serverChan <- server

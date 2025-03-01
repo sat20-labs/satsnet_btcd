@@ -18,3 +18,8 @@ func IsBootStrapNode(validatorId uint64, publicKey []byte) bool {
 
 	return false
 }
+
+func CheckValidatorID(validatorID uint64, publicKey []byte) bool {
+	return true
+}
+

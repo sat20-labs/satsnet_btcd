@@ -1,0 +1,25 @@
+# server node configuration
+
+chain: testnet
+peers:
+  - b@025fb789035bc2f0c74384503401222e53f72eefdebf0886517ff26ac7985f52ad@192.168.10.103:9099
+  - s@0367f26af23dc40fdad06752c38264fe621b7bbafb1d41ab436b87ded192f1336e@192.168.10.103:9080
+mode: server
+rpc:
+  scheme: http
+  host: 0.0.0.0:9060
+  proxy: testnet
+
+indexer_layer1:
+  scheme: http
+  host: 192.168.10.103:8009
+
+indexer_layer2:
+  scheme: http
+  host: 192.168.10.103:8019
+
+log: debug
+
+wallet:
+  mode: external
+  psfile: ./wallet.password

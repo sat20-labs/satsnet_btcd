@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/httpclient"
 )
 
 var NetParams = chaincfg.TestNet3Params
@@ -18,7 +19,7 @@ type LockedInfoInBTCChain struct {
 	//LockedAddresses []string // the locked addresses, it should be multi sig address
 	pkScript  []byte // the pkscript
 	Value     int64  // the sats with locked in lnd
-	AssetInfo []*UtxoAssetInfo
+	AssetInfo []*httpclient.UtxoAssetInfo
 }
 
 func IsCheckLockedTx() bool {
@@ -32,7 +33,7 @@ func GetLockedUtxoInfo(utxo string) (*LockedInfoInBTCChain, error) {
 	net := anchorManager.anchorConfig.IndexerNet
 
 	// Get TxInfo from BTC chain (Layer 1 chain)
-	indexerClient := NewIndexerClient(scheme, host, net)
+	indexerClient := httpclient.NewIndexerClient(scheme, host, net)
 	utxoAssetsInfo, err := indexerClient.GetTxUtxoAssets(utxo)
 	if err != nil {
 		fmt.Printf("GetRawTx failed: %s\n", err.Error())

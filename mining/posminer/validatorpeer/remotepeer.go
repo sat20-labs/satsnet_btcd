@@ -18,6 +18,7 @@ import (
 
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/bootstrapnode"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
@@ -359,7 +360,7 @@ func (p *RemotePeer) OnConnDisconnected(connReq *ConnReq) {
 	p.connLock.Unlock()
 
 	// The connection is disconnected, will try to connect again
-	if p.pingHandleStarted == true {
+	if p.pingHandleStarted {
 		err := p.Connect()
 		if err != nil {
 			log.Debugf("----------[RemotePeer]Reconnect to validator peer failed: %v", err)
@@ -557,7 +558,7 @@ func (p *RemotePeer) Connect() error {
 	go p.listenCommand(newConnReq)
 
 	// new pingHandler to send ping timer
-	if p.pingHandleStarted == false {
+	if !p.pingHandleStarted {
 		p.pingQuit = make(chan struct{})
 		p.pingHandleStarted = true
 		go p.pingHandler()
@@ -567,7 +568,7 @@ func (p *RemotePeer) Connect() error {
 }
 
 func (p *RemotePeer) Disconnect() error {
-	if p.pingHandleStarted == true {
+	if p.pingHandleStarted {
 		close(p.pingQuit)
 		p.pingHandleStarted = false
 	}
@@ -593,7 +594,7 @@ out:
 	for {
 		select {
 		case <-pingTicker.C:
-			if p.Connected() == false {
+			if !p.Connected() {
 				// Current conn is inactive, will try to reconnect
 				p.reconnectTimes++
 
@@ -805,7 +806,7 @@ func (p *RemotePeer) handlePongMsg(msg *validatorcommand.MsgPong, connReq *ConnR
 func (p *RemotePeer) HandleRemotePeerInfo(peerInfo *validatorcommand.MsgPeerInfo, connReq *ConnReq) {
 	// 	First check the remote validator is valid, then notify the validator
 
-	if CheckValidatorID(peerInfo.ValidatorId) == false {
+	if !bootstrapnode.CheckValidatorID(peerInfo.ValidatorId, peerInfo.PublicKey[:]) {
 		log.Errorf("----------[RemotePeer]The remote peer is not valid")
 		return
 	}
@@ -824,7 +825,7 @@ func (p *RemotePeer) HandleRemotePeerInfo(peerInfo *validatorcommand.MsgPeerInfo
 func (p *RemotePeer) HandleRemoteGetInfo(getInfo *validatorcommand.MsgGetInfo, connReq *ConnReq) {
 	// 	First check the remote validator is valid, then notify the validator
 
-	if CheckValidatorID(getInfo.ValidatorId) == false {
+	if !bootstrapnode.CheckValidatorID(getInfo.ValidatorId, getInfo.PublicKey[:]) {
 		log.Errorf("----------[RemotePeer]The remote peer is not valid")
 		return
 	}

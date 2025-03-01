@@ -16,6 +16,7 @@ import (
 
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/bootstrapnode"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
@@ -829,7 +830,7 @@ func (p *LocalPeer) SendGetInfoCommand(newConnReq *ConnReq) {
 func (p *LocalPeer) HandleRemotePeerInfoConfirmed(peerInfo *validatorcommand.MsgPeerInfo, connReq *ConnReq) {
 	// 	First check the remote validator is valid, then notify the validator
 
-	if CheckValidatorID(peerInfo.ValidatorId) == false {
+	if !bootstrapnode.CheckValidatorID(peerInfo.ValidatorId, peerInfo.PublicKey[:]) {
 		log.Errorf("----------[LocalPeer]The remote peer is not valid")
 		return
 	}

@@ -25,6 +25,7 @@ import (
 	flags "github.com/jessevdk/go-flags"
 	"github.com/sat20-labs/satsnet_btcd/blockchain"
 	"github.com/sat20-labs/satsnet_btcd/btcec"
+	"github.com/sat20-labs/satsnet_btcd/btcec/schnorr"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
@@ -1482,7 +1483,7 @@ func validateP2TRAddress(pubKey []byte, address string, params *chaincfg.Params)
         return false, fmt.Errorf("failed to compute taproot key")
     }
 
-    taprootAddr, err := btcutil.NewAddressTaproot(tapTweaked.SerializeCompressed()[1:], params)
+    taprootAddr, err := btcutil.NewAddressTaproot(schnorr.SerializePubKey(tapTweaked), params)
     if err != nil {
         return false, err
     }

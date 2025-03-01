@@ -20,6 +20,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/bootstrapnode"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satsnet_btcd/httpclient"
 )
 
 const (
@@ -434,7 +435,7 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 	return lockedTxInfo, nil
 }
 
-func isSameAssets(utxoAssetInfo []*UtxoAssetInfo, txAssets *wire.TxAssets) bool {
+func isSameAssets(utxoAssetInfo []*httpclient.UtxoAssetInfo, txAssets *wire.TxAssets) bool {
 	if utxoAssetInfo == nil && txAssets == nil {
 		return true
 	}
@@ -474,7 +475,7 @@ func isSameAssets(utxoAssetInfo []*UtxoAssetInfo, txAssets *wire.TxAssets) bool 
 
 	return true
 }
-func includeAssets(utxoAssetInfo []*UtxoAssetInfo, txAssets *wire.TxAssets) bool {
+func includeAssets(utxoAssetInfo []*httpclient.UtxoAssetInfo, txAssets *wire.TxAssets) bool {
 	if utxoAssetInfo == nil && txAssets == nil {
 		return true
 	}
@@ -506,7 +507,7 @@ func includeAssets(utxoAssetInfo []*UtxoAssetInfo, txAssets *wire.TxAssets) bool
 	return true
 }
 
-func isEqualAsset(utxoAssetInfo *UtxoAssetInfo, assetLocked *wire.AssetInfo) bool {
+func isEqualAsset(utxoAssetInfo *httpclient.UtxoAssetInfo, assetLocked *wire.AssetInfo) bool {
 	if utxoAssetInfo.Asset.Name.Protocol != assetLocked.Name.Protocol {
 		return false
 	}

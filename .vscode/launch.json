@@ -8,9 +8,9 @@
             "name": "satsnet_btcd",
             "type": "go",
             "request": "launch",
-            "mode": "auto",
+            "mode": "debug",
             "cwd": "${workspaceFolder}",
-            "buildFlags": "",
+            "buildFlags": "-gcflags='all=-N -l'",
             "env": {
             },
             "console": "integratedTerminal",
