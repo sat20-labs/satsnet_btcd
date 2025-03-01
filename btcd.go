@@ -288,12 +288,14 @@ func btcdMain(serverChan chan<- *server) error {
 		srvrLog.Infof("Server shutdown complete")
 	}()
 
-	err = stp.LoadSTP()
-	if err != nil {
-		btcdLog.Errorf("Unable to load STP: %v", err)
-		return err
+	if cfg.EnableSTP {
+		err = stp.LoadSTP()
+		if err != nil {
+			btcdLog.Errorf("Unable to load STP: %v", err)
+			return err
+		}
 	}
-
+	
 	server.Start()
 	if serverChan != nil {
 		serverChan <- server
