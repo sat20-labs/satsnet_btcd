@@ -84,3 +84,24 @@ func SignMsg(msg []byte) ([]byte, error) {
 
 	return signMsg(msg)
 }
+
+
+func GetPubKey() ([]byte, error) {
+	if _stpmar == nil {
+		return nil, fmt.Errorf("STPManager not init")
+	}
+
+	symbol, err := _stpmar.Lookup("GetPubKey")
+	if err != nil {
+		log.Printf("Lookup GetPubKey failed: %v", err)
+		return  nil, err
+	}
+
+	getPubKey, ok := symbol.(func() ([]byte, error))
+	if !ok {
+		log.Printf("symbol type assertion failed")
+		return nil, fmt.Errorf("symbol type assertion failed")
+	}
+
+	return getPubKey()
+}
