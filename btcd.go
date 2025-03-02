@@ -308,16 +308,24 @@ func btcdMain(serverChan chan<- *server) error {
 				return err
 			}
 		}
+		pubkey, err := stp.GetPubKey()
+		if err != nil {
+			btcdLog.Errorf("GetPubKey failed %v", err)
+			return err
+		}
 		if cfg.MiningPubKey != "" {
-			pubkey, err := stp.GetPubKey()
-			if err != nil {
-				btcdLog.Errorf("GetPubKey failed %v", err)
-				return err
-			}
 			if hex.EncodeToString(pubkey) != cfg.MiningPubKey {
 				btcdLog.Errorf("mining pubkey must be consistent with wallet pubkey")
 				return fmt.Errorf("mining pubkey must be consistent with wallet pubkey")
 			}
+		} else {
+			cfg.MiningPubKey = hex.EncodeToString(pubkey)
+			addr, err := getP2TRAddress(pubkey, activeNetParams.Params)
+			if err != nil {
+				btcdLog.Errorf("getP2TRAddress failed, %v", err)
+				return err
+			}
+			cfg.miningAddrs = append(cfg.miningAddrs, addr)
 		}
 	}
 	
