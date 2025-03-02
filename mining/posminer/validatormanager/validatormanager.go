@@ -56,6 +56,7 @@ type Config struct {
 	Dial        func(net.Addr) (net.Conn, error)
 	Lookup      func(string) ([]net.IP, error)
 	ValidatorId uint64
+	ValidatorPubKey []byte
 	BtcdDir     string
 
 	PosMiner PosMinerInterface
@@ -130,7 +131,7 @@ func New(cfg *Config) *ValidatorManager {
 
 	localAddrs, _ := validatorMgr.getLocalAddr()
 	//log.Debugf("Get local address: %s", localAddr.String())
-	validatorCfg := validatorMgr.newValidatorConfig(validatorMgr.Cfg.ValidatorId, nil) // No remote validator
+	validatorCfg := validatorMgr.newValidatorConfig(validatorMgr.Cfg.ValidatorId, validatorMgr.Cfg.ValidatorPubKey,  nil) // No remote validator
 
 	myValidator, err := localvalidator.NewValidator(validatorCfg, localAddrs)
 	if err != nil {
@@ -150,7 +151,8 @@ func New(cfg *Config) *ValidatorManager {
 	return validatorMgr
 }
 
-func (vm *ValidatorManager) newValidatorConfig(localValidatorID uint64, remoteValidatorInfo *validatorinfo.ValidatorInfo) *validator.Config {
+func (vm *ValidatorManager) newValidatorConfig(localValidatorID uint64, localValidatorPubKey []byte,
+	remoteValidatorInfo *validatorinfo.ValidatorInfo) *validator.Config {
 	return &validator.Config{
 		Listener:    vm,
 		ChainParams: vm.Cfg.ChainParams,
@@ -159,6 +161,7 @@ func (vm *ValidatorManager) newValidatorConfig(localValidatorID uint64, remoteVa
 		BtcdDir:     vm.Cfg.BtcdDir,
 
 		LocalValidatorId:    localValidatorID,
+		LocalValidatorPubKey: localValidatorPubKey,
 		RemoteValidatorInfo: remoteValidatorInfo,
 	}
 }
@@ -172,7 +175,7 @@ func (vm *ValidatorManager) Start() {
 	// Load saved validators peers
 	vm.LoadValidatorRecordList()
 
-	validatorCfg := vm.newValidatorConfig(vm.Cfg.ValidatorId, nil) // Start , remote validator info is nil (unkown validator)
+	validatorCfg := vm.newValidatorConfig(vm.Cfg.ValidatorId, vm.Cfg.ValidatorPubKey, nil) // Start , remote validator info is nil (unkown validator)
 
 	PreValidatorList := make([]*validator.Validator, 0)
 
@@ -343,7 +346,7 @@ func (vm *ValidatorManager) OnValidatorListUpdated(validatorList []validatorinfo
 
 			// Try to connect the validator
 			// Add the validator
-			validatorCfg := vm.newValidatorConfig(vm.Cfg.ValidatorId, &validatorInfo) // vm.ValidatorId is Local validator, validatorId is Remote validator when new validator connected
+			validatorCfg := vm.newValidatorConfig(vm.Cfg.ValidatorId, vm.Cfg.ValidatorPubKey, &validatorInfo) // vm.ValidatorId is Local validator, validatorId is Remote validator when new validator connected
 
 			addr, err := vm.getAddr(validatorInfo.Host)
 			if err != nil {
@@ -765,7 +768,7 @@ func (vm *ValidatorManager) OnNewValidatorPeerConnected(netAddr net.Addr, valida
 		Port: port,
 	}
 
-	validatorCfg := vm.newValidatorConfig(vm.Cfg.ValidatorId, validatorInfo) // vm.ValidatorId is Local validator, validatorId is Remote validator when new validator connected
+	validatorCfg := vm.newValidatorConfig(vm.Cfg.ValidatorId, vm.Cfg.ValidatorPubKey, validatorInfo) // vm.ValidatorId is Local validator, validatorId is Remote validator when new validator connected
 	peerValidator, err := validator.NewValidator(validatorCfg, addrPeer)
 	if err != nil {
 		log.Errorf("New Validator failed: %v", err)
@@ -2904,7 +2907,7 @@ func (vm *ValidatorManager) CheckValidatorConnected() {
 		isNewConnected := false
 		validatorNode := vm.LookupValidator(hostIP)
 		if validatorNode == nil {
-			validatorCfg := vm.newValidatorConfig(vm.Cfg.ValidatorId, nil) // vm.ValidatorId is Local validator, validatorId is Remote validator when new validator connected
+			validatorCfg := vm.newValidatorConfig(vm.Cfg.ValidatorId, vm.Cfg.ValidatorPubKey, nil) // vm.ValidatorId is Local validator, validatorId is Remote validator when new validator connected
 
 			addr, err := vm.getAddr(record.Host)
 			if err != nil {

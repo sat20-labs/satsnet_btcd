@@ -102,6 +102,7 @@ type ValidatorListener interface {
 // Config is the struct to hold configuration options useful to Validator.
 type Config struct {
 	LocalValidatorId uint64
+	LocalValidatorPubKey []byte
 	//RemoteValidatorId uint64 // Just remote validator id will be used
 	RemoteValidatorInfo *validatorinfo.ValidatorInfo
 	// The listener for process message from/to this validator peer

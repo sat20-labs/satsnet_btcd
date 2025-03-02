@@ -136,7 +136,7 @@ func (em *EpochMemberManager) updateValidatorsList() {
 		if validatorItem == nil {
 			// 没有找到对应的validator, 需要将这个成员按照离线处理
 			// Add the validator
-			validatorCfg := em.ValidatorMgr.newValidatorConfig(em.ValidatorMgr.Cfg.ValidatorId, nil)
+			validatorCfg := em.ValidatorMgr.newValidatorConfig(em.ValidatorMgr.Cfg.ValidatorId, em.ValidatorMgr.Cfg.ValidatorPubKey, nil)
 
 			addr, err := em.ValidatorMgr.getAddr(epochItem.Host)
 			if err != nil {

@@ -502,12 +502,12 @@ func (m *POSMiner) Start() {
 		Dial:        m.cfg.Dial,
 		Lookup:      m.cfg.Lookup,
 		ValidatorId: m.cfg.ValidatorId,
+		ValidatorPubKey: m.cfg.MiningPubKey,
 		BtcdDir:     m.cfg.BtcdDir,
 		PosMiner:    m,
 	}
 	// Start ValidatorManager
 	m.ValidatorMgr = validatormanager.New(cfg)
-
 	if m.ValidatorMgr != nil {
 		m.ValidatorMgr.Start()
 	}

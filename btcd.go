@@ -5,6 +5,8 @@
 package main
 
 import (
+	"bufio"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,6 +16,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
+	"strings"
 
 	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
@@ -295,6 +298,28 @@ func btcdMain(serverChan chan<- *server) error {
 			return err
 		}
 	}
+	if cfg.Generate {
+		// 只有在钱包解锁之后才能启动miner
+		if !stp.IsUnlocked() {
+			// 创建或者解锁钱包
+			err := walletInterAction()
+			if err != nil {
+				btcdLog.Errorf("Unable to create/unlock wallet %v", err)
+				return err
+			}
+		}
+		if cfg.MiningPubKey != "" {
+			pubkey, err := stp.GetPubKey()
+			if err != nil {
+				btcdLog.Errorf("GetPubKey failed %v", err)
+				return err
+			}
+			if hex.EncodeToString(pubkey) != cfg.MiningPubKey {
+				btcdLog.Errorf("mining pubkey must be consistent with wallet pubkey")
+				return fmt.Errorf("mining pubkey must be consistent with wallet pubkey")
+			}
+		}
+	}
 	
 	server.Start()
 	if serverChan != nil {
@@ -307,6 +332,54 @@ func btcdMain(serverChan chan<- *server) error {
 	<-interrupt
 	return nil
 }
+
+
+// 启动交互模式
+func walletInterAction() error {
+
+	scanner := bufio.NewScanner(os.Stdin)
+	if stp.IsWalletExists() {
+		for {
+			fmt.Print("input password to unlock your wallet:")
+			if !scanner.Scan() {
+				return fmt.Errorf("unlock wallet failed")
+			}
+			input := strings.TrimSpace(scanner.Text())
+			err := stp.UnlockWallet(input)
+			if err == nil {
+				fmt.Print("unlocked.\n")
+				return nil
+			}
+			fmt.Printf("UnlockWallet failed %v, try again\n", err)
+		}
+	} else {
+		for {
+			fmt.Print("input password to create your wallet:")
+			if !scanner.Scan() {
+				return fmt.Errorf("create wallet failed")
+			}
+			password := strings.TrimSpace(scanner.Text())
+	
+			fmt.Print("input your password again:")
+			if !scanner.Scan() {
+				return fmt.Errorf("create wallet failed")
+			}
+			password2 := strings.TrimSpace(scanner.Text())
+			if password != password2 {
+				fmt.Print("password is inconsistent\n")
+				continue
+			}
+	
+			Mnemonic, err := stp.CreateWallet(password)
+			if err == nil {
+				fmt.Printf("wallet created. record your mnemonic and password carefully. your mnemonic:\n%s", Mnemonic)
+				return nil
+			}
+			fmt.Printf("CreateWallet failed. %v\n", err)
+		}
+	}
+}
+
 
 // removeRegressionDB removes the existing regression test database if running
 // in regression test mode and it already exists.

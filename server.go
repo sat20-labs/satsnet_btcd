@@ -3297,8 +3297,6 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 			return nil, errors.New("RPCS: No valid listen address")
 		}
 
-		vcStore := s.posMiner.GetVCStore()
-
 		s.rpcServer, err = newRPCServer(&rpcserverConfig{
 			Listeners:    rpcListeners,
 			StartupTime:  s.startupTime,
@@ -3316,7 +3314,7 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 			AddrIndex:    s.addrIndex,
 			CfIndex:      s.cfIndex,
 			FeeEstimator: s.feeEstimator,
-			VCStore:      vcStore,
+			VCStore:      nil,
 		})
 		if err != nil {
 			srvrLog.Errorf("Unable to start RPC server: %v", err)

@@ -628,7 +628,7 @@ func GetCoreNodeChannelAddress(pubkey []byte, chainParams *chaincfg.Params) (str
 }
 
 
-
+// TODO
 func IsCoreNode(pubKey []byte) bool {
 	if hex.EncodeToString(pubKey) == bootstrapnode.BootstrapCertificateIssuer {
 		return true

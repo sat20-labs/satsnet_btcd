@@ -33,12 +33,7 @@ func NewValidator(config *validator.Config, addrs []net.Addr) (*LocalValidator, 
 		},
 	}
 
-	validatorKey, err := InitValidatorKey(localValidator.Cfg.BtcdDir, localValidator.Cfg.ChainParams)
-	if err != nil {
-		log.Errorf("InitValidatorKey failed: %v", err)
-		return nil, err
-	}
-
+	validatorKey := NewValidatorKey(localValidator.Cfg.LocalValidatorPubKey, localValidator.Cfg.ChainParams)
 	localValidator.validatorKey = validatorKey
 
 	publicKey, err := localValidator.validatorKey.GetPublicKey()

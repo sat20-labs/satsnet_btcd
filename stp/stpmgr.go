@@ -85,6 +85,107 @@ func SignMsg(msg []byte) ([]byte, error) {
 	return signMsg(msg)
 }
 
+func IsWalletExists() (bool) {
+	if _stpmar == nil {
+		return false
+	}
+
+	symbol, err := _stpmar.Lookup("IsWalletExisting")
+	if err != nil {
+		log.Printf("Lookup IsWalletExisting failed: %v", err)
+		return  false
+	}
+
+	isWalletExisting, ok := symbol.(func() (bool))
+	if !ok {
+		log.Printf("symbol type assertion failed")
+		return false
+	}
+
+	return isWalletExisting()
+}
+
+
+func IsUnlocked() (bool) {
+	if _stpmar == nil {
+		return false
+	}
+
+	symbol, err := _stpmar.Lookup("IsUnlocked")
+	if err != nil {
+		log.Printf("Lookup IsUnlocked failed: %v", err)
+		return  false
+	}
+
+	isUnlocked, ok := symbol.(func() (bool))
+	if !ok {
+		log.Printf("symbol type assertion failed")
+		return false
+	}
+
+	return isUnlocked()
+}
+
+
+func CreateWallet(pw string) (string, error) {
+	if _stpmar == nil {
+		return "", fmt.Errorf("STPManager not init")
+	}
+
+	symbol, err := _stpmar.Lookup("CreateWallet")
+	if err != nil {
+		log.Printf("Lookup CreateWallet failed: %v", err)
+		return "", err
+	}
+
+	f, ok := symbol.(func(string) (string, error))
+	if !ok {
+		log.Printf("symbol type assertion failed")
+		return "", err
+	}
+
+	return f(pw)
+}
+
+func UnlockWallet(pw string) (error) {
+	if _stpmar == nil {
+		return fmt.Errorf("STPManager not init")
+	}
+
+	symbol, err := _stpmar.Lookup("UnlockWallet")
+	if err != nil {
+		log.Printf("Lookup UnlockWallet failed: %v", err)
+		return err
+	}
+
+	f, ok := symbol.(func(string) (error))
+	if !ok {
+		log.Printf("symbol type assertion failed")
+		return err
+	}
+
+	return f(pw)
+}
+
+func ImportWallet(mn, pw string) (error) {
+	if _stpmar == nil {
+		return fmt.Errorf("STPManager not init")
+	}
+
+	symbol, err := _stpmar.Lookup("ImportWallet")
+	if err != nil {
+		log.Printf("Lookup ImportWallet failed: %v", err)
+		return err
+	}
+
+	f, ok := symbol.(func(string, string) (error))
+	if !ok {
+		log.Printf("symbol type assertion failed")
+		return err
+	}
+
+	return f(mn, pw)
+}
 
 func GetPubKey() ([]byte, error) {
 	if _stpmar == nil {
