@@ -17,10 +17,10 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/httpclient"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/bootstrapnode"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
-	"github.com/sat20-labs/satsnet_btcd/httpclient"
 )
 
 const (
@@ -391,15 +391,6 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 				break
 			}
 		}
-
-		// p2trAddr, err := PublicKeyToTaprootAddress(pubkey)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("PublicKeyToTaprootAddress failed. %v", err)
-		// }
-
-		// log.Infof("wallet %d address: %s\n", i, p2trAddr.EncodeAddress()) // 通道双方，需要检查是否存在super node的地址
-
-		
 	}
 
 	if !hasSuperNode {
@@ -527,7 +518,6 @@ func isEqualAsset(utxoAssetInfo *httpclient.UtxoAssetInfo, assetLocked *wire.Ass
 	return true
 }
 
-
 // GenMultiSigScript generates the non-p2sh'd multisig script for 2 of 2
 // pubkeys.
 func GenMultiSigScript(aPub, bPub []byte) ([]byte, error) {
@@ -607,7 +597,7 @@ func GetP2TRAddressFromPubkey(pubKey []byte, chainParams *chaincfg.Params) (stri
 }
 
 func GetBootstrapPubKey() []byte {
-	pubkey, _ := hex.DecodeString(bootstrapnode.BootstrapCertificateIssuer)
+	pubkey, _ := hex.DecodeString(bootstrapnode.BootstrapPubKey)
 	return pubkey
 }
 
@@ -627,27 +617,13 @@ func GetCoreNodeChannelAddress(pubkey []byte, chainParams *chaincfg.Params) (str
 	return address, nil
 }
 
-
-// TODO
 func IsCoreNode(pubKey []byte) bool {
-	if hex.EncodeToString(pubKey) == bootstrapnode.BootstrapCertificateIssuer {
-		return true
-	}
-
-	// 获得通道地址
-	// channelAddr, err := GetCoreNodeChannelAddress(pubKey, anchorManager.anchorConfig.ChainParams)
-	// if err != nil {
-	// 	return false
-	// }
-
-	// 检查是否有质押的资产
-
-	return true
+	return bootstrapnode.IsCoreNode(0, pubKey)
 }
 
 // updateSuperList for sync super list from indexer
 func (m *AnchorManager) updateSuperList() {
-	
+
 }
 
 // syncSuperListHandler for sync super list from indexer on a timer

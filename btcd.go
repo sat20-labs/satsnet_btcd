@@ -372,7 +372,14 @@ func walletInterAction() error {
 	
 			Mnemonic, err := stp.CreateWallet(password)
 			if err == nil {
-				fmt.Printf("wallet created. record your mnemonic and password carefully. your mnemonic:\n%s", Mnemonic)
+				pubkey, err := stp.GetPubKey()
+				if err != nil {
+					return err
+				}
+
+				fmt.Printf("Wallet created. Record your mnemonic and password carefully. Mnemonic:\n%s\nPubkey:\n%s\n", Mnemonic, hex.EncodeToString(pubkey))
+				
+
 				return nil
 			}
 			fmt.Printf("CreateWallet failed. %v\n", err)

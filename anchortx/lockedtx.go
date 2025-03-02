@@ -12,8 +12,6 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/httpclient"
 )
 
-var NetParams = chaincfg.TestNet3Params
-
 type LockedInfoInBTCChain struct {
 	Utxo string // the txid with locked in lnd
 	//LockedAddresses []string // the locked addresses, it should be multi sig address
@@ -98,6 +96,10 @@ func pkScriptToAddr(pkScript []byte) (string, error) {
 		return "", err
 	}
 
+	var NetParams = chaincfg.MainNetParams
+	if anchorManager.anchorConfig.ChainParams.Name != "satsnet" {
+		NetParams = chaincfg.TestNet4Params
+	}
 	_, addrs, _, err := txscript.ExtractPkScriptAddrs(pkScript, &NetParams)
 	if err != nil {
 		return "", err
