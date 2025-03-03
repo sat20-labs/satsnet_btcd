@@ -2183,7 +2183,7 @@ func handleGetBlockTemplateProposal(s *rpcServer, request *btcjson.TemplateReque
 			}
 		}
 
-		rpcsLog.Infof("Rejected block proposal: %v", err)
+		rpcsLog.Warnf("Rejected block proposal: %v", err)
 		return chainErrToGBTErrString(err), nil
 	}
 

@@ -8,7 +8,7 @@ import (
 
 var _stpmar *plugin.Plugin
 
-func LoadSTP() error {
+func LoadSTP(dbPath string) error {
 	if _stpmar != nil {
 		return nil
 	}
@@ -26,13 +26,13 @@ func LoadSTP() error {
 		return err
 	}
 
-	initSTP, ok := symbol.(func() error)
+	initSTP, ok := symbol.(func(string) error)
 	if !ok {
 		log.Printf("symbol type assertion failed")
-		return err
+		return fmt.Errorf("symbol type assertion failed")
 	}
 
-	err = initSTP()
+	err = initSTP(dbPath)
 	if err != nil {
 		log.Printf("initSTP failed: %v", err)
 		return err
@@ -162,7 +162,7 @@ func CreateWallet(pw string) (string, error) {
 	f, ok := symbol.(func(string) (string, error))
 	if !ok {
 		log.Printf("symbol type assertion failed")
-		return "", err
+		return "", fmt.Errorf("symbol type assertion failed")
 	}
 
 	return f(pw)
@@ -182,7 +182,7 @@ func UnlockWallet(pw string) (error) {
 	f, ok := symbol.(func(string) (error))
 	if !ok {
 		log.Printf("symbol type assertion failed")
-		return err
+		return fmt.Errorf("symbol type assertion failed")
 	}
 
 	return f(pw)
@@ -202,7 +202,7 @@ func ImportWallet(mn, pw string) (error) {
 	f, ok := symbol.(func(string, string) (error))
 	if !ok {
 		log.Printf("symbol type assertion failed")
-		return err
+		return fmt.Errorf("symbol type assertion failed")
 	}
 
 	return f(mn, pw)

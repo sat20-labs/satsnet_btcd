@@ -260,7 +260,7 @@ func btcdMain(serverChan chan<- *server) error {
 	pledgex("stdio rpath wpath cpath flock dns inet")
 
 	if cfg.EnableSTP {
-		err = stp.LoadSTP()
+		err = stp.LoadSTP(cfg.HomeDir)
 		if err != nil {
 			btcdLog.Errorf("Unable to load STP: %v", err)
 			return err
@@ -405,6 +405,7 @@ func userCreateWallet(scanner *bufio.Scanner, interrupt <-chan struct{}) error {
 			return nil
 		}
 		fmt.Printf("CreateWallet failed. %v\n", err)
+		return err
 	}
 }
 
