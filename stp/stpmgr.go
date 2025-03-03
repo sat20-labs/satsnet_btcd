@@ -42,9 +42,30 @@ func LoadSTP() error {
 	return nil
 }
 
+
+func StartSTP() error {
+	if _stpmar == nil {
+		return fmt.Errorf("STPManager not init")
+	}
+
+	symbol, err := _stpmar.Lookup("StartSTP")
+	if err != nil {
+		log.Printf("Lookup StartSTP failed: %v", err)
+		return err
+	}
+
+	f, ok := symbol.(func() error)
+	if !ok {
+		log.Printf("symbol type assertion failed")
+		return fmt.Errorf("symbol type assertion failed")
+	}
+
+	return f()
+}
+
 func ReleaseSTP() {
 	if _stpmar == nil {
-		return
+		return 
 	}
 
 	symbol, err := _stpmar.Lookup("ReleaseSTP")

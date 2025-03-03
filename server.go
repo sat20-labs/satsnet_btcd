@@ -2646,7 +2646,7 @@ func (s *server) Start() {
 			srvrLog.Errorf("RPC server is not ready.")
 			return
 		}
-		srvrLog.Errorf("Start pos miner.")
+		srvrLog.Infof("Start pos miner.")
 		s.posMiner.Start()
 
 		s.rpcServer.SetVCStore(s.posMiner.GetVCStore())

@@ -7,3 +7,5 @@ gencerts
 satsnet_btcd
 db/*
 log/*
+addblock
+btcctl

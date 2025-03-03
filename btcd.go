@@ -259,6 +259,49 @@ func btcdMain(serverChan chan<- *server) error {
 	// drop unveil and tty
 	pledgex("stdio rpath wpath cpath flock dns inet")
 
+	if cfg.EnableSTP {
+		err = stp.LoadSTP()
+		if err != nil {
+			btcdLog.Errorf("Unable to load STP: %v", err)
+			return err
+		}
+	}
+	if cfg.Generate {
+		// 只有在钱包解锁之后才能启动miner
+		if !stp.IsUnlocked() {
+			// 创建或者解锁钱包
+			err := walletInterAction(interrupt)
+			if err != nil {
+				btcdLog.Errorf("Unable to create/unlock wallet %v", err)
+				return err
+			}
+			err = stp.StartSTP()
+			if err != nil {
+				btcdLog.Errorf("Unable to start STP, %v", err)
+				return err
+			}
+		}
+		pubkey, err := stp.GetPubKey()
+		if err != nil {
+			btcdLog.Errorf("GetPubKey failed %v", err)
+			return err
+		}
+		if cfg.MiningPubKey != "" {
+			if hex.EncodeToString(pubkey) != cfg.MiningPubKey {
+				btcdLog.Errorf("mining pubkey must be consistent with wallet pubkey")
+				return fmt.Errorf("mining pubkey must be consistent with wallet pubkey")
+			}
+		} else {
+			cfg.MiningPubKey = hex.EncodeToString(pubkey)
+			addr, err := getP2TRAddress(pubkey, activeNetParams.Params)
+			if err != nil {
+				btcdLog.Errorf("getP2TRAddress failed, %v", err)
+				return err
+			}
+			cfg.miningAddrs = append(cfg.miningAddrs, addr)
+		}
+	}
+
 	// initialize anchor config
 	anchorCfg := &anchortx.AnchorConfig{
 		IndexerScheme: cfg.IndexerScheme,
@@ -290,44 +333,6 @@ func btcdMain(serverChan chan<- *server) error {
 		server.WaitForShutdown()
 		srvrLog.Infof("Server shutdown complete")
 	}()
-
-	if cfg.EnableSTP {
-		err = stp.LoadSTP()
-		if err != nil {
-			btcdLog.Errorf("Unable to load STP: %v", err)
-			return err
-		}
-	}
-	if cfg.Generate {
-		// 只有在钱包解锁之后才能启动miner
-		if !stp.IsUnlocked() {
-			// 创建或者解锁钱包
-			err := walletInterAction()
-			if err != nil {
-				btcdLog.Errorf("Unable to create/unlock wallet %v", err)
-				return err
-			}
-		}
-		pubkey, err := stp.GetPubKey()
-		if err != nil {
-			btcdLog.Errorf("GetPubKey failed %v", err)
-			return err
-		}
-		if cfg.MiningPubKey != "" {
-			if hex.EncodeToString(pubkey) != cfg.MiningPubKey {
-				btcdLog.Errorf("mining pubkey must be consistent with wallet pubkey")
-				return fmt.Errorf("mining pubkey must be consistent with wallet pubkey")
-			}
-		} else {
-			cfg.MiningPubKey = hex.EncodeToString(pubkey)
-			addr, err := getP2TRAddress(pubkey, activeNetParams.Params)
-			if err != nil {
-				btcdLog.Errorf("getP2TRAddress failed, %v", err)
-				return err
-			}
-			cfg.miningAddrs = append(cfg.miningAddrs, addr)
-		}
-	}
 	
 	server.Start()
 	if serverChan != nil {
@@ -341,19 +346,108 @@ func btcdMain(serverChan chan<- *server) error {
 	return nil
 }
 
+func getUserInput(scanner *bufio.Scanner, interrupt <-chan struct{}) (string, error) {
+	
+	// 创建输入通道
+	inputChan := make(chan string)
+	defer close(inputChan) // 关闭通道，表示输入结束
+
+	// 使用 goroutine 读取用户输入
+	go func() {
+		if scanner.Scan() {
+			inputChan <- scanner.Text() // 发送输入到通道
+		}
+	}()
+
+	// 监听信号和输入
+	for {
+		select {
+		case <-interrupt:
+			fmt.Println("\nReceived Ctrl+C. Exiting gracefully...")
+			return "", fmt.Errorf("interrupted")
+		case input, ok := <-inputChan:
+			if !ok {
+				return "", fmt.Errorf("input closed")
+			}
+			return strings.TrimSpace(input), nil
+		}
+	}
+}
+
+func userCreateWallet(scanner *bufio.Scanner, interrupt <-chan struct{}) error {
+	for {
+		fmt.Print("Input password to create your wallet:")
+		password, err := getUserInput(scanner, interrupt)
+		if err != nil {
+			return err
+		}
+
+		fmt.Print("Input your password again to confirm:")
+		password2, err := getUserInput(scanner, interrupt)
+		if err != nil {
+			return err
+		}
+		if password != password2 {
+			fmt.Print("password is inconsistent\n")
+			continue
+		}
+
+		Mnemonic, err := stp.CreateWallet(password)
+		if err == nil {
+			pubkey, err := stp.GetPubKey()
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Wallet created. Record your mnemonic and password carefully. Mnemonic:\n%s\nPubkey:\n%s\n", Mnemonic, hex.EncodeToString(pubkey))
+			
+
+			return nil
+		}
+		fmt.Printf("CreateWallet failed. %v\n", err)
+	}
+}
+
+func userImportWallet(scanner *bufio.Scanner, interrupt <-chan struct{}) error {
+	for {
+		fmt.Print("Input mnemonic to import your wallet:")
+		mnemonic, err := getUserInput(scanner, interrupt)
+		if err != nil {
+			return err
+		}
+
+		fmt.Print("Input password to unlock your wallet:")
+		password, err := getUserInput(scanner, interrupt)
+		if err != nil {
+			return err
+		}
+
+		err = stp.ImportWallet(mnemonic, password)
+		if err == nil {
+			pubkey, err := stp.GetPubKey()
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Wallet imported. Pubkey:\n%s\n", hex.EncodeToString(pubkey))
+			return nil
+		}
+		fmt.Printf("ImportWallet failed %v, try again\n", err)
+	}
+}
 
 // 启动交互模式
-func walletInterAction() error {
+func walletInterAction(interrupt <-chan struct{}) error {
 
 	scanner := bufio.NewScanner(os.Stdin)
 	if stp.IsWalletExists() {
 		for {
-			fmt.Print("input password to unlock your wallet:")
-			if !scanner.Scan() {
-				return fmt.Errorf("unlock wallet failed")
+			fmt.Print("Input password to unlock your wallet:")
+			input, err := getUserInput(scanner, interrupt)
+			if err != nil {
+				return err
 			}
-			input := strings.TrimSpace(scanner.Text())
-			err := stp.UnlockWallet(input)
+			err = stp.UnlockWallet(input)
 			if err == nil {
 				fmt.Print("unlocked.\n")
 				return nil
@@ -361,36 +455,18 @@ func walletInterAction() error {
 			fmt.Printf("UnlockWallet failed %v, try again\n", err)
 		}
 	} else {
-		for {
-			fmt.Print("input password to create your wallet:")
-			if !scanner.Scan() {
-				return fmt.Errorf("create wallet failed")
-			}
-			password := strings.TrimSpace(scanner.Text())
-	
-			fmt.Print("input your password again:")
-			if !scanner.Scan() {
-				return fmt.Errorf("create wallet failed")
-			}
-			password2 := strings.TrimSpace(scanner.Text())
-			if password != password2 {
-				fmt.Print("password is inconsistent\n")
-				continue
-			}
-	
-			Mnemonic, err := stp.CreateWallet(password)
-			if err == nil {
-				pubkey, err := stp.GetPubKey()
-				if err != nil {
-					return err
-				}
-
-				fmt.Printf("Wallet created. Record your mnemonic and password carefully. Mnemonic:\n%s\nPubkey:\n%s\n", Mnemonic, hex.EncodeToString(pubkey))
-				
-
-				return nil
-			}
-			fmt.Printf("CreateWallet failed. %v\n", err)
+		fmt.Print("Choice how to create your wallet:\n1. Create new wallet\n2. Import wallet\nYour choice:")
+		choice, err := getUserInput(scanner, interrupt)
+		if err != nil {
+			return err
+		}
+		if choice == "1" {
+			return userCreateWallet(scanner, interrupt)
+		} else if choice == "2" {
+			return userImportWallet(scanner, interrupt)
+		} else {
+			fmt.Print("invalid choice\n")
+			return nil
 		}
 	}
 }

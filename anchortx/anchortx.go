@@ -634,7 +634,7 @@ func (m *AnchorManager) syncSuperListHandler() {
 
 out:
 	for {
-		log.Debugf("Waiting next timer for syncing super node list...")
+		//log.Debugf("Waiting next timer for syncing super node list...")
 		select {
 		case <-syncTicker.C:
 			m.updateSuperList()
