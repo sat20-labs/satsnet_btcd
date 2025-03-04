@@ -24,7 +24,7 @@ type URL struct {
 }
 
 func (p *URL) String() string {
-	return p.Scheme + "://" + p.Host + p.Path
+	return p.Scheme + "://" + p.Host + "/" + p.Path
 }
 
 type HttpClient interface {
