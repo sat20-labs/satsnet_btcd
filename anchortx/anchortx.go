@@ -56,12 +56,19 @@ var anchorManager AnchorManager
 
 // txscript.NewScriptBuilder().AddData(txid).AddData(WitnessScript).
 // AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
-type LockedTxInfo struct {
+type AnchorInfo struct {
 	Utxo          string         // the utxo with locked in lnd
 	WitnessScript []byte         // WitnessScript for locked in lnd
 	Value         int64          // the amount with locked in lnd
 	TxAssets      *wire.TxAssets // The assets locked
 	Sig           []byte
+}
+
+type AscendInfo struct {
+	AnchorInfo
+	Address       string
+	PubKeyA       []byte
+	PubKeyB       []byte
 }
 
 func StartAnchorManager(config *AnchorConfig) bool {
@@ -110,7 +117,7 @@ func CheckAnchorTxValid(tx *wire.MsgTx) error {
 	AnchorScript := tx.TxIn[0].SignatureScript
 
 	// Check the Anchor tx has completed, all the assets is locked in lnd will be mapped to sats net only one times
-	lockedInfo, err := checkAnchorPkScript(AnchorScript)
+	lockedInfo, err := CheckAnchorPkScript(AnchorScript)
 	//	err = fmt.Errorf("invalid Anchor tx <%s>, just for test", tx.TxHash().String()) // Just for test
 	if err != nil {
 		log.Debugf("invalid Anchor tx, invalid Anchor script: %s, err: %s", tx.TxHash().String(), err.Error())
@@ -136,7 +143,7 @@ func CheckAnchorTxValid(tx *wire.MsgTx) error {
 // The Anchor tx info is record in Anchor tx input script
 // return txscript.NewScriptBuilder().AddData(data).AddData(outputScript).
 // AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
-func GetLockedTxInfo(tx *wire.MsgTx) (*LockedTxInfo, error) {
+func GetLockedTxInfo(tx *wire.MsgTx) (*AnchorInfo, error) {
 	if len(tx.TxIn) != 1 {
 		err := fmt.Errorf("invalid Anchor tx: %s", tx.TxHash().String())
 		return nil, err
@@ -150,12 +157,12 @@ func GetLockedTxInfo(tx *wire.MsgTx) (*LockedTxInfo, error) {
 
 	fmt.Printf("AnchorScript: %x\n", AnchorScript)
 
-	lockedTxInfo, err := checkAnchorPkScript(AnchorScript)
+	lockedTxInfo, err := CheckAnchorPkScript(AnchorScript)
 	if err != nil {
 		err := fmt.Errorf("%s : anchortx[%s]", err.Error(), tx.TxHash().String())
 		return nil, err
 	}
-	return lockedTxInfo, nil
+	return &lockedTxInfo.AnchorInfo, nil
 }
 
 // 从比特币脚本中提取int64值
@@ -182,7 +189,7 @@ func extractScriptInt64(data []byte) int64 {
 	return val
 }
 
-func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
+func ParseAnchorScript(AnchorScript []byte) (*AnchorInfo, error) {
 
 	const scriptVersion = 0
 	tokenizer := txscript.MakeScriptTokenizer(scriptVersion, AnchorScript)
@@ -237,7 +244,7 @@ func ParseAnchorScript(AnchorScript []byte) (*LockedTxInfo, error) {
 	}
 	sig := tokenizer.Data()
 
-	info := &LockedTxInfo{
+	info := &AnchorInfo{
 		Utxo:          string(utxo),
 		WitnessScript: witnessScript,
 		Value:         value,
@@ -337,7 +344,7 @@ func VerifyMessage(pubKey *secp256k1.PublicKey, msg []byte, signature *ecdsa.Sig
 	return signature.Verify(msgDigest, pubKey)
 }
 
-func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
+func CheckAnchorPkScript(anchorPkScript []byte) (*AscendInfo, error) {
 	lockedTxInfo, err := ParseAnchorScript(anchorPkScript)
 	if err != nil {
 		return nil, err
@@ -376,26 +383,34 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 		return nil, err
 	}
 
-	hasSuperNode := false
-	for _, addr := range addresses2 {
-		pubkey, err := BytesToPublicKey(addr.ScriptAddress())
-		if err != nil {
-			return nil, fmt.Errorf("BytesToPublicKey failed. %v", err)
-		}
-
-		if VerifyMessage(pubkey, invoice, sig) {
-			// bootstrap or core node
-			// check super node public key: pubkey
-			if IsCoreNode(pubkey.SerializeCompressed()) {
-				hasSuperNode = true
-				break
-			}
-		}
+	var corePubkey, bootstrapPubkey []byte
+	if len(addresses2) != 2 {
+		return nil, fmt.Errorf("invalid multi-sig addresses")
+	}
+	pubkeyBytes0 := addresses2[0].ScriptAddress()
+	pubkeyBytes1 := addresses2[1].ScriptAddress()
+	if bootstrapnode.IsBootStrapNode(0, pubkeyBytes0) {
+		bootstrapPubkey = pubkeyBytes0
+		corePubkey = pubkeyBytes1
+	} else if bootstrapnode.IsBootStrapNode(0, pubkeyBytes1) {
+		bootstrapPubkey = pubkeyBytes1
+		corePubkey = pubkeyBytes0
+	} else {
+		return nil, fmt.Errorf("not signed by bootstrap node")
 	}
 
-	if !hasSuperNode {
-		return nil, fmt.Errorf("NO super node public key in multisig addr")
+	pubkey, err := BytesToPublicKey(bootstrapPubkey)
+	if err != nil {
+		return nil, fmt.Errorf("BytesToPublicKey failed. %v", err)
 	}
+	if !VerifyMessage(pubkey, invoice, sig) {
+		return nil, fmt.Errorf("not signed by bootstrap node")
+	}
+	_, err = BytesToPublicKey(corePubkey)
+	if err != nil {
+		return nil, fmt.Errorf("BytesToPublicKey failed. %v", err)
+	}
+
 
 	if IsCheckLockedTx() {
 		// 检查BTC锁定交易, 只有定义了anchorManager.anchorConfig.IndexerHost, anchorManager.anchorConfig.IndexerNet才检查
@@ -421,9 +436,18 @@ func checkAnchorPkScript(anchorPkScript []byte) (*LockedTxInfo, error) {
 		if !includeAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) {
 			return nil, fmt.Errorf("invalid assets")
 		}
+
+		// TODO 
+		// 将corePubkey记录下来，这是一个核心节点的pubkey
+		// 或者由索引器记录，随时从索引器查询
 	}
 
-	return lockedTxInfo, nil
+	return &AscendInfo{
+		AnchorInfo: *lockedTxInfo,
+		Address: addresses[0].EncodeAddress(),
+		PubKeyA: pubkeyBytes0,
+		PubKeyB: pubkeyBytes1,
+	}, nil
 }
 
 func isSameAssets(utxoAssetInfo []*httpclient.UtxoAssetInfo, txAssets *wire.TxAssets) bool {

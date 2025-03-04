@@ -11,6 +11,9 @@ const (
 	BootstrapPubKey = "025fb789035bc2f0c74384503401222e53f72eefdebf0886517ff26ac7985f52ad" //
 	BootStrapNodeId = 1
 
+	CoreNodePubKey = "025fb789035bc2f0c74384503401222e53f72eefdebf0886517ff26ac7985f52ad" //
+	CoreNodeId = 100
+
 	// 0 invalid
 	// 1-99 boostrap
 	// 100-999 core
@@ -22,10 +25,6 @@ const (
 	MIN_NORMAL_NODEID    = 100000
 )
 
-func VerifyCertificate(certificate []byte) bool {
-	return true
-}
-
 func IsBootStrapNode(_ uint64, pubKey []byte) bool {
 	return hex.EncodeToString(pubKey) == BootstrapPubKey
 }
@@ -36,6 +35,11 @@ func IsCoreNode(validatorId uint64, pubKey []byte) bool {
 		return true
 	}
 
+	if hex.EncodeToString(pubKey) == CoreNodePubKey {
+		return true
+	}
+
+	// 其他根据规则生成的core node
 	return stp.IsCoreNode(pubKey)
 }
 

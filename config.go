@@ -1088,7 +1088,7 @@ func loadConfig() (*config, []string, error) {
 		}
 	}
 
-	// Ensure the miner is egible to mine
+	// Ensure the miner is eligible to mine
 
 	// Add default port to all listener addresses if needed and remove
 	// duplicate addresses.
