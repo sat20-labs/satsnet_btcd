@@ -134,7 +134,6 @@ type config struct {
 	Generate             bool          `long:"generate" description:"Generate (mine) bitcoins using the POS"`
 	ValidatorId          uint64        `long:"validatorid" description:"validator id using the POS"`
 	MiningPubKey         string        `long:"miningpubkey" description:"The public key of miningaddr[0]"`
-	EnableSTP            bool          `long:"enablestp" description:"Enable STP service when run as core node"`
 	TimerGenerate        bool          `long:"timergenerate" description:"Generate (mine) bitcoins using the POS with timer enabled"`
 	IndexerScheme        string        `long:"indexerscheme" description:"The scheme for indexer"`
 	IndexerHost          string        `long:"indexerhost" description:"The host for indexer"`

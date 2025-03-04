@@ -259,14 +259,13 @@ func btcdMain(serverChan chan<- *server) error {
 	// drop unveil and tty
 	pledgex("stdio rpath wpath cpath flock dns inet")
 
-	if cfg.EnableSTP {
+	if cfg.Generate {
 		err = stp.LoadSTP(cfg.HomeDir)
 		if err != nil {
 			btcdLog.Errorf("Unable to load STP: %v", err)
 			return err
 		}
-	}
-	if cfg.Generate {
+
 		// 只有在钱包解锁之后才能启动miner
 		if !stp.IsUnlocked() {
 			// 创建或者解锁钱包
