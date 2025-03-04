@@ -156,27 +156,27 @@ func (msg *MsgConfirmEpoch) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgConfirmEpoch) LogCommandInfo() {
-	log.Debugf("Command MsgConfirmEpoch:")
-	log.Debugf("Validator Id: %d", msg.ValidatorId)
+	utils.Log.Debugf("Command MsgConfirmEpoch:")
+	utils.Log.Debugf("Validator Id: %d", msg.ValidatorId)
 
-	log.Debugf("Epoch Index: %d", msg.EpochIndex)
-	log.Debugf("Create Height: %d", msg.CreateHeight)
-	log.Debugf("Create Time: %s", msg.CreateTime.Format(time.DateTime))
+	utils.Log.Debugf("Epoch Index: %d", msg.EpochIndex)
+	utils.Log.Debugf("Create Height: %d", msg.CreateHeight)
+	utils.Log.Debugf("Create Time: %s", msg.CreateTime.Format(time.DateTime))
 
 	for index, validator := range msg.ItemList {
-		log.Debugf("——————————————————————————————————")
-		log.Debugf("No: %d", index)
-		log.Debugf("Validator Id: %d", validator.ValidatorId)
-		log.Debugf("Validator Host: %s", validator.Host)
-		log.Debugf("Validator PublicKey: %x", validator.PublicKey)
-		log.Debugf("Validator Index: %d", validator.Index)
-		log.Debugf("")
+		utils.Log.Debugf("——————————————————————————————————")
+		utils.Log.Debugf("No: %d", index)
+		utils.Log.Debugf("Validator Id: %d", validator.ValidatorId)
+		utils.Log.Debugf("Validator Host: %s", validator.Host)
+		utils.Log.Debugf("Validator PublicKey: %x", validator.PublicKey)
+		utils.Log.Debugf("Validator Index: %d", validator.Index)
+		utils.Log.Debugf("")
 	}
 
-	log.Debugf("Last Change Time: %s", msg.LastChangeTime.Format(time.DateTime))
-	log.Debugf("VC Block Height: %d", msg.VCBlockHeight)
-	log.Debugf("VC Block Hash: %s", msg.VCBlockHash.String())
-	log.Debugf("——————————————————————————————————")
+	utils.Log.Debugf("Last Change Time: %s", msg.LastChangeTime.Format(time.DateTime))
+	utils.Log.Debugf("VC Block Height: %d", msg.VCBlockHeight)
+	utils.Log.Debugf("VC Block Hash: %s", msg.VCBlockHash.String())
+	utils.Log.Debugf("——————————————————————————————————")
 }
 
 // NewMsgConfirmEpoch returns a new bitcoin version message that conforms to the

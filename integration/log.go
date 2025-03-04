@@ -6,7 +6,6 @@ package integration
 import (
 	"os"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/rpcclient"
 )
 
@@ -18,9 +17,9 @@ func (logWriter) Write(p []byte) (n int, err error) {
 }
 
 func init() {
-	backendLog := btclog.NewBackend(logWriter{})
-	testLog := backendLog.Logger("ITEST")
-	testLog.SetLevel(btclog.LevelDebug)
+	backendLog := logrus.New()
+	testLog := backendLog.WithField("module", "ITEST")
+	backendLog.SetLevel(logrus.DebugLevel)
 
 	rpcclient.UseLogger(testLog)
 }

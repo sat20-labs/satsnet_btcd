@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 const (
@@ -73,19 +74,19 @@ func (msg *MsgUpdateEpoch) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgUpdateEpoch) LogCommandInfo() {
-	log.Debugf("Command MsgUpdateEpoch:")
-	// log.Debugf("Validator Count: %d", msg.ValidatorCount)
+	utils.Log.Debugf("Command MsgUpdateEpoch:")
+	// utils.Log.Debugf("Validator Count: %d", msg.ValidatorCount)
 	// for index, validator := range msg.Validators {
-	// 	log.Debugf("——————————————————————————————————")
-	// 	log.Debugf("No: %d", index)
-	// 	log.Debugf("Validator Id: %d", validator.ValidatorId)
-	// 	log.Debugf("Validator Host: %s", validator.Host)
-	// 	log.Debugf("Validator PublicKey: %x", validator.PublicKey)
-	// 	log.Debugf("Validator Index: %d", validator.Index)
-	// 	log.Debugf("")
+	// 	utils.Log.Debugf("——————————————————————————————————")
+	// 	utils.Log.Debugf("No: %d", index)
+	// 	utils.Log.Debugf("Validator Id: %d", validator.ValidatorId)
+	// 	utils.Log.Debugf("Validator Host: %s", validator.Host)
+	// 	utils.Log.Debugf("Validator PublicKey: %x", validator.PublicKey)
+	// 	utils.Log.Debugf("Validator Index: %d", validator.Index)
+	// 	utils.Log.Debugf("")
 	// }
-	showEpoch(log, "MsgUpdateEpoch: CurrentEpoch", msg.CurrentEpoch)
-	log.Debugf("——————————————————————————————————")
+	showEpoch("MsgUpdateEpoch: CurrentEpoch", msg.CurrentEpoch)
+	utils.Log.Debugf("——————————————————————————————————")
 }
 
 // NewMsgUpdateEpoch returns a new bitcoin version message that conforms to the

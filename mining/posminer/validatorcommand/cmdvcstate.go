@@ -39,7 +39,7 @@ func (msg *MsgVCState) BtcDecode(r io.Reader, pver uint32) error {
 
 	err := utils.ReadElements(buf, &msg.Height, &msg.Hash, &msg.EpochIndex)
 	if err != nil {
-		log.Errorf("MsgVCState:ReadElements failed: %v", err)
+		utils.Log.Errorf("MsgVCState:ReadElements failed: %v", err)
 		return err
 	}
 
@@ -51,7 +51,7 @@ func (msg *MsgVCState) BtcDecode(r io.Reader, pver uint32) error {
 func (msg *MsgVCState) BtcEncode(w io.Writer, pver uint32) error {
 	err := utils.WriteElements(w, msg.Height, msg.Hash, msg.EpochIndex)
 	if err != nil {
-		log.Errorf("MsgVCState:WriteElements failed: %v", err)
+		utils.Log.Errorf("MsgVCState:WriteElements failed: %v", err)
 		return err
 	}
 
@@ -72,10 +72,10 @@ func (msg *MsgVCState) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgVCState) LogCommandInfo() {
-	log.Debugf("Command MsgVCState:")
-	log.Debugf("Height: %d", msg.Height)
-	log.Debugf("Hash: %s", msg.Hash.String())
-	log.Debugf("EpochIndex: %d", msg.EpochIndex)
+	utils.Log.Debugf("Command MsgVCState:")
+	utils.Log.Debugf("Height: %d", msg.Height)
+	utils.Log.Debugf("Hash: %s", msg.Hash.String())
+	utils.Log.Debugf("EpochIndex: %d", msg.EpochIndex)
 }
 
 // NewMsgVCState returns a new bitcoin version message that conforms to the

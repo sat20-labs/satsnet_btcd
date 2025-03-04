@@ -11,6 +11,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorpeer"
@@ -138,32 +139,32 @@ type Validator struct {
 }
 
 func NewValidator(config *Config, addr net.Addr) (*Validator, error) {
-	log.Debugf("NewValidator")
+	utils.Log.Debugf("NewValidator")
 	validator := &Validator{
 		Cfg: config,
 	}
 	peer, err := validatorpeer.NewRemotePeer(validator.newPeerConfig(config), addr)
 	if err != nil {
-		log.Errorf("NewValidator failed: %v", err)
+		utils.Log.Errorf("NewValidator failed: %v", err)
 		return nil, err
 	}
 	peerHost := validatorinfo.GetAddrHost(addr)
 	validator.peer = peer
 	validator.ValidatorInfo.Host = peerHost.String()
-	log.Debugf("NewValidator success with peer: %v", peer.Addr())
-	log.Debugf("NewValidator Host: %s", validator.ValidatorInfo.Host)
+	utils.Log.Debugf("NewValidator success with peer: %v", peer.Addr())
+	utils.Log.Debugf("NewValidator Host: %s", validator.ValidatorInfo.Host)
 	if config.RemoteValidatorInfo != nil {
 		validator.ValidatorInfo.ValidatorId = config.RemoteValidatorInfo.ValidatorId
 		validator.ValidatorInfo.PublicKey = config.RemoteValidatorInfo.PublicKey
 		validator.ValidatorInfo.CreateTime = config.RemoteValidatorInfo.CreateTime
 	}
 
-	log.Debugf("new validator info : ")
-	log.Debugf("ValidatorId: %d", validator.ValidatorInfo.ValidatorId)
-	log.Debugf("PublicKey: %x", validator.ValidatorInfo.PublicKey)
-	log.Debugf("CreateTime: %s", validator.ValidatorInfo.CreateTime.Format(time.DateTime))
-	log.Debugf("Host: %s", validator.ValidatorInfo.Host)
-	log.Debugf("--------------------------------------------------")
+	utils.Log.Debugf("new validator info : ")
+	utils.Log.Debugf("ValidatorId: %d", validator.ValidatorInfo.ValidatorId)
+	utils.Log.Debugf("PublicKey: %x", validator.ValidatorInfo.PublicKey)
+	utils.Log.Debugf("CreateTime: %s", validator.ValidatorInfo.CreateTime.Format(time.DateTime))
+	utils.Log.Debugf("Host: %s", validator.ValidatorInfo.Host)
+	utils.Log.Debugf("--------------------------------------------------")
 
 	return validator, nil
 }
@@ -235,7 +236,7 @@ func (v *Validator) IsValidatorAddr(host net.IP) bool {
 func (v *Validator) RequestAllValidatorsInfo() error {
 	if v.peer == nil {
 		err := errors.New("invalid peer for the validator")
-		log.Errorf("GetAllValidatorsInfo failed: %v", err)
+		utils.Log.Errorf("GetAllValidatorsInfo failed: %v", err)
 		return err
 	}
 
@@ -247,7 +248,7 @@ func (v *Validator) RequestAllValidatorsInfo() error {
 }
 
 // func (v *Validator) Reconnect() bool {
-// 	log.Debugf("Received a reconnected notify")
+// 	utils.Log.Debugf("Received a reconnected notify")
 // 	// CHeck current peer is connected
 // 	if v.peer == nil {
 // 		// No any activie peer,cannot be reconnected
@@ -256,16 +257,16 @@ func (v *Validator) RequestAllValidatorsInfo() error {
 
 // 	if v.peer.Connected() == false {
 // 		// current peer is not connected, will connect it
-// 		log.Debugf("Will connect to the validator: %v", v.peer.Addr())
+// 		utils.Log.Debugf("Will connect to the validator: %v", v.peer.Addr())
 // 		err := v.peer.Connect()
 // 		if err != nil {
-// 			log.Errorf("Connect failed: %v", err)
+// 			utils.Log.Errorf("Connect failed: %v", err)
 // 			return false
 // 		}
 // 	}
 // 	if v.Cfg.RemoteValidatorInfo == nil {
 // 		// Not get remote validator id
-// 		log.Debugf("The validator Id is invalid, will request validator info from the remote peer")
+// 		utils.Log.Debugf("The validator Id is invalid, will request validator info from the remote peer")
 // 		validatorInfo := v.GetLocalValidatorInfo(0)
 // 		v.peer.RequestValidatorId(validatorInfo)
 // 	}
@@ -275,23 +276,23 @@ func (v *Validator) RequestAllValidatorsInfo() error {
 func (v *Validator) Connect() error {
 	if v.peer == nil {
 		err := errors.New("invalid peer for the validator")
-		log.Errorf("Start validator [%s] failed: %v", v.String(), err)
+		utils.Log.Errorf("Start validator [%s] failed: %v", v.String(), err)
 		return err
 	}
 
-	log.Debugf("Will Connect to the validator: %v", v.peer.Addr())
+	utils.Log.Debugf("Will Connect to the validator: %v", v.peer.Addr())
 
 	if v.peer.Connected() == false {
 		err := v.peer.Connect()
 		if err != nil {
-			log.Errorf("Connect failed: %v", err)
+			utils.Log.Errorf("Connect failed: %v", err)
 			return err
 		}
 	}
 
 	if v.IsValidInfo() == false {
 		// Not get remote validator id
-		log.Debugf("The validator Id is invalid, will request validator info from the remote peer")
+		utils.Log.Debugf("The validator Id is invalid, will request validator info from the remote peer")
 		validatorInfo := v.GetLocalValidatorInfo(0)
 		v.peer.RequestValidatorId(validatorInfo)
 
@@ -323,7 +324,7 @@ func (v *Validator) IsValidInfo() bool {
 }
 
 func (v *Validator) checkValidatorValid() {
-	log.Debugf("[Validator]checkValidatorValid done.")
+	utils.Log.Debugf("[Validator]checkValidatorValid done.")
 	tryCount := 0
 	checkInterval := time.Second * 5
 	checkTicker := time.NewTicker(checkInterval)
@@ -331,7 +332,7 @@ func (v *Validator) checkValidatorValid() {
 
 exit:
 	for {
-		log.Debugf("[ValidatorManager]Waiting next timer for check validator valid...")
+		utils.Log.Debugf("[ValidatorManager]Waiting next timer for check validator valid...")
 		<-checkTicker.C
 		if v.IsValidInfo() == false {
 			tryCount++
@@ -348,27 +349,27 @@ exit:
 		}
 	}
 
-	log.Debugf("[Validator]checkValidatorValid done.")
+	utils.Log.Debugf("[Validator]checkValidatorValid done.")
 }
 
 // This function is safe for concurrent access.
 func (v *Validator) SyncAllValidators() error {
 	if v.peer == nil {
 		err := errors.New("invalid peer for the validator")
-		log.Errorf("SyncAllValidator failed: %v", err)
+		utils.Log.Errorf("SyncAllValidator failed: %v", err)
 		return err
 	}
 
 	if v.peer.Connected() == false {
 		err := errors.New("validator peer isnot connected")
-		log.Errorf("SyncAllValidator failed: %v", err)
+		utils.Log.Errorf("SyncAllValidator failed: %v", err)
 		return err
 	}
 
-	log.Debugf("Will request get all validators to the validator: %s", v.peer.Addr())
+	utils.Log.Debugf("Will request get all validators to the validator: %s", v.peer.Addr())
 	err := v.peer.RequestGetValidators()
 	if err != nil {
-		log.Errorf("RequestGetValidators failed: %v", err)
+		utils.Log.Errorf("RequestGetValidators failed: %v", err)
 		return err
 	}
 	return nil
@@ -377,20 +378,20 @@ func (v *Validator) SyncAllValidators() error {
 func (v *Validator) GetEpoch() error {
 	if v.peer == nil {
 		err := errors.New("invalid peer for the validator")
-		log.Errorf("GetEpoch failed: %v", err)
+		utils.Log.Errorf("GetEpoch failed: %v", err)
 		return err
 	}
 
 	if v.peer.Connected() == false {
 		err := errors.New("validator peer isnot connected")
-		log.Errorf("GetEpoch failed: %v", err)
+		utils.Log.Errorf("GetEpoch failed: %v", err)
 		return err
 	}
 
-	log.Debugf("Will request get epoch to the validator: %s", v.peer.Addr())
+	utils.Log.Debugf("Will request get epoch to the validator: %s", v.peer.Addr())
 	err := v.peer.RequestGetEpoch()
 	if err != nil {
-		log.Errorf("RequestGetEpoch failed: %v", err)
+		utils.Log.Errorf("RequestGetEpoch failed: %v", err)
 		return err
 	}
 	return nil
@@ -399,20 +400,20 @@ func (v *Validator) GetEpoch() error {
 func (v *Validator) GetGenerator() error {
 	if v.peer == nil {
 		err := errors.New("invalid peer for the validator")
-		log.Errorf("GetGenerator failed: %v", err)
+		utils.Log.Errorf("GetGenerator failed: %v", err)
 		return err
 	}
 
 	if v.peer.Connected() == false {
 		err := errors.New("validator peer isnot connected")
-		log.Errorf("GetGenerator failed: %v", err)
+		utils.Log.Errorf("GetGenerator failed: %v", err)
 		return err
 	}
 
-	log.Debugf("Will request get generator to the validator: %s", v.peer.Addr())
+	utils.Log.Debugf("Will request get generator to the validator: %s", v.peer.Addr())
 	err := v.peer.RequestGetGenerator()
 	if err != nil {
-		log.Errorf("RequestGetGenerator failed: %v", err)
+		utils.Log.Errorf("RequestGetGenerator failed: %v", err)
 		return err
 	}
 	return nil
@@ -441,17 +442,17 @@ func (v *Validator) IsConnected() bool {
 func (v *Validator) SendCommand(command validatorcommand.Message) error {
 	if v.peer == nil {
 		err := errors.New("invalid peer for the validator")
-		log.Errorf("SendCommand failed: %v", err)
+		utils.Log.Errorf("SendCommand failed: %v", err)
 		return err
 	}
 
 	if v.peer.Connected() == false {
 		err := errors.New("validator peer isnot connected")
-		log.Errorf("SendCommand failed: %v", err)
+		utils.Log.Errorf("SendCommand failed: %v", err)
 		return err
 	}
 
-	log.Debugf("Will send command to the validator: %s", v.peer.Addr())
+	utils.Log.Debugf("Will send command to the validator: %s", v.peer.Addr())
 	return v.peer.SendCommand(command)
 }
 
@@ -475,7 +476,7 @@ func (v *Validator) OnPeerDisconnected(addr net.Addr) {
 func (v *Validator) OnValidatorInfoUpdated(validatorInfo *validatorinfo.ValidatorInfo, changeMask validatorinfo.ValidatorInfoMask) {
 	// v.Cfg.RemoteValidatorId = peerInfo.ValidatorId
 
-	// log.Debugf("validator id updated: %d", v.Cfg.RemoteValidatorId)
+	// utils.Log.Debugf("validator id updated: %d", v.Cfg.RemoteValidatorId)
 
 	v.UpdateValidatorInfo(validatorInfo, changeMask)
 
@@ -487,13 +488,13 @@ func (v *Validator) UpdateValidatorInfo(validatorInfo *validatorinfo.ValidatorIn
 	v.infoMtx.Lock()
 	defer v.infoMtx.Unlock()
 
-	log.Debugf("validator info will be updated: ")
-	log.Debugf("changeMask: %x", changeMask)
-	log.Debugf("ValidatorId: %d", validatorInfo.ValidatorId)
-	log.Debugf("PublicKey: %x", validatorInfo.PublicKey)
-	log.Debugf("CreateTime: %s", validatorInfo.CreateTime.Format(time.DateTime))
-	log.Debugf("Host: %s", validatorInfo.Host)
-	log.Debugf("--------------------------------------------------")
+	utils.Log.Debugf("validator info will be updated: ")
+	utils.Log.Debugf("changeMask: %x", changeMask)
+	utils.Log.Debugf("ValidatorId: %d", validatorInfo.ValidatorId)
+	utils.Log.Debugf("PublicKey: %x", validatorInfo.PublicKey)
+	utils.Log.Debugf("CreateTime: %s", validatorInfo.CreateTime.Format(time.DateTime))
+	utils.Log.Debugf("Host: %s", validatorInfo.Host)
+	utils.Log.Debugf("--------------------------------------------------")
 
 	if changeMask&validatorinfo.MaskValidatorId != 0 {
 		v.ValidatorInfo.ValidatorId = validatorInfo.ValidatorId
@@ -521,12 +522,12 @@ func (v *Validator) UpdateValidatorInfo(validatorInfo *validatorinfo.ValidatorIn
 		v.ValidatorInfo.Host = validatorInfo.Host
 	}
 
-	log.Debugf("validator info updated: ")
-	log.Debugf("ValidatorId: %d", v.ValidatorInfo.ValidatorId)
-	log.Debugf("PublicKey: %x", v.ValidatorInfo.PublicKey)
-	log.Debugf("CreateTime: %s", v.ValidatorInfo.CreateTime.Format(time.DateTime))
-	log.Debugf("Host: %s", v.ValidatorInfo.Host)
-	log.Debugf("--------------------------------------------------")
+	utils.Log.Debugf("validator info updated: ")
+	utils.Log.Debugf("ValidatorId: %d", v.ValidatorInfo.ValidatorId)
+	utils.Log.Debugf("PublicKey: %x", v.ValidatorInfo.PublicKey)
+	utils.Log.Debugf("CreateTime: %s", v.ValidatorInfo.CreateTime.Format(time.DateTime))
+	utils.Log.Debugf("Host: %s", v.ValidatorInfo.Host)
+	utils.Log.Debugf("--------------------------------------------------")
 }
 
 func (v *Validator) SyncVaildatorInfo(validatorInfo *validatorinfo.ValidatorInfo) {
@@ -535,32 +536,32 @@ func (v *Validator) SyncVaildatorInfo(validatorInfo *validatorinfo.ValidatorInfo
 
 func (v *Validator) LogCurrentStats() {
 	// Log validator info
-	log.Debugf("validator ID: %d", v.ValidatorInfo.ValidatorId)
-	log.Debugf("validator Public: %x", v.ValidatorInfo.PublicKey[:])
-	log.Debugf("validator Host: %s", v.ValidatorInfo.Host)
-	log.Debugf("validator CreateTime: %s", v.ValidatorInfo.CreateTime.Format("2006-01-02 15:04:05"))
+	utils.Log.Debugf("validator ID: %d", v.ValidatorInfo.ValidatorId)
+	utils.Log.Debugf("validator Public: %x", v.ValidatorInfo.PublicKey[:])
+	utils.Log.Debugf("validator Host: %s", v.ValidatorInfo.Host)
+	utils.Log.Debugf("validator CreateTime: %s", v.ValidatorInfo.CreateTime.Format("2006-01-02 15:04:05"))
 
 	//Log validator stats
 	if v.peer == nil {
-		log.Debugf("validator peer is nil")
+		utils.Log.Debugf("validator peer is nil")
 		return
 	}
 	v.peer.LogConnStats()
-	// log.Debugf("validator LastSend: %s", v.peer.LastSend().Format("2006-01-02 15:04:05"))
-	// log.Debugf("validator LastRecv: %s", v.peer.LastRecv().Format("2006-01-02 15:04:05"))
-	// log.Debugf("validator LastPingTime: %s", v.peer.LastPingTime().Format("2006-01-02 15:04:05"))
-	// log.Debugf("validator LastPingNonce: %d", v.peer.LastPingNonce())
-	// log.Debugf("validator LastPingMicros: %d", v.peer.LastPingMicros())
+	// utils.Log.Debugf("validator LastSend: %s", v.peer.LastSend().Format("2006-01-02 15:04:05"))
+	// utils.Log.Debugf("validator LastRecv: %s", v.peer.LastRecv().Format("2006-01-02 15:04:05"))
+	// utils.Log.Debugf("validator LastPingTime: %s", v.peer.LastPingTime().Format("2006-01-02 15:04:05"))
+	// utils.Log.Debugf("validator LastPingNonce: %d", v.peer.LastPingNonce())
+	// utils.Log.Debugf("validator LastPingMicros: %d", v.peer.LastPingMicros())
 }
 
 // GetLocalValidatorInfo invoke when local validator info.
 func (v *Validator) GetLocalValidatorInfo(uint64) *validatorinfo.ValidatorInfo {
 	validatorInfo := v.Cfg.Listener.GetLocalValidatorInfo()
 
-	// log.Debugf("[Validator]GetLocalValidatorInfo")
-	// log.Debugf("ValidatorId: %d", validatorInfo.ValidatorId)
-	// log.Debugf("PublicKey: %x", validatorInfo.PublicKey)
-	// log.Debugf("CreateTime: %s", validatorInfo.CreateTime.Format(time.DateTime))
+	// utils.Log.Debugf("[Validator]GetLocalValidatorInfo")
+	// utils.Log.Debugf("ValidatorId: %d", validatorInfo.ValidatorId)
+	// utils.Log.Debugf("PublicKey: %x", validatorInfo.PublicKey)
+	// utils.Log.Debugf("CreateTime: %s", validatorInfo.CreateTime.Format(time.DateTime))
 	return validatorInfo
 
 }

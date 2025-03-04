@@ -45,7 +45,7 @@ func (msg *MsgGetVCBlock) BtcDecode(r io.Reader, pver uint32) error {
 
 	err := utils.ReadElements(buf, &msg.ValidatorId, &msg.BlockType, &msg.BlockHash)
 	if err != nil {
-		log.Errorf("MsgGetVCBlock:ReadElements failed: %v", err)
+		utils.Log.Errorf("MsgGetVCBlock:ReadElements failed: %v", err)
 		return err
 	}
 
@@ -57,7 +57,7 @@ func (msg *MsgGetVCBlock) BtcDecode(r io.Reader, pver uint32) error {
 func (msg *MsgGetVCBlock) BtcEncode(w io.Writer, pver uint32) error {
 	err := utils.WriteElements(w, msg.ValidatorId, msg.BlockType, msg.BlockHash)
 	if err != nil {
-		log.Errorf("MsgGetVCBlock:WriteElements failed: %v", err)
+		utils.Log.Errorf("MsgGetVCBlock:WriteElements failed: %v", err)
 		return err
 	}
 
@@ -78,10 +78,10 @@ func (msg *MsgGetVCBlock) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgGetVCBlock) LogCommandInfo() {
-	log.Debugf("Command MsgGetVCBlock:")
-	log.Debugf("ValidatorId: %d", msg.ValidatorId)
-	log.Debugf("BlockType: %d", msg.BlockType)
-	log.Debugf("BlockHash: %s", msg.BlockHash.String())
+	utils.Log.Debugf("Command MsgGetVCBlock:")
+	utils.Log.Debugf("ValidatorId: %d", msg.ValidatorId)
+	utils.Log.Debugf("BlockType: %d", msg.BlockType)
+	utils.Log.Debugf("BlockHash: %s", msg.BlockHash.String())
 }
 
 // NewMsgGetVCBlock returns a new bitcoin version message that conforms to the

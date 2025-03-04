@@ -7,6 +7,7 @@ import (
 
 	"github.com/sat20-labs/satsnet_btcd/btcec"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
 	"github.com/sat20-labs/satsnet_btcd/wire"
@@ -67,11 +68,11 @@ func (em *EpochMemberManager) UpdateCurrentEpoch(currentEpoch *epoch.Epoch) {
 
 func (em *EpochMemberManager) GetEpochMember(validatorID uint64) (*validator.Validator, bool) {
 
-	log.Debugf("connectedListMtx4 Locked")
+	utils.Log.Debugf("connectedListMtx4 Locked")
 	em.connectedListMtx.RLock()
 	defer func() {
 		em.connectedListMtx.RUnlock()
-		log.Debugf("connectedListMtx4 Unocked")
+		utils.Log.Debugf("connectedListMtx4 Unocked")
 	}()
 
 	if em.ConnectedList != nil {
@@ -81,11 +82,11 @@ func (em *EpochMemberManager) GetEpochMember(validatorID uint64) (*validator.Val
 		}
 	}
 
-	log.Debugf("disconnectedListMtx1 Locked")
+	utils.Log.Debugf("disconnectedListMtx1 Locked")
 	em.disconnectedListMtx.RLock()
 	defer func() {
 		defer em.disconnectedListMtx.RUnlock()
-		log.Debugf("disconnectedListMtx1 Unocked")
+		utils.Log.Debugf("disconnectedListMtx1 Unocked")
 	}()
 
 	if em.DisconnectedList != nil {
@@ -100,30 +101,30 @@ func (em *EpochMemberManager) GetEpochMember(validatorID uint64) (*validator.Val
 
 func (em *EpochMemberManager) updateValidatorsList() {
 
-	log.Debugf("[EpochMemberManager]Update validators list...")
+	utils.Log.Debugf("[EpochMemberManager]Update validators list...")
 	// 将原来的数据清空
-	log.Debugf("connectedListMtx5 Locked")
+	utils.Log.Debugf("connectedListMtx5 Locked")
 	em.connectedListMtx.Lock()
 	defer func() {
 		em.connectedListMtx.Unlock()
-		log.Debugf("connectedListMtx5 Unocked")
+		utils.Log.Debugf("connectedListMtx5 Unocked")
 	}()
 
-	log.Debugf("disconnectedListMtx2 Locked")
+	utils.Log.Debugf("disconnectedListMtx2 Locked")
 	em.disconnectedListMtx.Lock()
 	defer func() {
 		defer em.disconnectedListMtx.Unlock()
-		log.Debugf("disconnectedListMtx2 Unocked")
+		utils.Log.Debugf("disconnectedListMtx2 Unocked")
 	}()
 
 	em.ConnectedList = make(map[uint64]*validator.Validator)
 	em.DisconnectedList = make(map[uint64]*DisconnectEpochMember)
 
-	log.Debugf("[EpochMemberManager]Old validators list has cleared.")
+	utils.Log.Debugf("[EpochMemberManager]Old validators list has cleared.")
 
 	if em.CurrentEpoch == nil {
 		// 当前没有需要管理的epoch
-		log.Debugf("[EpochMemberManager]Empty current epoch, not to be managed.")
+		utils.Log.Debugf("[EpochMemberManager]Empty current epoch, not to be managed.")
 		return
 	}
 
@@ -144,7 +145,7 @@ func (em *EpochMemberManager) updateValidatorsList() {
 			}
 			validatorNew, err := validator.NewValidator(validatorCfg, addr)
 			if err != nil {
-				log.Errorf("New Validator failed: %v", err)
+				utils.Log.Errorf("New Validator failed: %v", err)
 				continue
 			}
 			em.DisconnectedList[epochItem.ValidatorId] = &DisconnectEpochMember{
@@ -160,42 +161,42 @@ func (em *EpochMemberManager) updateValidatorsList() {
 		// Disconnected list is not empty, try to reconnect
 		go em.reconnectEpochHandler()
 	}
-	log.Debugf("[EpochMemberManager]Update validators list Done.")
+	utils.Log.Debugf("[EpochMemberManager]Update validators list Done.")
 }
 
 func (em *EpochMemberManager) OnValidatorDisconnected(validatorID uint64) {
 
-	log.Debugf("[EpochMemberManager]A epoch member is disconnected: %d", validatorID)
+	utils.Log.Debugf("[EpochMemberManager]A epoch member is disconnected: %d", validatorID)
 
-	log.Debugf("connectedListMtx6 Locked")
+	utils.Log.Debugf("connectedListMtx6 Locked")
 	em.connectedListMtx.Lock()
 	defer func() {
 		em.connectedListMtx.Unlock()
-		log.Debugf("connectedListMtx6 Unocked")
+		utils.Log.Debugf("connectedListMtx6 Unocked")
 	}()
 
 	if em.ConnectedList == nil || em.DisconnectedList == nil {
-		log.Errorf("[EpochMemberManager]Invalid epoch manager for em.ConnectedList = %v or em.DisconnectedList = %v", em.ConnectedList, em.DisconnectedList)
+		utils.Log.Errorf("[EpochMemberManager]Invalid epoch manager for em.ConnectedList = %v or em.DisconnectedList = %v", em.ConnectedList, em.DisconnectedList)
 		return
 	}
 
 	validatorItem, ok := em.ConnectedList[validatorID]
 	if !ok {
 		// The validator is not in connected list
-		log.Debugf("[EpochMemberManager]The disconnected epoch member isnot in connected list, nothing to do: %d", validatorID)
+		utils.Log.Debugf("[EpochMemberManager]The disconnected epoch member isnot in connected list, nothing to do: %d", validatorID)
 		return
 	}
 
-	log.Debugf("[EpochMemberManager]The %d will be removed from connected list, and added to disconnected list", validatorID)
+	utils.Log.Debugf("[EpochMemberManager]The %d will be removed from connected list, and added to disconnected list", validatorID)
 
 	// remove it from connected list
 	delete(em.ConnectedList, validatorID)
 
-	log.Debugf("disconnectedListMtx3 Locked")
+	utils.Log.Debugf("disconnectedListMtx3 Locked")
 	em.disconnectedListMtx.Lock()
 	defer func() {
 		defer em.disconnectedListMtx.Unlock()
-		log.Debugf("disconnectedListMtx3 Unocked")
+		utils.Log.Debugf("disconnectedListMtx3 Unocked")
 	}()
 
 	// and add it to disconnected list
@@ -212,14 +213,14 @@ func (em *EpochMemberManager) OnValidatorDisconnected(validatorID uint64) {
 
 // reconnectEpochHandler for reconnect epoch member when a epoch member is disconnected on a timer
 func (em *EpochMemberManager) reconnectEpochHandler() {
-	log.Debugf("[EpochMemberManager]reconnectEpochHandler ...")
+	utils.Log.Debugf("[EpochMemberManager]reconnectEpochHandler ...")
 	reconnectInterval := time.Second * 1
 	reconnectTicker := time.NewTicker(reconnectInterval)
 	defer reconnectTicker.Stop()
 
 exit:
 	for {
-		log.Debugf("[EpochMemberManager]Waiting next timer for reconnect disconnected epoch member...")
+		utils.Log.Debugf("[EpochMemberManager]Waiting next timer for reconnect disconnected epoch member...")
 		select {
 		case <-reconnectTicker.C:
 			isExit := em.reconnectEpochMember()
@@ -229,29 +230,29 @@ exit:
 		}
 	}
 
-	log.Debugf("[EpochMemberManager]reconnectEpochHandler done.")
+	utils.Log.Debugf("[EpochMemberManager]reconnectEpochHandler done.")
 }
 
 func (em *EpochMemberManager) reconnectEpochMember() bool {
 
-	log.Debugf("disconnectedListMtx4 Locked")
+	utils.Log.Debugf("disconnectedListMtx4 Locked")
 	em.disconnectedListMtx.Lock()
 	disConnectedList := em.DisconnectedList
 	em.disconnectedListMtx.Unlock()
-	log.Debugf("disconnectedListMtx4 Unocked")
+	utils.Log.Debugf("disconnectedListMtx4 Unocked")
 
 	if disConnectedList == nil {
 		return true
 	}
 
 	for validatorID, validatorItem := range disConnectedList {
-		log.Debugf("[EpochMemberManager]Try to reconnect validator: %d...", validatorID)
+		utils.Log.Debugf("[EpochMemberManager]Try to reconnect validator: %d...", validatorID)
 
 		if validatorItem.Validator.IsConnected() == false {
 			err := validatorItem.Validator.Connect()
 			if err != nil {
 				validatorItem.ReconnectTimes++ // reconnect times + 1
-				log.Errorf("[EpochMemberManager]Connect validator failed : %v [%d]", err, validatorItem.ReconnectTimes)
+				utils.Log.Errorf("[EpochMemberManager]Connect validator failed : %v [%d]", err, validatorItem.ReconnectTimes)
 
 				if validatorItem.ReconnectTimes > EpochReconnectMaxTimes {
 					// 已经确认离线，不再尝试重连
@@ -280,7 +281,7 @@ func (em *EpochMemberManager) reconnectEpochMember() bool {
 
 					if em.CurrentEpoch.ItemList[reqPos].ValidatorId == em.ValidatorMgr.Cfg.ValidatorId {
 						// 需要发起剔除成员的请求的成员是自己， 则申请剔除离线成员
-						log.Debugf("[EpochMemberManager]Request to delete validator from epoch list: %d...", validatorID)
+						utils.Log.Debugf("[EpochMemberManager]Request to delete validator from epoch list: %d...", validatorID)
 
 						if em.ValidatorMgr.myValidator.IsBootStrapNode() {
 							// 在多次尝试重连失败后，需要剔除成员
@@ -293,25 +294,25 @@ func (em *EpochMemberManager) reconnectEpochMember() bool {
 			}
 		}
 		// The validator is connected, remove it from disconnected list
-		log.Debugf("[EpochMemberManager]Reconnected to validator: %d...", validatorID)
+		utils.Log.Debugf("[EpochMemberManager]Reconnected to validator: %d...", validatorID)
 
 		// remove it from connected list
 		delete(disConnectedList, validatorID)
 
-		log.Debugf("connectedListMtx8 Locked")
+		utils.Log.Debugf("connectedListMtx8 Locked")
 		em.connectedListMtx.Lock()
 		// and add it to disconnected list
 		em.ConnectedList[validatorID] = validatorItem.Validator
 		em.connectedListMtx.Unlock()
-		log.Debugf("connectedListMtx8 Unocked")
+		utils.Log.Debugf("connectedListMtx8 Unocked")
 
 	}
 
-	log.Debugf("disconnectedListMtx8 Locked")
+	utils.Log.Debugf("disconnectedListMtx8 Locked")
 	em.disconnectedListMtx.Lock()
 	em.DisconnectedList = disConnectedList
 	em.disconnectedListMtx.Unlock()
-	log.Debugf("disconnectedListMtx8 Unocked")
+	utils.Log.Debugf("disconnectedListMtx8 Unocked")
 
 	// Disconnected list is empty, exit
 	if len(em.DisconnectedList) == 0 {
@@ -336,14 +337,14 @@ func (em *EpochMemberManager) ReqDelEpochMember(delValidatorID uint64) {
 
 	em.receivedDelEpochMemberResult[delValidatorID] = delMemberCollection
 
-	log.Debugf("connectedListMtx1 Locked")
+	utils.Log.Debugf("connectedListMtx1 Locked")
 	em.connectedListMtx.Lock()
 	defer func() {
 		em.connectedListMtx.Unlock()
-		log.Debugf("connectedListMtx1 Unocked")
+		utils.Log.Debugf("connectedListMtx1 Unocked")
 	}()
 
-	log.Debugf("Will broadcast DelEpoch command from all connected validators...")
+	utils.Log.Debugf("Will broadcast DelEpoch command from all connected validators...")
 	for validatorId, validator := range em.ConnectedList {
 		delMemberCollection.ResultList[validatorId] = &DelEpochMemberResult{PublicKey: validator.ValidatorInfo.PublicKey, Result: epoch.DelEpochMemberResult_NotConfirm, Token: ""}
 		validator.SendCommand(CmdReqDelEpochMember)
@@ -376,11 +377,11 @@ func (em *EpochMemberManager) OnConfirmedDelEpochMember(delEpochMember *epoch.De
 
 	confirmedValidatorId := delEpochMember.ValidatorId
 
-	log.Debugf("connectedListMtx2 Locked")
+	utils.Log.Debugf("connectedListMtx2 Locked")
 	em.connectedListMtx.Lock()
 	defer func() {
 		em.connectedListMtx.Unlock()
-		log.Debugf("connectedListMtx2 Unocked")
+		utils.Log.Debugf("connectedListMtx2 Unocked")
 	}()
 
 	confirmedValidator := em.ConnectedList[confirmedValidatorId]
@@ -406,7 +407,7 @@ func (em *EpochMemberManager) OnConfirmedDelEpochMember(delEpochMember *epoch.De
 }
 
 func (em *EpochMemberManager) delEpochMemberHandler(delValidatorID uint64) {
-	log.Debugf("[EpochMemberManager]delEpochMemberHandler ...")
+	utils.Log.Debugf("[EpochMemberManager]delEpochMemberHandler ...")
 
 	exitDelEpochHandler := make(chan struct{})
 	duration := time.Second * 5
@@ -418,7 +419,7 @@ func (em *EpochMemberManager) delEpochMemberHandler(delValidatorID uint64) {
 	// 这里阻塞主 goroutine 等待任务执行（可根据需要改为其他逻辑）
 	select {
 	case exitDelEpochHandler <- struct{}{}:
-		log.Debugf("[EpochMemberManager]delEpochMemberHandler done .")
+		utils.Log.Debugf("[EpochMemberManager]delEpochMemberHandler done .")
 		return
 	}
 }
@@ -458,7 +459,7 @@ func (em *EpochMemberManager) handleDelEpochMember(delValidatorID uint64) {
 		em.ValidatorMgr.CheckContinueHandOver()
 	} else {
 		// Disagree for del validatorID from epoch member
-		log.Debugf("[EpochMemberManager]Disagree for del validatorID from epoch member: %d", delValidatorID)
+		utils.Log.Debugf("[EpochMemberManager]Disagree for del validatorID from epoch member: %d", delValidatorID)
 	}
 }
 
@@ -469,13 +470,13 @@ func (em *EpochMemberManager) NotifyEpochMemberDeleted(delValidatorID uint64) {
 		epoch.DelCode_Disconnect,
 		em.CurrentEpoch.EpochIndex)
 
-	log.Debugf("Will broadcast ReqEpoch command from all connected validators...")
+	utils.Log.Debugf("Will broadcast ReqEpoch command from all connected validators...")
 
-	log.Debugf("connectedListMtx3 Locked")
+	utils.Log.Debugf("connectedListMtx3 Locked")
 	em.connectedListMtx.Lock()
 	defer func() {
 		em.connectedListMtx.Unlock()
-		log.Debugf("connectedListMtx3 Unocked")
+		utils.Log.Debugf("connectedListMtx3 Unocked")
 	}()
 
 	for _, validator := range em.ConnectedList {
@@ -485,13 +486,13 @@ func (em *EpochMemberManager) NotifyEpochMemberDeleted(delValidatorID uint64) {
 
 // Received a Del epoch member command
 func (em *EpochMemberManager) ConfirmDelEpochMember(reqDelEpochMember *validatorcommand.MsgReqDelEpochMember, remoteAddr net.Addr) *epoch.DelEpochMember {
-	log.Debugf("[ValidatorManager]ConfirmDelEpochMember received from validator [%s]...", remoteAddr.String())
+	utils.Log.Debugf("[ValidatorManager]ConfirmDelEpochMember received from validator [%s]...", remoteAddr.String())
 
 	if reqDelEpochMember == nil {
 		return nil
 	}
 
-	log.Debugf("[ValidatorManager]ConfirmDelEpochMember Will confirm the [%s] is or not connected?", reqDelEpochMember.DelValidatorId)
+	utils.Log.Debugf("[ValidatorManager]ConfirmDelEpochMember Will confirm the [%s] is or not connected?", reqDelEpochMember.DelValidatorId)
 
 	switch reqDelEpochMember.Target {
 	case validatorcommand.CmdDelEpochMemberTarget_Consult:
@@ -499,7 +500,7 @@ func (em *EpochMemberManager) ConfirmDelEpochMember(reqDelEpochMember *validator
 		delValidator, isConnected := em.GetEpochMember(reqDelEpochMember.DelValidatorId)
 		if !isConnected {
 			// 回复同意删除消息
-			log.Debugf("The validator [%d] is not connected", reqDelEpochMember.DelValidatorId)
+			utils.Log.Debugf("The validator [%d] is not connected", reqDelEpochMember.DelValidatorId)
 			confirmDelMember := em.NewConfirmDelMember(reqDelEpochMember.DelValidatorId, reqDelEpochMember, epoch.DelEpochMemberResult_Agree)
 			return confirmDelMember
 		}
@@ -518,7 +519,7 @@ func (em *EpochMemberManager) ConfirmDelEpochMember(reqDelEpochMember *validator
 }
 
 func (em *EpochMemberManager) checkMemberConnectedHandler(delValidator *validator.Validator, reqDelEpochMember *validatorcommand.MsgReqDelEpochMember) *epoch.DelEpochMember {
-	log.Debugf("[EpochMemberManager]checkMemberConnectedHandler ...")
+	utils.Log.Debugf("[EpochMemberManager]checkMemberConnectedHandler ...")
 
 	exitCheckHandler := make(chan struct{})
 	var cfmDelEpochMember *epoch.DelEpochMember
@@ -531,13 +532,13 @@ func (em *EpochMemberManager) checkMemberConnectedHandler(delValidator *validato
 	// 这里阻塞主 goroutine 等待任务执行（可根据需要改为其他逻辑）
 	select {
 	case exitCheckHandler <- struct{}{}:
-		log.Debugf("[NewEpochManager]newEpochHandler done .")
+		utils.Log.Debugf("[NewEpochManager]newEpochHandler done .")
 		return cfmDelEpochMember
 	}
 }
 
 func (em *EpochMemberManager) handleCheckMemberConnected(delValidator *validator.Validator, reqDelEpochMember *validatorcommand.MsgReqDelEpochMember) *epoch.DelEpochMember {
-	log.Debugf("[EpochMemberManager]handleCheckMemberConnected ...")
+	utils.Log.Debugf("[EpochMemberManager]handleCheckMemberConnected ...")
 
 	lastReceived := delValidator.GetLastReceived()
 
@@ -547,13 +548,13 @@ func (em *EpochMemberManager) handleCheckMemberConnected(delValidator *validator
 
 	// 判断是否小于1秒
 	if duration < time.Second {
-		log.Debugf("[EpochMemberManager]The member is response in 1 second, it's connected .")
+		utils.Log.Debugf("[EpochMemberManager]The member is response in 1 second, it's connected .")
 		// 回复不同意删除消息
 		confirmDelMember := em.NewConfirmDelMember(reqDelEpochMember.ValidatorId, reqDelEpochMember, epoch.DelEpochMemberResult_Reject)
 		return confirmDelMember
 
 	} else {
-		log.Debugf("[EpochMemberManager]The member is not response pong in 1 second, it's disconnected .")
+		utils.Log.Debugf("[EpochMemberManager]The member is not response pong in 1 second, it's disconnected .")
 		// 回复同意删除消息
 		confirmDelMember := em.NewConfirmDelMember(reqDelEpochMember.ValidatorId, reqDelEpochMember, epoch.DelEpochMemberResult_Agree)
 		return confirmDelMember
@@ -573,7 +574,7 @@ func (em *EpochMemberManager) NewConfirmDelMember(delValidatorId uint64, reqDelE
 	// Sign the token by local validator private key
 	token, err := em.ValidatorMgr.SignToken(tokenData)
 	if err != nil {
-		log.Errorf("Sign token failed: %v", err)
+		utils.Log.Errorf("Sign token failed: %v", err)
 		return nil
 	}
 

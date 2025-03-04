@@ -8,6 +8,7 @@ import (
 	"net"
 
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 const (
@@ -22,7 +23,7 @@ func (vm *ValidatorManager) getSeed(chainParams *chaincfg.Params) ([]net.Addr, e
 	for _, dnsseed := range chainParams.DNSSeeds {
 		addr, err := vm.getAddr(dnsseed.Host)
 		if err != nil {
-			log.Infof("DNS discovery failed on seed %s: %v", dnsseed.Host, err)
+			utils.Log.Infof("DNS discovery failed on seed %s: %v", dnsseed.Host, err)
 			continue
 		}
 		addrs = append(addrs, addr)

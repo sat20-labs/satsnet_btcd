@@ -7,6 +7,7 @@ import (
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sat20-labs/satsnet_btcd/btcec/ecdsa"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 )
 
 const (
@@ -45,7 +46,7 @@ func (he *DelEpochMember) GetDelEpochMemTokenData() []byte {
 func (he *DelEpochMember) VerifyToken(pubKey []byte) bool {
 	signatureBytes, err := base64.StdEncoding.DecodeString(he.Token)
 	if err != nil {
-		log.Debugf("[DelEpochMember]VerifyToken: Invalid generator token, ignore it.")
+		utils.Log.Debugf("[DelEpochMember]VerifyToken: Invalid generator token, ignore it.")
 		return false
 	}
 
@@ -57,17 +58,17 @@ func (he *DelEpochMember) VerifyToken(pubKey []byte) bool {
 	// signature, err := btcec.ParseDERSignature(signatureBytes)
 	signature, err := ecdsa.ParseDERSignature(signatureBytes)
 	if err != nil {
-		log.Debugf("Failed to parse signature: %v", err)
+		utils.Log.Debugf("Failed to parse signature: %v", err)
 		return false
 	}
 
 	// 使用公钥验证签名
 	valid := signature.Verify(tokenData, publicKey)
 	if valid {
-		log.Debugf("[DelEpochMember]VerifyToken:Signature is valid.")
+		utils.Log.Debugf("[DelEpochMember]VerifyToken:Signature is valid.")
 		return true
 	} else {
-		log.Debugf("[DelEpochMember]VerifyToken:Signature is invalid.")
+		utils.Log.Debugf("[DelEpochMember]VerifyToken:Signature is invalid.")
 		return false
 	}
 

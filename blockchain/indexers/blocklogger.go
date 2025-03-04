@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sirupsen/logrus"
 )
 
 // blockProgressLogger provides periodic logging for other services in order
@@ -20,7 +20,7 @@ type blockProgressLogger struct {
 	receivedLogTx     int64
 	lastBlockLogTime  time.Time
 
-	subsystemLogger btclog.Logger
+	subsystemLogger *logrus.Entry
 	progressAction  string
 	sync.Mutex
 }
@@ -30,7 +30,7 @@ type blockProgressLogger struct {
 //
 //	{progressAction} {numProcessed} {blocks|block} in the last {timePeriod}
 //	({numTxs}, height {lastBlockHeight}, {lastBlockTimeStamp})
-func newBlockProgressLogger(progressMessage string, logger btclog.Logger) *blockProgressLogger {
+func newBlockProgressLogger(progressMessage string, logger *logrus.Entry) *blockProgressLogger {
 	return &blockProgressLogger{
 		lastBlockLogTime: time.Now(),
 		progressAction:   progressMessage,

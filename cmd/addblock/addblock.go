@@ -10,12 +10,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/blockchain"
 	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/database"
 	"github.com/sat20-labs/satsnet_btcd/limits"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -25,7 +25,7 @@ const (
 
 var (
 	cfg *config
-	log btclog.Logger
+	log *logrus.Logger
 )
 
 var (
@@ -78,12 +78,11 @@ func realMain() error {
 	cfg = tcfg
 
 	// Setup logging.
-	backendLogger := btclog.NewBackend(os.Stdout)
-	defer os.Stdout.Sync()
-	log = backendLogger.Logger("MAIN")
-	database.UseLogger(backendLogger.Logger("BCDB"))
-	blockchain.UseLogger(backendLogger.Logger("CHAN"))
-	indexers.UseLogger(backendLogger.Logger("INDX"))
+	log = logrus.StandardLogger()
+
+	database.UseLogger(log.WithField("module", "BCDB"))
+	blockchain.UseLogger(log.WithField("module", "CHAN"))
+	indexers.UseLogger(log.WithField("module", "INDX"))
 
 	// Load the block database.
 	db, err := loadBlockDB()

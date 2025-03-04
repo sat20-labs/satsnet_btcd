@@ -5,13 +5,15 @@
 package database
 
 import (
-	"github.com/btcsuite/btclog"
+	"io"
+
+	"github.com/sirupsen/logrus"
 )
 
 // log is a logger that is initialized with no output filters.  This
 // means the package will not perform any logging by default until the caller
 // requests it.
-var log btclog.Logger
+var log *logrus.Entry
 
 // The default amount of logging is none.
 func init() {
@@ -21,11 +23,13 @@ func init() {
 // DisableLog disables all library log output.  Logging output is disabled
 // by default until UseLogger is called.
 func DisableLog() {
-	log = btclog.Disabled
+	logger := logrus.New()
+	logger.SetOutput(io.Discard)
+	log = logger.WithField("", "")
 }
 
 // UseLogger uses a specified Logger to output package logging info.
-func UseLogger(logger btclog.Logger) {
+func UseLogger(logger *logrus.Entry) {
 	log = logger
 
 	// Update the logger for the registered drivers.

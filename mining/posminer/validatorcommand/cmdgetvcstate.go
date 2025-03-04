@@ -37,7 +37,7 @@ func (msg *MsgGetVCState) BtcDecode(r io.Reader, pver uint32) error {
 
 	err := utils.ReadElements(buf, &msg.ValidatorId)
 	if err != nil {
-		log.Errorf("MsgGetVCState:ReadElements failed: %v", err)
+		utils.Log.Errorf("MsgGetVCState:ReadElements failed: %v", err)
 		return err
 	}
 
@@ -49,7 +49,7 @@ func (msg *MsgGetVCState) BtcDecode(r io.Reader, pver uint32) error {
 func (msg *MsgGetVCState) BtcEncode(w io.Writer, pver uint32) error {
 	err := utils.WriteElements(w, msg.ValidatorId)
 	if err != nil {
-		log.Errorf("MsgGetVCState:WriteElements failed: %v", err)
+		utils.Log.Errorf("MsgGetVCState:WriteElements failed: %v", err)
 		return err
 	}
 
@@ -70,8 +70,8 @@ func (msg *MsgGetVCState) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgGetVCState) LogCommandInfo() {
-	log.Debugf("Command MsgGetVCState:")
-	log.Debugf("ValidatorId: %d", msg.ValidatorId)
+	utils.Log.Debugf("Command MsgGetVCState:")
+	utils.Log.Debugf("ValidatorId: %d", msg.ValidatorId)
 }
 
 // NewMsgGetVCState returns a new bitcoin version message that conforms to the

@@ -85,12 +85,12 @@ func (msg *MsgGenerator) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgGenerator) LogCommandInfo() {
-	log.Debugf("Command MsgGenerator:")
-	log.Debugf("GeneratorId: %d", msg.GeneratorInfo.GeneratorId)
+	utils.Log.Debugf("Command MsgGenerator:")
+	utils.Log.Debugf("GeneratorId: %d", msg.GeneratorInfo.GeneratorId)
 	timeStamp := time.Unix(msg.GeneratorInfo.Timestamp, 0)
-	log.Debugf("Timestamp: %s", timeStamp.Format(time.DateTime))
-	log.Debugf("Height: %d", msg.GeneratorInfo.Height)
-	log.Debugf("Token: %s", msg.GeneratorInfo.Token)
+	utils.Log.Debugf("Timestamp: %s", timeStamp.Format(time.DateTime))
+	utils.Log.Debugf("Height: %d", msg.GeneratorInfo.Height)
+	utils.Log.Debugf("Token: %s", msg.GeneratorInfo.Token)
 }
 
 // NewMsgGenerator returns a new bitcoin version message that conforms to the

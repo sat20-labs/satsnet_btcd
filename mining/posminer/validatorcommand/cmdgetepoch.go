@@ -68,8 +68,8 @@ func (msg *MsgGetEpoch) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgGetEpoch) LogCommandInfo() {
-	log.Debugf("Command MsgGetEpoch:")
-	log.Debugf("ValidatorId: %d", msg.ValidatorId)
+	utils.Log.Debugf("Command MsgGetEpoch:")
+	utils.Log.Debugf("ValidatorId: %d", msg.ValidatorId)
 }
 
 // NewMsgGetEpoch returns a new bitcoin version message that conforms to the

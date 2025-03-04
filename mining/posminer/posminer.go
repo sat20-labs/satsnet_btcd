@@ -16,6 +16,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechaindb"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatormanager"
 	"github.com/sat20-labs/satsnet_btcd/wire"
@@ -139,7 +140,7 @@ type POSMiner struct {
 // speedMonitor handles tracking the number of hashes per second the mining
 // process is performing.  It must be run as a goroutine.
 func (m *POSMiner) speedMonitor() {
-	log.Tracef("POS miner speed monitor started")
+	utils.Log.Tracef("POS miner speed monitor started")
 
 	var hashesPerSec float64
 	var totalHashes uint64
@@ -163,7 +164,7 @@ out:
 			hashesPerSec = (hashesPerSec + curHashesPerSec) / 2
 			totalHashes = 0
 			if hashesPerSec != 0 {
-				log.Debugf("Hash speed: %6.0f kilohashes/s",
+				utils.Log.Debugf("Hash speed: %6.0f kilohashes/s",
 					hashesPerSec/1000)
 			}
 
@@ -177,7 +178,7 @@ out:
 	}
 
 	m.wg.Done()
-	log.Tracef("POS miner speed monitor done")
+	utils.Log.Tracef("POS miner speed monitor done")
 }
 
 // submitBlock submits the passed block to network after ensuring it passes all
@@ -193,7 +194,7 @@ func (m *POSMiner) submitBlock(block *btcutil.Block) bool {
 	// possible a block was found and submitted in between.
 	msgBlock := block.MsgBlock()
 	if !msgBlock.Header.PrevBlock.IsEqual(&m.g.BestSnapshot().Hash) {
-		log.Debugf("Block submitted via POS miner with previous "+
+		utils.Log.Debugf("Block submitted via POS miner with previous "+
 			"block %s is stale", msgBlock.Header.PrevBlock)
 		return false
 	}
@@ -205,22 +206,22 @@ func (m *POSMiner) submitBlock(block *btcutil.Block) bool {
 		// Anything other than a rule violation is an unexpected error,
 		// so log that error as an internal error.
 		if _, ok := err.(blockchain.RuleError); !ok {
-			log.Errorf("Unexpected error while processing "+
+			utils.Log.Errorf("Unexpected error while processing "+
 				"block submitted via POS miner: %v", err)
 			return false
 		}
 
-		log.Debugf("Block submitted via POS miner rejected: %v", err)
+		utils.Log.Debugf("Block submitted via POS miner rejected: %v", err)
 		return false
 	}
 	if isOrphan {
-		log.Debugf("Block submitted via POS miner is an orphan")
+		utils.Log.Debugf("Block submitted via POS miner is an orphan")
 		return false
 	}
 
 	// The block was accepted.
 	coinbaseTx := block.MsgBlock().Transactions[0].TxOut[0]
-	log.Infof("Block submitted via POS miner accepted (hash %s, "+
+	utils.Log.Infof("Block submitted via POS miner accepted (hash %s, "+
 		"amount %v)", block.Hash(), btcutil.Amount(coinbaseTx.Value))
 	return true
 }
@@ -236,12 +237,12 @@ func (m *POSMiner) submitBlock(block *btcutil.Block) bool {
 // new transactions and enough time has elapsed without finding a solution.
 func (m *POSMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32) bool {
 
-	log.Debugf("solveBlock ...")
+	utils.Log.Debugf("solveBlock ...")
 	// Choose a random extra nonce offset for this block template and
 	// worker.
 	enOffset, err := wire.RandomUint64()
 	if err != nil {
-		log.Errorf("Unexpected error while generating random "+
+		utils.Log.Errorf("Unexpected error while generating random "+
 			"extra nonce offset: %v", err)
 		enOffset = 0
 	}
@@ -318,7 +319,7 @@ func (m *POSMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32) bool {
 	//}
 	//}
 
-	log.Debugf("solveBlock done.")
+	utils.Log.Debugf("solveBlock done.")
 	return true
 }
 
@@ -330,7 +331,7 @@ func (m *POSMiner) solveBlock(msgBlock *wire.MsgBlock, blockHeight int32) bool {
 //
 // It must be run as a goroutine.
 func (m *POSMiner) generateBlocks(quit chan struct{}) {
-	log.Tracef("Starting generate blocks worker")
+	utils.Log.Tracef("Starting generate blocks worker")
 
 	// Start a ticker which is used to signal checks for stale work and
 	// updates to the speed monitor.
@@ -338,13 +339,13 @@ func (m *POSMiner) generateBlocks(quit chan struct{}) {
 	defer ticker.Stop()
 out:
 	for {
-		log.Debugf("generateBlocks ......")
+		utils.Log.Debugf("generateBlocks ......")
 		// Quit when the miner is stopped.
 		select {
 		case <-quit:
 			break out
 		case <-ticker.C:
-			log.Debugf("Timeup for generate new Block ......")
+			utils.Log.Debugf("Timeup for generate new Block ......")
 			// Wait until there is a connection to at least one other peer
 			// since there is no way to relay a found block or receive
 			// transactions to work on when there are no connected peers.
@@ -359,12 +360,12 @@ out:
 			// this would otherwise end up building a new block template on
 			// a block that is in the process of becoming stale.
 			m.submitBlockLock.Lock()
-			log.Debugf("Lock block ...")
+			utils.Log.Debugf("Lock block ...")
 			curHeight := m.g.BestSnapshot().Height
 			if curHeight != 0 && !m.cfg.IsCurrent() {
 				m.submitBlockLock.Unlock()
 				time.Sleep(time.Second)
-				log.Debugf("curHeight = %d and not current.", curHeight)
+				utils.Log.Debugf("curHeight = %d and not current.", curHeight)
 				continue
 			}
 
@@ -376,25 +377,25 @@ out:
 			// Create a new block template using the available transactions
 			// in the memory pool as a source of transactions to potentially
 			// include in the block.
-			log.Debugf("NewBlockTemplate...")
+			utils.Log.Debugf("NewBlockTemplate...")
 			template, err := m.g.NewBlockTemplate(payToAddr)
 			m.submitBlockLock.Unlock()
 			if err != nil {
 				errStr := fmt.Sprintf("Failed to create new block "+
 					"template: %v", err)
-				log.Errorf(errStr)
+				utils.Log.Errorf(errStr)
 				continue
 			}
 
-			log.Debugf("NewBlockTemplate done.")
+			utils.Log.Debugf("NewBlockTemplate done.")
 
 			// Attempt to solve the block.  The function will exit early
 			// with false when conditions that trigger a stale block, so
 			// a new block template can be generated.  When the return is
 			// true a solution was found, so submit the solved block.
 			if m.solveBlock(template.Block, curHeight+1) {
-				log.Debugf("solveBlock ...")
-				log.Debugf("Block Header MerkleRoot is %s。", template.Block.Header.MerkleRoot.String())
+				utils.Log.Debugf("solveBlock ...")
+				utils.Log.Debugf("Block Header MerkleRoot is %s。", template.Block.Header.MerkleRoot.String())
 				block := btcutil.NewBlock(template.Block)
 				m.submitBlock(block)
 			}
@@ -404,7 +405,7 @@ out:
 	}
 
 	m.workerWg.Done()
-	log.Tracef("Generate blocks worker done")
+	utils.Log.Tracef("Generate blocks worker done")
 }
 
 // miningWorkerController launches the worker goroutines that are used to
@@ -455,10 +456,10 @@ out:
 			}
 
 		case <-m.quit:
-			log.Debugf("miningWorkerController quit: %d", len(runningWorkers))
+			utils.Log.Debugf("miningWorkerController quit: %d", len(runningWorkers))
 			for index, quit := range runningWorkers {
 				close(quit)
-				log.Debugf("miningWorkerController quit: %d done", index)
+				utils.Log.Debugf("miningWorkerController quit: %d done", index)
 			}
 			break out
 		}
@@ -466,13 +467,13 @@ out:
 
 	// Wait until all workers shut down to stop the speed monitor since
 	// they rely on being able to send updates to it.
-	log.Debugf("Wait workerWg done...")
+	utils.Log.Debugf("Wait workerWg done...")
 
 	m.workerWg.Wait()
 	//close(m.speedMonitorQuit)
 	m.wg.Done()
 
-	log.Debugf("miningWorkerController done")
+	utils.Log.Debugf("miningWorkerController done")
 }
 
 // Start begins the POS mining process as well as the speed monitor used to
@@ -492,7 +493,7 @@ func (m *POSMiner) Start() {
 
 	m.quit = make(chan struct{})
 	if m.cfg.TimerGenerate {
-		log.Infof("POS miner started with timerGenerate")
+		utils.Log.Infof("POS miner started with timerGenerate")
 		m.wg.Add(1)
 		go m.miningWorkerController()
 	}
@@ -513,7 +514,7 @@ func (m *POSMiner) Start() {
 	}
 
 	m.started = true
-	log.Infof("POS miner started")
+	utils.Log.Infof("POS miner started")
 }
 
 // Stop gracefully stops the mining process by signalling all workers, and the
@@ -536,10 +537,10 @@ func (m *POSMiner) Stop() {
 	}
 
 	close(m.quit)
-	log.Infof("Wait wg done")
+	utils.Log.Infof("Wait wg done")
 	m.wg.Wait()
 	m.started = false
-	log.Infof("POS miner stopped")
+	utils.Log.Infof("POS miner stopped")
 }
 
 // IsMining returns whether or not the POS miner has been started and is
@@ -633,7 +634,7 @@ func (m *POSMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 
 	m.Unlock()
 
-	log.Tracef("Generating %d blocks", n)
+	utils.Log.Tracef("Generating %d blocks", n)
 
 	i := uint32(0)
 	blockHashes := make([]*chainhash.Hash, n)
@@ -671,7 +672,7 @@ func (m *POSMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 		if err != nil {
 			errStr := fmt.Sprintf("Failed to create new block "+
 				"template: %v", err)
-			log.Errorf(errStr)
+			utils.Log.Errorf(errStr)
 			continue
 		}
 
@@ -685,7 +686,7 @@ func (m *POSMiner) GenerateNBlocks(n uint32) ([]*chainhash.Hash, error) {
 			blockHashes[i] = block.Hash()
 			i++
 			if i == n {
-				log.Tracef("Generated %d blocks", i)
+				utils.Log.Tracef("Generated %d blocks", i)
 				m.Lock()
 				//close(m.speedMonitorQuit)
 				//m.wg.Wait()
@@ -719,7 +720,7 @@ func New(cfg *Config) *POSMiner {
 
 // OnTimeGenerateBlock is invoke when time to generate block.
 func (m *POSMiner) OnTimeGenerateBlock() (*chainhash.Hash, int32, error) {
-	log.Debugf("Timeup for OnTimeGenerateBlock ......")
+	utils.Log.Debugf("Timeup for OnTimeGenerateBlock ......")
 
 	//return m.GenerateNewTestBlock()
 
@@ -728,7 +729,7 @@ func (m *POSMiner) OnTimeGenerateBlock() (*chainhash.Hash, int32, error) {
 
 // OnTimeGenerateBlock is invoke when time to generate block.
 func (m *POSMiner) OnNewBlockMined(blockHash *chainhash.Hash, blockHeight int32) {
-	log.Debugf("[POSMiner]OnNewBlockMined ......")
+	utils.Log.Debugf("[POSMiner]OnNewBlockMined ......")
 
 	m.cfg.OnNewBlockMined(blockHash, blockHeight)
 
@@ -737,13 +738,13 @@ func (m *POSMiner) OnNewBlockMined(blockHash *chainhash.Hash, blockHeight int32)
 }
 
 func (m *POSMiner) GenerateNewTestBlock() (*chainhash.Hash, int32, error) {
-	log.Debugf("GenerateNewTestBlock ......")
+	utils.Log.Debugf("GenerateNewTestBlock ......")
 
 	// return nil, errors.New("Test generate failed.")
 	curHeight := m.g.BestSnapshot().Height
 	if curHeight != 0 && !m.cfg.IsCurrent() {
 		time.Sleep(time.Second)
-		log.Debugf("curHeight = %d and not current %d.", curHeight, m.cfg.IsCurrent())
+		utils.Log.Debugf("curHeight = %d and not current %d.", curHeight, m.cfg.IsCurrent())
 		err := fmt.Errorf("the blockchain is not best chain")
 		return nil, 0, err
 	}
@@ -788,14 +789,14 @@ func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, int32, error) {
 	// submission, since the current block will be changing and
 	// this would otherwise end up building a new block template on
 	// a block that is in the process of becoming stale.
-	log.Debugf("GenerateNewBlock by VC ...")
+	utils.Log.Debugf("GenerateNewBlock by VC ...")
 	m.submitBlockLock.Lock()
-	log.Debugf("Lock block ...")
+	utils.Log.Debugf("Lock block ...")
 	curHeight := m.g.BestSnapshot().Height
 	if curHeight != 0 && !m.cfg.IsCurrent() {
 		m.submitBlockLock.Unlock()
 		time.Sleep(time.Second)
-		log.Debugf("curHeight = %d and not current.", curHeight)
+		utils.Log.Debugf("curHeight = %d and not current.", curHeight)
 		err := fmt.Errorf("The blockchain is not best chain.")
 		return nil, 0, err
 	}
@@ -808,24 +809,24 @@ func (m *POSMiner) GenerateNewBlock() (*chainhash.Hash, int32, error) {
 	// Create a new block template using the available transactions
 	// in the memory pool as a source of transactions to potentially
 	// include in the block.
-	log.Debugf("NewBlockTemplate...")
+	utils.Log.Debugf("NewBlockTemplate...")
 	template, err := m.g.NewBlockTemplate(payToAddr)
 	m.submitBlockLock.Unlock()
 	if err != nil {
 		errStr := fmt.Sprintf("Failed to create new block "+
 			"template: %v", err)
-		log.Errorf(errStr)
+		utils.Log.Errorf(errStr)
 		return nil, 0, err
 	}
 
-	log.Debugf("NewBlockTemplate done.")
+	utils.Log.Debugf("NewBlockTemplate done.")
 
 	// Attempt to solve the block.  The function will exit early
 	// with false when conditions that trigger a stale block, so
 	// a new block template can be generated.  When the return is
 	// true a solution was found, so submit the solved block.
 	if m.solveBlock(template.Block, curHeight+1) {
-		log.Debugf("solveBlock ...")
+		utils.Log.Debugf("solveBlock ...")
 		block := btcutil.NewBlock(template.Block)
 		m.submitBlock(block)
 		blockHash := block.Hash()
@@ -858,19 +859,19 @@ func (m *POSMiner) GetCurrentEpochMember(includeSelf bool) ([]string, error) {
 func (m *POSMiner) GetMempoolTxSize() int32 {
 
 	if m.g == nil {
-		log.Debugf("[PosMiner] Invalid mempool generator.")
+		utils.Log.Debugf("[PosMiner] Invalid mempool generator.")
 		return 0
 	}
 	txSource := m.g.TxSource()
 	if txSource == nil {
-		log.Debugf("[PosMiner] Invalid mempool tx source.")
+		utils.Log.Debugf("[PosMiner] Invalid mempool tx source.")
 		return 0
 	}
 	sourceTxns := txSource.MiningDescs()
 
 	txSize := len(sourceTxns)
 
-	log.Debugf("[PosMiner] Current mempool tx size = %d", txSize)
+	utils.Log.Debugf("[PosMiner] Current mempool tx size = %d", txSize)
 
 	return int32(txSize)
 }

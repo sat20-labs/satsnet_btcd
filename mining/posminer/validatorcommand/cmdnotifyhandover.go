@@ -68,8 +68,8 @@ func (msg *MsgNotifyHandover) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgNotifyHandover) LogCommandInfo() {
-	log.Debugf("Command MsgNotifyHandover:")
-	log.Debugf("ValidatorId: %d", msg.ValidatorId)
+	utils.Log.Debugf("Command MsgNotifyHandover:")
+	utils.Log.Debugf("ValidatorId: %d", msg.ValidatorId)
 }
 
 // NewMsgNotifyHandover returns a new bitcoin version message that conforms to the

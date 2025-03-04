@@ -6,9 +6,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/sat20-labs/satsnet_btcd/addrmgr"
 	"github.com/sat20-labs/satsnet_btcd/anchortx"
@@ -19,24 +22,48 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/mempool"
 	"github.com/sat20-labs/satsnet_btcd/mining"
 	"github.com/sat20-labs/satsnet_btcd/mining/cpuminer"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer"
+	posminer "github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/netsync"
 	"github.com/sat20-labs/satsnet_btcd/peer"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 
-	"github.com/btcsuite/btclog"
-	"github.com/jrick/logrotate/rotator"
+	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
+	"github.com/sirupsen/logrus"
 )
 
-// logWriter implements an io.Writer that outputs to both standard output and
-// the write-end pipe of an initialized log rotator.
-type logWriter struct{}
+var logger = NewLogger()
 
-func (logWriter) Write(p []byte) (n int, err error) {
-	os.Stdout.Write(p)
-	logRotator.Write(p)
-	return len(p), nil
+func NewLogger() *logrus.Logger {
+	log := logrus.New()
+	log.SetLevel(logrus.TraceLevel)
+	log.SetFormatter(&CustomTextFormatter{})
+	return log
 }
+
+// 创建一个带模块名的日志实例
+func GetLoggerEntry(module string) *logrus.Entry {
+	return logger.WithField("module", module)
+}
+
+type CustomTextFormatter struct{}
+
+func (f *CustomTextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	var b bytes.Buffer
+
+	timestamp := entry.Time.Format("2006-01-02 15:04:05")
+	b.WriteString(fmt.Sprintf("%s ", timestamp))
+	b.WriteString(fmt.Sprintf("[%s] ", entry.Level.String()))
+	moduleName, ok := entry.Data["module"].(string)
+	if !ok {
+		moduleName = "default"
+	}
+	b.WriteString(fmt.Sprintf("%s: ", moduleName))
+	b.WriteString(entry.Message)
+	b.WriteByte('\n')
+
+	return b.Bytes(), nil
+}
+
 
 // Loggers per subsystem.  A single backend logger is created and all subsystem
 // loggers created from it will write to the backend.  When adding new
@@ -47,35 +74,27 @@ func (logWriter) Write(p []byte) (n int, err error) {
 // log file.  This must be performed early during application startup by calling
 // initLogRotator.
 var (
-	// backendLog is the logging backend used to create all subsystem loggers.
-	// The backend must not be used before the log rotator has been initialized,
-	// or data races and/or nil pointer dereferences will occur.
-	backendLog = btclog.NewBackend(logWriter{})
-
-	// logRotator is one of the logging outputs.  It should be closed on
-	// application shutdown.
-	logRotator *rotator.Rotator
-
-	adxrLog   = backendLog.Logger("ADXR")
-	amgrLog   = backendLog.Logger("AMGR")
-	cmgrLog   = backendLog.Logger("CMGR")
-	bcdbLog   = backendLog.Logger("BCDB")
-	btcdLog   = backendLog.Logger("SNET")
-	chanLog   = backendLog.Logger("CHAN")
-	discLog   = backendLog.Logger("DISC")
-	indxLog   = backendLog.Logger("INDX")
-	minrLog   = backendLog.Logger("MINR")
-	peerLog   = backendLog.Logger("PEER")
-	rpcsLog   = backendLog.Logger("RPCS")
-	scrpLog   = backendLog.Logger("SCRP")
-	srvrLog   = backendLog.Logger("SRVR")
-	syncLog   = backendLog.Logger("SYNC")
-	txmpLog   = backendLog.Logger("TXMP")
-	anchorLog = backendLog.Logger("ANCH")
+	adxrLog   = GetLoggerEntry("ADXR")
+	amgrLog   = GetLoggerEntry("AMGR")
+	cmgrLog   = GetLoggerEntry("CMGR")
+	bcdbLog   = GetLoggerEntry("BCDB")
+	btcdLog   = GetLoggerEntry("SNET")
+	chanLog   = GetLoggerEntry("CHAN")
+	discLog   = GetLoggerEntry("DISC")
+	indxLog   = GetLoggerEntry("INDX")
+	minrLog   = GetLoggerEntry("MINR")
+	peerLog   = GetLoggerEntry("PEER")
+	rpcsLog   = GetLoggerEntry("RPCS")
+	scrpLog   = GetLoggerEntry("SCRP")
+	srvrLog   = GetLoggerEntry("SRVR")
+	syncLog   = GetLoggerEntry("SYNC")
+	txmpLog   = GetLoggerEntry("TXMP")
+	anchorLog = GetLoggerEntry("ANCH")
 )
 
 // Initialize package-global logger variables.
 func init() {
+	
 	addrmgr.UseLogger(amgrLog)
 	connmgr.UseLogger(cmgrLog)
 	database.UseLogger(bcdbLog)
@@ -92,7 +111,7 @@ func init() {
 }
 
 // subsystemLoggers maps each subsystem identifier to its associated logger.
-var subsystemLoggers = map[string]btclog.Logger{
+var subsystemLoggers = map[string]*logrus.Entry{
 	"ADXR": adxrLog,
 	"AMGR": amgrLog,
 	"CMGR": cmgrLog,
@@ -115,19 +134,26 @@ var subsystemLoggers = map[string]btclog.Logger{
 // create roll files in the same directory.  It must be called before the
 // package-global log rotater variables are used.
 func initLogRotator(logFile string) {
-	logDir, _ := filepath.Split(logFile)
+	logDir, file := filepath.Split(logFile)
 	err := os.MkdirAll(logDir, 0700)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create log directory: %v\n", err)
 		os.Exit(1)
 	}
-	r, err := rotator.New(logFile, 10*1024, false, 3)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create file rotator: %v\n", err)
-		os.Exit(1)
+	
+	fileHook, err := rotatelogs.New(
+		logDir+"/"+file+".%Y%m%d%H%M.log",
+		rotatelogs.WithLinkName(logDir+"/"+file+".log"),
+		rotatelogs.WithMaxAge(30*24*time.Hour),
+		rotatelogs.WithRotationTime(24*time.Hour),
+	)
+	if err == nil {
+		var writers []io.Writer = []io.Writer{os.Stdout}
+		writers = append(writers, fileHook)
+		logger.SetOutput(io.MultiWriter(writers...))
 	}
 
-	logRotator = r
+	return 
 }
 
 // setLogLevel sets the logging level for provided subsystem.  Invalid
@@ -141,8 +167,8 @@ func setLogLevel(subsystemID string, logLevel string) {
 	}
 
 	// Defaults to info if the log level is invalid.
-	level, _ := btclog.LevelFromString(logLevel)
-	logger.SetLevel(level)
+	level, _ := logrus.ParseLevel(logLevel)
+	logger.Level = level
 }
 
 // setLogLevels sets the log level for all subsystem loggers to the passed
@@ -151,6 +177,8 @@ func setLogLevel(subsystemID string, logLevel string) {
 func setLogLevels(logLevel string) {
 	// Configure all sub-systems with the new logging level.  Dynamically
 	// create loggers as needed.
+	level, _ := logrus.ParseLevel(logLevel)
+	logger.SetLevel(level)
 	for subsystemID := range subsystemLoggers {
 		setLogLevel(subsystemID, logLevel)
 	}

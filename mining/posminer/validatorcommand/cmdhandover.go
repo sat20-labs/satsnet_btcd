@@ -51,7 +51,7 @@ func (msg *MsgHandOver) BtcDecode(r io.Reader, pver uint32) error {
 		&msg.HandOverInfo.Height,
 		&msg.HandOverInfo.Token)
 	if err != nil {
-		log.Errorf("MsgHandOver:ReadElements failed: %v", err)
+		utils.Log.Errorf("MsgHandOver:ReadElements failed: %v", err)
 		return err
 	}
 
@@ -70,7 +70,7 @@ func (msg *MsgHandOver) BtcEncode(w io.Writer, pver uint32) error {
 		msg.HandOverInfo.Height,
 		msg.HandOverInfo.Token)
 	if err != nil {
-		log.Errorf("MsgHandOver:WriteElements failed: %v", err)
+		utils.Log.Errorf("MsgHandOver:WriteElements failed: %v", err)
 		return err
 	}
 
@@ -91,20 +91,20 @@ func (msg *MsgHandOver) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgHandOver) LogCommandInfo() {
-	log.Debugf("Command MsgHandOver:")
-	log.Debugf("ValidatorId: %d", msg.HandOverInfo.ValidatorId)
+	utils.Log.Debugf("Command MsgHandOver:")
+	utils.Log.Debugf("ValidatorId: %d", msg.HandOverInfo.ValidatorId)
 	handoverType := "Unknown type"
 	if msg.HandOverInfo.HandOverType == generator.HandOverTypeByEpochOrder {
 		handoverType = "Order"
 	} else if msg.HandOverInfo.HandOverType == generator.HandOverTypeByVote {
 		handoverType = "Vote"
 	}
-	log.Debugf("HandOverType: %s", handoverType)
+	utils.Log.Debugf("HandOverType: %s", handoverType)
 	timeStamp := time.Unix(msg.HandOverInfo.Timestamp, 0)
-	log.Debugf("Timestamp: %s", timeStamp.Format(time.DateTime))
-	log.Debugf("GeneratorId: %d", msg.HandOverInfo.GeneratorId)
-	log.Debugf("Height: %d", msg.HandOverInfo.Height)
-	log.Debugf("Token: %s", msg.HandOverInfo.Token)
+	utils.Log.Debugf("Timestamp: %s", timeStamp.Format(time.DateTime))
+	utils.Log.Debugf("GeneratorId: %d", msg.HandOverInfo.GeneratorId)
+	utils.Log.Debugf("Height: %d", msg.HandOverInfo.Height)
+	utils.Log.Debugf("Token: %s", msg.HandOverInfo.Token)
 }
 
 // NewMsgHandOver returns a new bitcoin version message that conforms to the

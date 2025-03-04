@@ -6,6 +6,7 @@ import (
 
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechain"
 )
 
@@ -19,10 +20,10 @@ func (vm *ValidatorManager) TestingVcState() {
 	testinghash, _ := chainhash.NewHashFromStr("5d2cffd29005647d364898a47ce26e2a1e6b7779d9e81b721ed078790f66d8f6")
 
 	currentState := vm.validateChain.GetCurrentState()
-	log.Debugf("Current State: %v", currentState)
+	utils.Log.Debugf("Current State: %v", currentState)
 
 	if currentState.LatestHeight == testingHeight && currentState.LatestHash.IsEqual(testinghash) {
-		log.Debugf("Testing successed: %v", currentState.LatestHash)
+		utils.Log.Debugf("Testing successed: %v", currentState.LatestHash)
 
 		return
 	}
@@ -30,7 +31,7 @@ func (vm *ValidatorManager) TestingVcState() {
 	currentState.LatestHash = *testinghash
 	vm.validateChain.UpdateCurrentState(currentState)
 
-	log.Debugf("Testing updated.")
+	utils.Log.Debugf("Testing updated.")
 }
 
 func (vm *ValidatorManager) TestingVcBlocks() {
@@ -85,59 +86,59 @@ func (vm *ValidatorManager) TestingVcBlocks() {
 	newEpochBlock.Data = newEpochData
 	blockHash, err := newEpochBlock.GetHash()
 	if err != nil {
-		log.Errorf("Testing NewEpochBlock Hash failed: %v", err)
+		utils.Log.Errorf("Testing NewEpochBlock Hash failed: %v", err)
 		return
 	}
 
-	log.Debugf("Testing NewEpochBlock Hash: %x", blockHash)
+	utils.Log.Debugf("Testing NewEpochBlock Hash: %x", blockHash)
 
 	err = vm.validateChain.SaveVCBlock(newEpochBlock)
 	if err != nil {
-		log.Errorf("Testing NewEpochBlock SaveBlock failed: %v", err)
+		utils.Log.Errorf("Testing NewEpochBlock SaveBlock failed: %v", err)
 		return
 	}
 
 	newBlock, err := vm.validateChain.GetVCBlock(blockHash)
 	if err != nil {
-		log.Errorf("Testing NewEpochBlock GetBlock failed: %v", err)
+		utils.Log.Errorf("Testing NewEpochBlock GetBlock failed: %v", err)
 		return
 	}
 
 	logBlock(newBlock)
 
-	log.Debugf("Testing TestingVcBlocks completed.")
+	utils.Log.Debugf("Testing TestingVcBlocks completed.")
 }
 
 func logBlock(block *validatechain.VCBlock) {
-	log.Debugf("-------------------------Block header-------------------------")
-	log.Debugf("Block Height: %d", block.Header.Height)
-	log.Debugf("Block Hash: %s", block.Header.Hash.String())
-	log.Debugf("Block Version: %d", block.Header.Version)
-	log.Debugf("Block DataType: %d", block.Header.DataType)
+	utils.Log.Debugf("-------------------------Block header-------------------------")
+	utils.Log.Debugf("Block Height: %d", block.Header.Height)
+	utils.Log.Debugf("Block Hash: %s", block.Header.Hash.String())
+	utils.Log.Debugf("Block Version: %d", block.Header.Version)
+	utils.Log.Debugf("Block DataType: %d", block.Header.DataType)
 	timeStr := time.Unix(block.Header.CreateTime, 0).Format("2006-01-02 15:04:05")
-	log.Debugf("Block CreateTime: %s", timeStr)
-	log.Debugf("Block PrevHash: %s", block.Header.PrevHash.String())
+	utils.Log.Debugf("Block CreateTime: %s", timeStr)
+	utils.Log.Debugf("Block PrevHash: %s", block.Header.PrevHash.String())
 
 	switch vcd := block.Data.(type) { //nolint:gocritice := vcd.Data.(type)
 	case *validatechain.DataNewEpoch:
-		log.Debugf("-------------------------Block Data-------------------------")
-		log.Debugf("CreatorId: %d", vcd.CreatorId)
-		log.Debugf("PublicKey: %x", vcd.PublicKey[:]) //PublicKey
-		log.Debugf("EpochIndex: %d", vcd.EpochIndex)
+		utils.Log.Debugf("-------------------------Block Data-------------------------")
+		utils.Log.Debugf("CreatorId: %d", vcd.CreatorId)
+		utils.Log.Debugf("PublicKey: %x", vcd.PublicKey[:]) //PublicKey
+		utils.Log.Debugf("EpochIndex: %d", vcd.EpochIndex)
 		timeStr = time.Unix(vcd.CreateTime, 0).Format("2006-01-02 15:04:05")
-		log.Debugf("CreateTime: %s", timeStr)
-		log.Debugf("Reason: %d", vcd.Reason)
-		log.Debugf("EpochItemList Count: %d", len(vcd.EpochItemList))
+		utils.Log.Debugf("CreateTime: %s", timeStr)
+		utils.Log.Debugf("Reason: %d", vcd.Reason)
+		utils.Log.Debugf("EpochItemList Count: %d", len(vcd.EpochItemList))
 		for _, item := range vcd.EpochItemList {
-			log.Debugf("	validator ID: %d", item.ValidatorId)
-			log.Debugf("	validator Public: %x", item.PublicKey[:])
-			log.Debugf("------------------------------------------------")
+			utils.Log.Debugf("	validator ID: %d", item.ValidatorId)
+			utils.Log.Debugf("	validator Public: %x", item.PublicKey[:])
+			utils.Log.Debugf("------------------------------------------------")
 		}
-		log.Debugf("EpochVoteList Count: %d", len(vcd.EpochVoteList))
+		utils.Log.Debugf("EpochVoteList Count: %d", len(vcd.EpochVoteList))
 		for _, item := range vcd.EpochVoteList {
-			log.Debugf("	validator ID: %d", item.ValidatorId)
-			log.Debugf("	vote hash: %s", item.Hash.String())
-			log.Debugf("------------------------------------------------")
+			utils.Log.Debugf("	validator ID: %d", item.ValidatorId)
+			utils.Log.Debugf("	vote hash: %s", item.Hash.String())
+			utils.Log.Debugf("------------------------------------------------")
 		}
 	case *validatechain.DataUpdateEpoch:
 	case *validatechain.DataGeneratorHandOver:

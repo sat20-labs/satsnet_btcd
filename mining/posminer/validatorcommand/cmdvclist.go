@@ -49,7 +49,7 @@ func (msg *MsgVCList) BtcDecode(r io.Reader, pver uint32) error {
 
 	err := utils.ReadElements(buf, &count)
 	if err != nil {
-		log.Errorf("MsgVCList:ReadElements failed: %v", err)
+		utils.Log.Errorf("MsgVCList:ReadElements failed: %v", err)
 		return err
 	}
 
@@ -57,7 +57,7 @@ func (msg *MsgVCList) BtcDecode(r io.Reader, pver uint32) error {
 		item := &VCItem{}
 		err = utils.ReadElements(buf, &item.Height, &item.Hash)
 		if err != nil {
-			log.Errorf("MsgVCList:ReadElements failed: %v", err)
+			utils.Log.Errorf("MsgVCList:ReadElements failed: %v", err)
 			return err
 		}
 		msg.VCList = append(msg.VCList, item)
@@ -77,7 +77,7 @@ func (msg *MsgVCList) BtcEncode(w io.Writer, pver uint32) error {
 
 	err := utils.WriteElements(w, count)
 	if err != nil {
-		log.Errorf("MsgVCList:WriteElements failed: %v", err)
+		utils.Log.Errorf("MsgVCList:WriteElements failed: %v", err)
 		return err
 	}
 
@@ -85,7 +85,7 @@ func (msg *MsgVCList) BtcEncode(w io.Writer, pver uint32) error {
 		item := msg.VCList[i]
 		err = utils.WriteElements(w, item.Height, item.Hash)
 		if err != nil {
-			log.Errorf("MsgVCList:WriteElements failed: %v", err)
+			utils.Log.Errorf("MsgVCList:WriteElements failed: %v", err)
 			return err
 		}
 	}
@@ -107,14 +107,14 @@ func (msg *MsgVCList) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgVCList) LogCommandInfo() {
-	log.Debugf("Command MsgVCList:")
+	utils.Log.Debugf("Command MsgVCList:")
 	if msg.VCList == nil {
 		return
 	}
-	log.Debugf("VCList count: %d", len(msg.VCList))
+	utils.Log.Debugf("VCList count: %d", len(msg.VCList))
 	for _, item := range msg.VCList {
-		log.Debugf("Height: %d", item.Height)
-		log.Debugf("Hash: %s", item.Hash.String())
+		utils.Log.Debugf("Height: %d", item.Height)
+		utils.Log.Debugf("Hash: %s", item.Hash.String())
 	}
 }
 

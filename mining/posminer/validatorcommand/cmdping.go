@@ -67,7 +67,7 @@ func (msg *MsgPing) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgPing) LogCommandInfo() {
-	log.Debugf("Command Ping, Nonce: %d", msg.Nonce)
+	utils.Log.Debugf("Command Ping, Nonce: %d", msg.Nonce)
 }
 
 // NewMsgPing returns a new bitcoin ping message that conforms to the Message

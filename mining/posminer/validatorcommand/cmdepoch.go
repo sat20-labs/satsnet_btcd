@@ -10,7 +10,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
@@ -281,10 +280,10 @@ func (msg *MsgEpoch) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgEpoch) LogCommandInfo() {
-	log.Debugf("Command MsgEpoch:")
-	showEpoch(log, "MsgEpoch: CurrentEpoch", msg.CurrentEpoch)
-	showEpoch(log, "MsgEpoch: NexEpoch", msg.NextEpoch)
-	log.Debugf("——————————————————————————————————")
+	utils.Log.Debugf("Command MsgEpoch:")
+	showEpoch("MsgEpoch: CurrentEpoch", msg.CurrentEpoch)
+	showEpoch("MsgEpoch: NexEpoch", msg.NextEpoch)
+	utils.Log.Debugf("——————————————————————————————————")
 }
 
 // NewMsgEpoch returns a new bitcoin version message that conforms to the
@@ -301,39 +300,39 @@ func NewMsgEpoch(currentEpoch, nextEpoch *epoch.Epoch) *MsgEpoch {
 
 }
 
-func showEpoch(log btclog.Logger, title string, epoch *epoch.Epoch) {
-	log.Debugf("********************************* %s Summary ********************************", title)
+func showEpoch(title string, epoch *epoch.Epoch) {
+	utils.Log.Debugf("********************************* %s Summary ********************************", title)
 	if epoch == nil {
-		log.Debugf("Invalid epoch")
+		utils.Log.Debugf("Invalid epoch")
 	} else {
-		log.Debugf("EpochIndex: %d", epoch.EpochIndex)
-		log.Debugf("CreateHeight: %d", epoch.CreateHeight)
-		log.Debugf("CreateTime: %s", epoch.CreateTime.Format("2006-01-02 15:04:05"))
-		log.Debugf("EpochIndex: %d", epoch.EpochIndex)
-		log.Debugf("Validator Count in Epoch: %d", len(epoch.ItemList))
+		utils.Log.Debugf("EpochIndex: %d", epoch.EpochIndex)
+		utils.Log.Debugf("CreateHeight: %d", epoch.CreateHeight)
+		utils.Log.Debugf("CreateTime: %s", epoch.CreateTime.Format("2006-01-02 15:04:05"))
+		utils.Log.Debugf("EpochIndex: %d", epoch.EpochIndex)
+		utils.Log.Debugf("Validator Count in Epoch: %d", len(epoch.ItemList))
 		for _, epochItem := range epoch.ItemList {
-			log.Debugf("validator ID: %d", epochItem.ValidatorId)
-			log.Debugf("validator Public: %x", epochItem.PublicKey[:])
-			log.Debugf("validator Host: %s", epochItem.Host)
-			log.Debugf("validator Index: %d", epochItem.Index)
-			log.Debugf("------------------------------------------------")
+			utils.Log.Debugf("validator ID: %d", epochItem.ValidatorId)
+			utils.Log.Debugf("validator Public: %x", epochItem.PublicKey[:])
+			utils.Log.Debugf("validator Host: %s", epochItem.Host)
+			utils.Log.Debugf("validator Index: %d", epochItem.Index)
+			utils.Log.Debugf("------------------------------------------------")
 		}
 
-		log.Debugf("Epoch generator: ")
+		utils.Log.Debugf("Epoch generator: ")
 
 		generator := epoch.Generator
 		if generator == nil {
-			log.Debugf("	No generator")
+			utils.Log.Debugf("	No generator")
 		} else {
-			log.Debugf("	Generator ID: %d", generator.GeneratorId)
-			log.Debugf("	Generator TimeStamp: %s", time.Unix(generator.Timestamp, 0).Format("2006-01-02 15:04:05"))
-			log.Debugf("	Generator Token: %s", generator.Token)
-			log.Debugf("	Generator Block Height: %d", generator.Height)
+			utils.Log.Debugf("	Generator ID: %d", generator.GeneratorId)
+			utils.Log.Debugf("	Generator TimeStamp: %s", time.Unix(generator.Timestamp, 0).Format("2006-01-02 15:04:05"))
+			utils.Log.Debugf("	Generator Token: %s", generator.Token)
+			utils.Log.Debugf("	Generator Block Height: %d", generator.Height)
 		}
 
 		//Generator     *generator.Generator // 当前Generator
-		log.Debugf("CurGeneratorPos: %d", epoch.CurGeneratorPos)
+		utils.Log.Debugf("CurGeneratorPos: %d", epoch.CurGeneratorPos)
 
 	}
-	log.Debugf("*********************************        End        ********************************")
+	utils.Log.Debugf("*********************************        End        ********************************")
 }

@@ -42,7 +42,7 @@ func (msg *MsgGetVCList) BtcDecode(r io.Reader, pver uint32) error {
 
 	err := utils.ReadElements(buf, &msg.ValidatorId, &msg.Start, &msg.End)
 	if err != nil {
-		log.Errorf("MsgGetVCList:ReadElements failed: %v", err)
+		utils.Log.Errorf("MsgGetVCList:ReadElements failed: %v", err)
 		return err
 	}
 
@@ -54,7 +54,7 @@ func (msg *MsgGetVCList) BtcDecode(r io.Reader, pver uint32) error {
 func (msg *MsgGetVCList) BtcEncode(w io.Writer, pver uint32) error {
 	err := utils.WriteElements(w, msg.ValidatorId, msg.Start, msg.End)
 	if err != nil {
-		log.Errorf("MsgGetVCList:WriteElements failed: %v", err)
+		utils.Log.Errorf("MsgGetVCList:WriteElements failed: %v", err)
 		return err
 	}
 
@@ -75,10 +75,10 @@ func (msg *MsgGetVCList) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgGetVCList) LogCommandInfo() {
-	log.Debugf("Command MsgGetVCList:")
-	log.Debugf("ValidatorId: %d", msg.ValidatorId)
-	log.Debugf("Start: %d", msg.Start)
-	log.Debugf("End: %d", msg.End)
+	utils.Log.Debugf("Command MsgGetVCList:")
+	utils.Log.Debugf("ValidatorId: %d", msg.ValidatorId)
+	utils.Log.Debugf("Start: %d", msg.Start)
+	utils.Log.Debugf("End: %d", msg.End)
 }
 
 // NewMsgGetVCList returns a new bitcoin version message that conforms to the

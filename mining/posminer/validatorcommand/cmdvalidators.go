@@ -174,23 +174,23 @@ func (msg *MsgValidators) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgValidators) LogCommandInfo() {
-	log.Debugf("Command MsgValidators:")
-	log.Debugf("Validator Count: %d", msg.ValidatorCount)
+	utils.Log.Debugf("Command MsgValidators:")
+	utils.Log.Debugf("Validator Count: %d", msg.ValidatorCount)
 	for index, validator := range msg.Validators {
-		log.Debugf("——————————————————————————————————")
-		log.Debugf("No: %d", index)
-		log.Debugf("Validator Id: %d", validator.ValidatorId)
-		log.Debugf("Validator Host: %s", validator.Host)
-		log.Debugf("Validator PublicKey: %x", validator.PublicKey)
-		log.Debugf("Validator CreateTime: %s", validator.CreateTime.Format("2006-01-02 15:04:05"))
-		log.Debugf("Validator ActivitionCount: %d", validator.ActivitionCount)
-		log.Debugf("Validator GeneratorCount: %d", validator.GeneratorCount)
-		log.Debugf("Validator DiscountCount: %d", validator.DiscountCount)
-		log.Debugf("Validator FaultCount: %d", validator.FaultCount)
-		log.Debugf("Validator ValidatorScore: %d", validator.ValidatorScore)
-		log.Debugf("")
+		utils.Log.Debugf("——————————————————————————————————")
+		utils.Log.Debugf("No: %d", index)
+		utils.Log.Debugf("Validator Id: %d", validator.ValidatorId)
+		utils.Log.Debugf("Validator Host: %s", validator.Host)
+		utils.Log.Debugf("Validator PublicKey: %x", validator.PublicKey)
+		utils.Log.Debugf("Validator CreateTime: %s", validator.CreateTime.Format("2006-01-02 15:04:05"))
+		utils.Log.Debugf("Validator ActivitionCount: %d", validator.ActivitionCount)
+		utils.Log.Debugf("Validator GeneratorCount: %d", validator.GeneratorCount)
+		utils.Log.Debugf("Validator DiscountCount: %d", validator.DiscountCount)
+		utils.Log.Debugf("Validator FaultCount: %d", validator.FaultCount)
+		utils.Log.Debugf("Validator ValidatorScore: %d", validator.ValidatorScore)
+		utils.Log.Debugf("")
 	}
-	log.Debugf("——————————————————————————————————")
+	utils.Log.Debugf("——————————————————————————————————")
 }
 
 // NewMsgValidators returns a new bitcoin version message that conforms to the

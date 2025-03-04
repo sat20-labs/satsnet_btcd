@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/btcsuite/btclog"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/sat20-labs/satsnet_btcd/database"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	log             btclog.Logger
+	log             *logrus.Logger
 	shutdownChannel = make(chan error)
 )
 
@@ -60,12 +60,8 @@ func loadBlockDB() (database.DB, error) {
 // around the fact that deferred functions do not run when os.Exit() is called.
 func realMain() error {
 	// Setup logging.
-	backendLogger := btclog.NewBackend(os.Stdout)
-	defer os.Stdout.Sync()
-	log = backendLogger.Logger("MAIN")
-	dbLog := backendLogger.Logger("BCDB")
-	dbLog.SetLevel(btclog.LevelDebug)
-	database.UseLogger(dbLog)
+	log = logrus.StandardLogger()
+	database.UseLogger(log.WithField("module", "BCDB"))
 
 	// Setup the parser options and commands.
 	appName := filepath.Base(os.Args[0])

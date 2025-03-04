@@ -12,13 +12,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/btcjson"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
 	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
 	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -32,7 +32,7 @@ var (
 	currentCfg     = &config{}
 )
 
-//var log btclog.Logger
+//var log *logrus.Entry
 
 // logWriter implements an io.Writer that outputs to both standard output and
 // the write-end pipe of an initialized log rotator.
@@ -47,9 +47,9 @@ var (
 	// backendLog is the logging backend used to create all subsystem loggers.
 	// The backend must not be used before the log rotator has been initialized,
 	// or data races and/or nil pointer dereferences will occur.
-	backendLog = btclog.NewBackend(logWriter{})
+	backendLog = logrus.New()
 
-	log = backendLog.Logger("CMD")
+	log = backendLog.WithField("module","CMD")
 )
 
 // commandUsage display the usage for a specific command.
@@ -89,7 +89,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.SetLevel(btclog.LevelDebug)
+	backendLog.SetLevel(logrus.DebugLevel)
 	currentCfg = cfg
 
 	//startDaemon()

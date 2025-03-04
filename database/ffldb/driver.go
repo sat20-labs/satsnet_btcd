@@ -6,17 +6,24 @@ package ffldb
 
 import (
 	"fmt"
+	"io"
 
-	"github.com/btcsuite/btclog"
 	"github.com/sat20-labs/satsnet_btcd/database"
 	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sirupsen/logrus"
 )
 
-var log = btclog.Disabled
+var log = getDisabledLog()
 
 const (
 	dbType = "ffldb"
 )
+
+func getDisabledLog() *logrus.Entry {
+	logger := logrus.New()
+	logger.SetOutput(io.Discard)
+	return logger.WithField("", "")
+}
 
 // parseArgs parses the arguments from the database Open/Create methods.
 func parseArgs(funcName string, args ...interface{}) (string, wire.BitcoinNet, error) {
@@ -65,7 +72,7 @@ func createDBDriver(args ...interface{}) (database.DB, error) {
 
 // useLogger is the callback provided during driver registration that sets the
 // current logger to the provided one.
-func useLogger(logger btclog.Logger) {
+func useLogger(logger *logrus.Entry) {
 	log = logger
 }
 

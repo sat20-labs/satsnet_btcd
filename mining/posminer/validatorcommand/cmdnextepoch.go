@@ -69,12 +69,12 @@ func (msg *MsgNextEpoch) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgNextEpoch) LogCommandInfo() {
-	log.Debugf("Command MsgNextEpoch:")
-	log.Debugf("ValidatorId: %d", msg.HandoverEpoch.ValidatorId)
-	log.Debugf("Timestamp: %s", time.Unix(msg.HandoverEpoch.Timestamp, 0).Format(time.DateTime))
-	log.Debugf("Token: %s", msg.HandoverEpoch.Token)
-	log.Debugf("NextEpochIndex: %d", msg.HandoverEpoch.NextEpochIndex)
-	log.Debugf("NextHeight: %d", msg.HandoverEpoch.NextHeight)
+	utils.Log.Debugf("Command MsgNextEpoch:")
+	utils.Log.Debugf("ValidatorId: %d", msg.HandoverEpoch.ValidatorId)
+	utils.Log.Debugf("Timestamp: %s", time.Unix(msg.HandoverEpoch.Timestamp, 0).Format(time.DateTime))
+	utils.Log.Debugf("Token: %s", msg.HandoverEpoch.Token)
+	utils.Log.Debugf("NextEpochIndex: %d", msg.HandoverEpoch.NextEpochIndex)
+	utils.Log.Debugf("NextHeight: %d", msg.HandoverEpoch.NextHeight)
 }
 
 // NewMsgNextEpoch returns a new bitcoin version message that conforms to the

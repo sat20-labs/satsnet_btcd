@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -140,7 +141,7 @@ func NewVCStore(dirPath string, opts ...VCStoreOption) (*ValidateChainStore, err
 	}
 
 	datafile := DbFilePath(dirPath)
-	log.Debugf("Opening Bolt DB:path = %s", datafile)
+	utils.Log.Debugf("Opening Bolt DB:path = %s", datafile)
 	boltDB, err := bolt.Open(
 		datafile,
 		DBIoConfig().ReadWritePermissions,

@@ -77,11 +77,11 @@ func (msg *MsgReqDelEpochMember) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgReqDelEpochMember) LogCommandInfo() {
-	log.Debugf("Command MsgReqDelEpochMember:")
-	log.Debugf("ValidatorId: %d", msg.ValidatorId)
-	log.Debugf("DelValidatorId: %d", msg.DelValidatorId)
-	log.Debugf("DelCode: %d", msg.DelCode)
-	log.Debugf("EpochIndex: %d", msg.EpochIndex)
+	utils.Log.Debugf("Command MsgReqDelEpochMember:")
+	utils.Log.Debugf("ValidatorId: %d", msg.ValidatorId)
+	utils.Log.Debugf("DelValidatorId: %d", msg.DelValidatorId)
+	utils.Log.Debugf("DelCode: %d", msg.DelCode)
+	utils.Log.Debugf("EpochIndex: %d", msg.EpochIndex)
 }
 
 // NewMsgReqDelEpochMember returns a new bitcoin version message that conforms to the

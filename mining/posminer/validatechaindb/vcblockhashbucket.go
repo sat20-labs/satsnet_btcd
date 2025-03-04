@@ -30,7 +30,7 @@ func (s *ValidateChainStore) GetVCBlockHash(height int64) (*chainhash.Hash, erro
 
 	hash, err := chainhash.NewHash(hashBytes)
 	if err != nil {
-		log.Errorf("Error creating hash with bytes[%x]: %v", hashBytes, err)
+		utils.Log.Errorf("Error creating hash with bytes[%x]: %v", hashBytes, err)
 		return nil, err
 	}
 

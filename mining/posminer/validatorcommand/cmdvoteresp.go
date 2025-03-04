@@ -96,8 +96,8 @@ func (msg *MsgVoteResp) MaxPayloadLength(pver uint32) uint32 {
 }
 
 func (msg *MsgVoteResp) LogCommandInfo() {
-	log.Debugf("Command MsgVoteResp:")
-	log.Debugf("ValidatorId: %d", msg.VoteInfo.ValidatorId)
+	utils.Log.Debugf("Command MsgVoteResp:")
+	utils.Log.Debugf("ValidatorId: %d", msg.VoteInfo.ValidatorId)
 	voteType := "Unknown type"
 	if msg.VoteInfo.VoteType == VoteType_NewGenerator {
 		voteType = "New Generator"
@@ -105,10 +105,10 @@ func (msg *MsgVoteResp) LogCommandInfo() {
 		voteType = "New Epoch"
 	}
 
-	log.Debugf("VoteType: %s", voteType)
-	log.Debugf("VoteId: %d", msg.VoteInfo.VoteId)
-	log.Debugf("Pass: %d", msg.VoteInfo.Pass)
-	log.Debugf("GeneratorId: %d", msg.VoteInfo.GeneratorId)
+	utils.Log.Debugf("VoteType: %s", voteType)
+	utils.Log.Debugf("VoteId: %d", msg.VoteInfo.VoteId)
+	utils.Log.Debugf("Pass: %d", msg.VoteInfo.Pass)
+	utils.Log.Debugf("GeneratorId: %d", msg.VoteInfo.GeneratorId)
 }
 
 // NewMsgVoteResp returns a new bitcoin version message that conforms to the
