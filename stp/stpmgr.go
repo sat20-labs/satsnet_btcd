@@ -227,25 +227,3 @@ func GetPubKey() ([]byte, error) {
 
 	return getPubKey()
 }
-
-// 实时查询索引器
-func IsCoreNode(pubKey []byte) (bool) {
-	if _stpmar == nil {
-		return false
-	}
-
-	symbol, err := _stpmar.Lookup("IsCoreNode")
-	if err != nil {
-		log.Printf("Lookup IsCoreNode failed: %v", err)
-		return  false
-	}
-
-	f, ok := symbol.(func([]byte) (bool))
-	if !ok {
-		log.Printf("symbol type assertion failed")
-		return false
-	}
-
-	return f(pubKey)
-}
-

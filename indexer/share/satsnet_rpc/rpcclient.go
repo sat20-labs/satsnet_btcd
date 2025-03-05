@@ -35,14 +35,14 @@ func InitSatsNetClient(host string, port int, user, passwd, dataPath string) err
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txns []*btcutil.Tx) {
 			common.Log.Infof("Block connected: %v (%d) %v",
 				header.BlockHash(), height, header.Timestamp)
-			if _client.OnConnected != nil {
+			if _client != nil && _client.OnConnected != nil {
 				_client.OnConnected(height, header, txns)
 			}
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
 			common.Log.Infof("Block disconnected: %v (%d) %v",
 				header.BlockHash(), height, header.Timestamp)
-			if _client.OnDisConnected != nil {
+			if _client != nil && _client.OnDisConnected != nil {
 				_client.OnDisConnected(height, header)
 			}
 		},
@@ -53,11 +53,8 @@ func InitSatsNetClient(host string, port int, user, passwd, dataPath string) err
 	common.Log.Infof("cert file: %s", certFile)
 	certs, err := os.ReadFile(certFile)
 	if err != nil {
-		// try to read in current dir
-		//certs, err = os.ReadFile(filepath.Join("./", "rpc.cert"))
-		//if err != nil {
+		common.Log.Errorf("ReadFile %s failed, %v", certFile, err)
 		return err
-		//}
 	}
 
 	connCfg := &rpcclient.ConnConfig{
@@ -89,6 +86,7 @@ func InitSatsNetClient(host string, port int, user, passwd, dataPath string) err
 	}
 	common.Log.Infof("Block count: %d", blockCount)
 
+	common.Log.Infof("rpc client connected")
 	_client = &BtcdClient{
 		client: client,
 	}

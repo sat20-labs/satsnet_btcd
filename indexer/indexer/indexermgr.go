@@ -77,7 +77,7 @@ func NewIndexerMgr(
 
 	mgr := &IndexerMgr{
 		cfg:             yamlcfg,
-		dbDir:           yamlcfg.DB.Path+"/db/indexer/"+yamlcfg.Chain,
+		dbDir:           yamlcfg.DB.Path+"/db/indexer/"+yamlcfg.Chain+"/",
 		chaincfgParam:     chainParam,
 		maxIndexHeight:    int(yamlcfg.BasicIndex.MaxIndexHeight),
 		periodFlushToDB:    yamlcfg.BasicIndex.PeriodFlushToDB,
@@ -117,18 +117,43 @@ func (b *IndexerMgr) GetBaseDB() *badger.DB {
 }
 
 
-func InitRpc(conf *config.YamlConf) error {
-	return satsnet_rpc.InitSatsNetClient(
+func InitRpcClient(conf *config.YamlConf) error {
+	err := satsnet_rpc.InitSatsNetClient(
 		conf.ShareRPC.Bitcoin.Host,
 		conf.ShareRPC.Bitcoin.Port,
 		conf.ShareRPC.Bitcoin.User,
 		conf.ShareRPC.Bitcoin.Password,
 		conf.DB.Path,
 	)
+	if err != nil {
+		go func() {
+			n := 0
+			var err error
+			for n < 10 {
+				err = satsnet_rpc.InitSatsNetClient(
+					conf.ShareRPC.Bitcoin.Host,
+					conf.ShareRPC.Bitcoin.Port,
+					conf.ShareRPC.Bitcoin.User,
+					conf.ShareRPC.Bitcoin.Password,
+					conf.DB.Path,
+				)
+				if err == nil {
+					break
+				}
+				time.Sleep(1 * time.Second)
+				n++
+			}
+			if err != nil {
+				common.Log.Panic("rpc client init failed")
+			}
+		}()
+	}
+	
+	return nil
 }
 
 func (b *IndexerMgr) Start() error {
-	err := InitRpc(b.cfg)
+	err := InitRpcClient(b.cfg)
 	if err != nil {
 		common.Log.Error(err)
 		return err

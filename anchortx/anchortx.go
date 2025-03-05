@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
-	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/sat20-labs/satsnet_btcd/btcec"
@@ -92,9 +91,6 @@ func StartAnchorManager(config *AnchorConfig) bool {
 		//log.Debugf("The node not config indexer infomation, will not check anchor tx")
 		return false
 	}
-
-	//anchorManager.updateSuperList()
-	go anchorManager.syncSuperListHandler()
 
 	return true
 }
@@ -642,29 +638,4 @@ func GetCoreNodeChannelAddress(pubkey []byte, chainParams *chaincfg.Params) (str
 	}
 
 	return address, nil
-}
-
-// updateSuperList for sync super list from indexer
-func (m *AnchorManager) updateSuperList() {
-
-}
-
-// syncSuperListHandler for sync super list from indexer on a timer
-func (m *AnchorManager) syncSuperListHandler() {
-	syncInterval := time.Second * 20
-	syncTicker := time.NewTicker(syncInterval)
-	defer syncTicker.Stop()
-
-out:
-	for {
-		//log.Debugf("Waiting next timer for syncing super node list...")
-		select {
-		case <-syncTicker.C:
-			m.updateSuperList()
-		case <-m.quit:
-			break out
-		}
-	}
-
-	log.Debugf("syncSuperListHandler done.")
 }
