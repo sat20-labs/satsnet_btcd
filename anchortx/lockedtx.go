@@ -20,10 +20,6 @@ type LockedInfoInBTCChain struct {
 	AssetInfo []*httpclient.UtxoAssetInfo
 }
 
-func IsCheckLockedTx() bool {
-	return true
-}
-
 func GetLockedUtxoInfo(utxo string) (*LockedInfoInBTCChain, error) {
 	lockedInfo := &LockedInfoInBTCChain{}
 	scheme := anchorManager.anchorConfig.IndexerScheme

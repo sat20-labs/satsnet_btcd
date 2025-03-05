@@ -3,30 +3,13 @@ package bootstrapnode
 import (
 	"encoding/hex"
 
-	"github.com/sat20-labs/satsnet_btcd/stp"
-)
-
-const (
-	// BootstrapPubKey is the public key of the bootstrap Certificate Issuer.
-	BootstrapPubKey = "025fb789035bc2f0c74384503401222e53f72eefdebf0886517ff26ac7985f52ad" //
-	BootStrapNodeId = 1
-
-	CoreNodePubKey = "025fb789035bc2f0c74384503401222e53f72eefdebf0886517ff26ac7985f52ad" //
-	CoreNodeId = 100
-
-	// 0 invalid
-	// 1-99 boostrap
-	// 100-999 core
-	// 1000-99999 normal miner
-	MIN_BOOTSTRAP_NODEID = 1
-	MAX_BOOTSTRAP_NODEID = 9
-	MIN_CORE_NODEID      = 100
-	MAX_CORE_NODEID      = 999
-	MIN_NORMAL_NODEID    = 100000
+	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/indexer/common"
+	"github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
 )
 
 func IsBootStrapNode(_ uint64, pubKey []byte) bool {
-	return hex.EncodeToString(pubKey) == BootstrapPubKey
+	return hex.EncodeToString(pubKey) == common.BootstrapPubKey
 }
 
 // 包含bootstrap
@@ -35,14 +18,23 @@ func IsCoreNode(validatorId uint64, pubKey []byte) bool {
 		return true
 	}
 
-	if hex.EncodeToString(pubKey) == CoreNodePubKey {
+	if hex.EncodeToString(pubKey) == common.CoreNodePubKey {
 		return true
 	}
 
-	// 其他根据规则生成的core node
-	return stp.IsCoreNode(pubKey)
+	// 从索引器查询结果
+	return indexer.ShareIndexer.IsCoreNode(hex.EncodeToString(pubKey))
 }
 
 func CheckValidatorID(validatorID uint64, pubKey []byte) bool {
 	return IsCoreNode(validatorID, pubKey)
+}
+
+func HasCoreNodeEligibility(assets wire.TxAssets) bool {
+	for _, asset := range assets {
+		if asset.Name.String() == common.CORENODE_STAKING_ASSET_NAME {
+			return asset.Amount >= common.CORENODE_STAKING_ASSET_AMOUNT
+		}
+	}
+	return false
 }

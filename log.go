@@ -26,6 +26,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/netsync"
 	"github.com/sat20-labs/satsnet_btcd/peer"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
+	assetIndexer "github.com/sat20-labs/satsnet_btcd/indexer/common"
 
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/sirupsen/logrus"
@@ -90,6 +91,7 @@ var (
 	syncLog   = GetLoggerEntry("SYNC")
 	txmpLog   = GetLoggerEntry("TXMP")
 	anchorLog = GetLoggerEntry("ANCH")
+	assetIndexerLog = GetLoggerEntry("AIDX")
 )
 
 // Initialize package-global logger variables.
@@ -108,6 +110,8 @@ func init() {
 	netsync.UseLogger(syncLog)
 	mempool.UseLogger(txmpLog)
 	anchortx.UseLogger(anchorLog)
+	assetIndexer.UseLogger(assetIndexerLog)
+
 }
 
 // subsystemLoggers maps each subsystem identifier to its associated logger.
@@ -128,6 +132,7 @@ var subsystemLoggers = map[string]*logrus.Entry{
 	"SYNC": syncLog,
 	"TXMP": txmpLog,
 	"ANCH": anchorLog,
+	"AIDX": assetIndexerLog,
 }
 
 // initLogRotator initializes the logging rotater to write logs to logFile and
@@ -153,7 +158,6 @@ func initLogRotator(logFile string) {
 		logger.SetOutput(io.MultiWriter(writers...))
 	}
 
-	return 
 }
 
 // setLogLevel sets the logging level for provided subsystem.  Invalid

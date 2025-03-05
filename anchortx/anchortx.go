@@ -18,9 +18,10 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/httpclient"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/bootstrapnode"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
+
+	"github.com/sat20-labs/indexer/common"
 )
 
 const (
@@ -67,7 +68,7 @@ type AnchorInfo struct {
 type AscendInfo struct {
 	AnchorInfo
 	Address       string
-	PubKeyA       []byte
+	PubKeyA       []byte // server node
 	PubKeyB       []byte
 }
 
@@ -232,7 +233,7 @@ func ParseAnchorScript(AnchorScript []byte) (*AnchorInfo, error) {
 
 	txAssets := &wire.TxAssets{}
 	if assetsData != nil {
-		err := txAssets.Deserialize(assetsData)
+		err := wire.DeserializeTxAssets(txAssets, assetsData)
 		if err != nil {
 			return nil, err
 		}
@@ -318,7 +319,7 @@ func PublicKeyToTaprootAddress(pubKey *btcec.PublicKey) (*btcutil.AddressTaproot
 }
 
 func StandardAnchorScript(fundingUtxo string, witnessScript []byte, value int64, assets wire.TxAssets) ([]byte, error) {
-	assetsBuf, err := assets.Serialize()
+	assetsBuf, err := wire.SerializeTxAssets(&assets)
 	if err != nil {
 		return nil, err
 	}
@@ -389,10 +390,10 @@ func CheckAnchorPkScript(anchorPkScript []byte) (*AscendInfo, error) {
 	}
 	pubkeyBytes0 := addresses2[0].ScriptAddress()
 	pubkeyBytes1 := addresses2[1].ScriptAddress()
-	if bootstrapnode.IsBootStrapNode(0, pubkeyBytes0) {
+	if IsBootstrapPubKey(pubkeyBytes0) {
 		bootstrapPubkey = pubkeyBytes0
 		corePubkey = pubkeyBytes1
-	} else if bootstrapnode.IsBootStrapNode(0, pubkeyBytes1) {
+	} else if IsBootstrapPubKey(pubkeyBytes1) {
 		bootstrapPubkey = pubkeyBytes1
 		corePubkey = pubkeyBytes0
 	} else {
@@ -412,41 +413,39 @@ func CheckAnchorPkScript(anchorPkScript []byte) (*AscendInfo, error) {
 	}
 
 
-	if IsCheckLockedTx() {
-		// 检查BTC锁定交易, 只有定义了anchorManager.anchorConfig.IndexerHost, anchorManager.anchorConfig.IndexerNet才检查
-		//utxoLocked := fmt.Sprintf("%s:%d", lockedTxInfo.TxId, lockedTxInfo.Index)
-		lockedInfoInBTC, err := GetLockedUtxoInfo(lockedTxInfo.Utxo)
-		if err != nil {
-			return nil, err
-		}
-		if lockedInfoInBTC.Value != lockedTxInfo.Value {
-			log.Debugf("lockedInfoInBTC.Amount: %d, lockedTxInfo.Amount: %d", lockedInfoInBTC.Value, lockedTxInfo.Value)
-			return nil, fmt.Errorf("invalid value %d", lockedTxInfo.Value)
-		}
-		if !bytes.Equal(lockedInfoInBTC.pkScript, pkScript) {
-			return nil, fmt.Errorf("invalid pkscript")
-		}
-
-		bindedValue := lockedTxInfo.TxAssets.GetBindingSatAmout()
-		if bindedValue > lockedTxInfo.Value {
-			log.Debugf("bindedValue: %d, lockedTxInfo.Amount: %d", bindedValue, lockedTxInfo.Value)
-			return nil, fmt.Errorf("invalid binded value %d", bindedValue)
-		}
-
-		if !includeAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) {
-			return nil, fmt.Errorf("invalid assets")
-		}
-
-		// TODO 
-		// 将corePubkey记录下来，这是一个核心节点的pubkey
-		// 或者由索引器记录，随时从索引器查询
+	//utxoLocked := fmt.Sprintf("%s:%d", lockedTxInfo.TxId, lockedTxInfo.Index)
+	lockedInfoInBTC, err := GetLockedUtxoInfo(lockedTxInfo.Utxo)
+	if err != nil {
+		return nil, err
 	}
+	if lockedInfoInBTC.Value != lockedTxInfo.Value {
+		log.Debugf("lockedInfoInBTC.Amount: %d, lockedTxInfo.Amount: %d", lockedInfoInBTC.Value, lockedTxInfo.Value)
+		return nil, fmt.Errorf("invalid value %d", lockedTxInfo.Value)
+	}
+	if !bytes.Equal(lockedInfoInBTC.pkScript, pkScript) {
+		return nil, fmt.Errorf("invalid pkscript")
+	}
+
+	bindedValue := lockedTxInfo.TxAssets.GetBindingSatAmout()
+	if bindedValue > lockedTxInfo.Value {
+		log.Debugf("bindedValue: %d, lockedTxInfo.Amount: %d", bindedValue, lockedTxInfo.Value)
+		return nil, fmt.Errorf("invalid binded value %d", bindedValue)
+	}
+
+	if !includeAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) {
+		return nil, fmt.Errorf("invalid assets")
+	}
+
+	// TODO 
+	// 将corePubkey记录下来，这是一个核心节点的pubkey
+	// 或者由索引器记录，随时从索引器查询
+	
 
 	return &AscendInfo{
 		AnchorInfo: *lockedTxInfo,
 		Address: addresses[0].EncodeAddress(),
-		PubKeyA: pubkeyBytes0,
-		PubKeyB: pubkeyBytes1,
+		PubKeyA: bootstrapPubkey,
+		PubKeyB: corePubkey,
 	}, nil
 }
 
@@ -621,8 +620,12 @@ func GetP2TRAddressFromPubkey(pubKey []byte, chainParams *chaincfg.Params) (stri
 }
 
 func GetBootstrapPubKey() []byte {
-	pubkey, _ := hex.DecodeString(bootstrapnode.BootstrapPubKey)
+	pubkey, _ := hex.DecodeString(common.BootstrapPubKey)
 	return pubkey
+}
+
+func IsBootstrapPubKey(pubkey []byte) bool {
+	return hex.EncodeToString(pubkey) == common.BootstrapPubKey
 }
 
 func GetCoreNodeChannelAddress(pubkey []byte, chainParams *chaincfg.Params) (string, error) {
@@ -639,10 +642,6 @@ func GetCoreNodeChannelAddress(pubkey []byte, chainParams *chaincfg.Params) (str
 	}
 
 	return address, nil
-}
-
-func IsCoreNode(pubKey []byte) bool {
-	return bootstrapnode.IsCoreNode(0, pubKey)
 }
 
 // updateSuperList for sync super list from indexer

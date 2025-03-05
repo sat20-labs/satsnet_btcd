@@ -33,6 +33,8 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/connmgr"
 	"github.com/sat20-labs/satsnet_btcd/database"
+	"github.com/sat20-labs/satsnet_btcd/indexer/indexer"
+	indexerEntry "github.com/sat20-labs/satsnet_btcd/indexer"
 	"github.com/sat20-labs/satsnet_btcd/mempool"
 	"github.com/sat20-labs/satsnet_btcd/mining"
 	"github.com/sat20-labs/satsnet_btcd/mining/posminer"
@@ -221,6 +223,7 @@ type server struct {
 	startupTime   int64
 
 	chainParams          *chaincfg.Params
+	assetIndexer         *indexer.IndexerMgr
 	addrManager          *addrmgr.AddrManager
 	connManager          *connmgr.ConnManager
 	sigCache             *txscript.SigCache
@@ -2639,6 +2642,8 @@ func (s *server) Start() {
 		s.rpcServer.Start()
 	}
 
+	s.assetIndexer.Start()
+
 	// Start the CPU miner if generation is enabled.
 	if cfg.Generate {
 		//s.cpuMiner.Start()
@@ -2674,6 +2679,8 @@ func (s *server) Stop() error {
 	if cfg.SaveMempool {
 		s.saveMempoolCache()
 	}
+
+	s.assetIndexer.Stop()
 
 	// Stop the CPU miner if needed
 	//s.cpuMiner.Stop()
@@ -2993,8 +3000,14 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 		srvrLog.Infof("User-agent whitelist %s", agentWhitelist)
 	}
 
+	assetIndexer, err := indexerEntry.NewIndexerMgr(cfg.HomeDir, interrupt)
+	if err != nil {
+		return nil, err
+	}
+
 	s := server{
 		chainParams:          chainParams,
+		assetIndexer:         assetIndexer,
 		addrManager:          amgr,
 		newPeers:             make(chan *serverPeer, cfg.MaxPeers),
 		donePeers:            make(chan *serverPeer, cfg.MaxPeers),
@@ -3069,7 +3082,6 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 	}
 
 	// Create a new block chain instance with the appropriate configuration.
-	var err error
 	s.chain, err = blockchain.New(&blockchain.Config{
 		DB:               s.db,
 		Interrupt:        interrupt,
