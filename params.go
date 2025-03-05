@@ -11,7 +11,7 @@ import (
 
 // activeNetParams is a pointer to the parameters specific to the
 // currently active bitcoin network.
-var activeNetParams = &mainNetParams
+var activeNetParams = &mainSatsNetParams
 
 // params is used to group parameters for various networks such as the main
 // network and test networks.
@@ -78,7 +78,7 @@ var sigNetParams = params{
 // to emulate the full reference implementation RPC API.
 var mainSatsNetParams = params{
 	Params:  &chaincfg.SatsMainNetParams,
-	rpcPort: "4827",
+	rpcPort: "9527",
 }
 
 // mainSatsNetParams contains parameters specific to the main network
@@ -89,7 +89,7 @@ var mainSatsNetParams = params{
 // to emulate the full reference implementation RPC API.
 var testSatsNetParams = params{
 	Params:  &chaincfg.SatsTestNetParams,
-	rpcPort: "15827",
+	rpcPort: "19527",
 }
 
 // netName returns the name used when referring to a bitcoin network.  At the
@@ -103,7 +103,7 @@ var testSatsNetParams = params{
 // removed and the network parameter's name used instead.
 func netName(chainParams *params) string {
 	switch chainParams.Net {
-	case wire.TestNet3:
+	case wire.SatsTestNet:
 		return "testnet"
 	default:
 		return chainParams.Name
