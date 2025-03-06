@@ -45,15 +45,13 @@ func (s *Service) InitRouter(r *gin.Engine, proxy string) {
 	r.GET(proxy+"/v2/corenode/all", s.handle.getAllCoreNode)
 	r.GET(proxy+"/v2/corenode/check/:pubkey", s.handle.checkCoreNode)
 
-	/*
-		聪网上的资产数据使用int64表示，对于runes和brc20来说，数值跟实际资产数据不一定一样，需要使用
-		indexer.Decimal 重新转换。为了避免错误的显示资产数据，采用v3接口
-	*/
 	r.GET(proxy+"/v3/address/summary/:address", s.handle.getAssetSummaryV3)
 	// 获取某个地址上某个资产的utxo数据列表(utxo包含其他资产), ticker格式：wire.AssetName.String()
 	r.GET(proxy+"/v3/address/asset/:address/:ticker", s.handle.getUtxosWithTickerV3)
 	// 获取utxo的资产信息
 	r.GET(proxy+"/v3/utxo/info/:utxo", s.handle.getUtxoInfoV3)
 	r.POST(proxy+"/v3/utxos/info", s.handle.getUtxoInfoListV3)
+
+	// V2 和 V3 的区别： v2传递原始的Decimal数据，方便计算；v3传递string类型的amount，方便显示。其实没有区别，统一使用v2即可。
 
 }
