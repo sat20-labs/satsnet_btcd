@@ -12,6 +12,7 @@ import (
 	"io"
 	"sort"
 
+	"github.com/sat20-labs/indexer/common"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -316,7 +317,7 @@ func readTxOut(txout []byte) (*wire.TxOut, error) {
 		}
 		offset += size
 
-		assetAmount, size, err := readVarIntBuf(txout[offset:])
+		formatedAmount, size, err := readVarString(txout[offset:])
 		if err != nil {
 			return nil, err
 		}
@@ -328,13 +329,18 @@ func readTxOut(txout []byte) (*wire.TxOut, error) {
 		}
 		offset += size
 
+		assetAmount, err := common.NewDecimalFromFormatString(formatedAmount)
+		if err != nil {
+			return nil, err
+		}
+
 		asset := wire.AssetInfo{
 			Name: wire.AssetName{
 				Protocol: assetProtocol,
 				Type:     assetType,
 				Ticker:   assetTicker,
 			},
-			Amount:     int64(assetAmount),
+			Amount:     *assetAmount,
 			BindingSat: uint32(assetBindingSat),
 		}
 		assets = append(assets, asset)

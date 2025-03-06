@@ -115,7 +115,7 @@ func AssetsWriteToBuf(w io.Writer, pver uint32, assets TxAssets, buf []byte) err
 		if err != nil {
 			return err
 		}
-		err = WriteVarIntBuf(w, pver, uint64(asset.Amount), buf)
+		err = WriteVarBytesBuf(w, pver, []byte(asset.Amount.ToFormatString()), buf)
 		if err != nil {
 			return err
 		}
@@ -150,11 +150,15 @@ func AssetsReadFromBuf(r io.Reader, pver uint32, buf, s []byte) (TxAssets, error
 		if err != nil {
 			return nil, err
 		}
-		amount, err := ReadVarIntBuf(r, pver, buf)
+		formatedAmount, err := readString(r, pver, buf, s, "asset amount")
 		if err != nil {
 			return nil, err
 		}
-		newAsset.Amount = int64(amount)
+		amount, err := common.NewDecimalFromFormatString(formatedAmount)
+		if err != nil {
+			return nil, err
+		}
+		newAsset.Amount = *amount
 		bindingSat, err := ReadVarIntBuf(r, pver, buf)
 		if err != nil {
 			return nil, err

@@ -2759,7 +2759,7 @@ func logTxAssets(desc string, assets wire.TxAssets) {
 		logLine("			TxAssets Name Protocol: %s", asset.Name.Protocol)
 		logLine("			TxAssets Name Type: %s", asset.Name.Type)
 		logLine("			TxAssets Name Ticker: %s", asset.Name.Ticker)
-		logLine("			TxAssets Amount: %d", asset.Amount)
+		logLine("			TxAssets Amount: %s", asset.Amount.String())
 		logLine("			TxAssets BindingSat: %d", asset.BindingSat)
 	}
 

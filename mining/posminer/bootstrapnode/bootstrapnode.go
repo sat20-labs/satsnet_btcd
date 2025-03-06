@@ -33,7 +33,7 @@ func CheckValidatorID(validatorID uint64, pubKey []byte) bool {
 func HasCoreNodeEligibility(assets wire.TxAssets) bool {
 	for _, asset := range assets {
 		if asset.Name.String() == common.CORENODE_STAKING_ASSET_NAME {
-			return asset.Amount >= common.CORENODE_STAKING_ASSET_AMOUNT
+			return asset.Amount.Int64() >= common.CORENODE_STAKING_ASSET_AMOUNT
 		}
 	}
 	return false

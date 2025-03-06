@@ -30,7 +30,6 @@ type Indexer interface {
 	GetBindingSat(ticker *common.TickerName) int
 	// Asset
 	// return: tick->amount
-	GetAssetSummaryInAddress(address string) map[common.TickerName]int64
 	GetAssetSummaryInAddressV3(address string) map[common.TickerName]*indexer.Decimal
 	// return: tick->UTXOs
 	GetAssetUTXOsInAddress(address string) map[common.TickerName][]*common.TxOutput

@@ -2328,7 +2328,7 @@ func (b *BlockChain) ShowAllUtxo() {
 			log.Debugf("Amount: %d", entry.amount)
 			for _, asset := range entry.txAssets {
 				log.Debugf("Assets Name: [%s,%s,%s]", asset.Name.Protocol, asset.Name.Type, asset.Name.Ticker)
-				log.Debugf("Assets Amount: [%d]", asset.Amount)
+				log.Debugf("Assets Amount: [%s]", asset.Amount.String())
 				log.Debugf("Assets BindingSat: [%d]", asset.BindingSat)
 			}
 			log.Debugf("pkScript: %x", entry.pkScript)

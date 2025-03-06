@@ -1115,7 +1115,7 @@ func logTxAssets(desc string, assets wire.TxAssets) {
 		log.Debugf("			TxAssets Name Protocol: %s", asset.Name.Protocol)
 		log.Debugf("			TxAssets Name Type: %s", asset.Name.Type)
 		log.Debugf("			TxAssets Name Ticker: %s", asset.Name.Ticker)
-		log.Debugf("			TxAssets Amount: %d", asset.Amount)
+		log.Debugf("			TxAssets Amount: %s", asset.Amount.String())
 		log.Debugf("			TxAssets BindingSat: %d", asset.BindingSat)
 	}
 

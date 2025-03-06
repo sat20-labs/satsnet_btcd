@@ -154,7 +154,7 @@ func (p *TxOutput) Subtract(another *TxOutput) error {
 }
 
 // 聪网utxo允许有多种资产，但没有offset属性
-func (p *TxOutput) Split(name *wire.AssetName, value, amt int64) (*TxOutput, *TxOutput, error) {
+func (p *TxOutput) Split(name *wire.AssetName, value int64, amt *common.Decimal) (*TxOutput, *TxOutput, error) {
 
 	if p.Value() < value {
 		return nil, nil, fmt.Errorf("output value too small")
@@ -167,7 +167,7 @@ func (p *TxOutput) Split(name *wire.AssetName, value, amt int64) (*TxOutput, *Tx
 	part2 := NewTxOutput(value2)
 
 	if name == nil || *name == ASSET_PLAIN_SAT {
-		if p.Value() < amt {
+		if p.Value() < amt.Int64() {
 			return nil, nil, fmt.Errorf("amount too large")
 		}
 		part2.OutValue.Assets = p.OutValue.Assets
@@ -189,11 +189,11 @@ func (p *TxOutput) Split(name *wire.AssetName, value, amt int64) (*TxOutput, *Tx
 		}
 	}
 
-	if asset.Amount < amt {
+	if asset.Amount.Cmp(amt) < 0 {
 		return nil, nil, fmt.Errorf("amount too large")
 	}
 	asset1 := asset.Clone()
-	asset1.Amount = amt
+	asset1.Amount = *amt.Clone()
 	assets2 := p.OutValue.Assets.Clone()
 	assets2.Subtract(asset1)
 
@@ -211,15 +211,15 @@ func (p *TxOutput) Split(name *wire.AssetName, value, amt int64) (*TxOutput, *Tx
 	return part1, part2, nil
 }
 
-func (p *TxOutput) GetAsset(assetName *wire.AssetName) int64 {
+func (p *TxOutput) GetAsset(assetName *wire.AssetName) *common.Decimal {
 	if assetName == nil || *assetName == ASSET_PLAIN_SAT {
-		return p.GetPlainSat()
+		return common.NewDecimal(p.GetPlainSat(), 0)
 	}
 	asset, err := p.OutValue.Assets.Find(assetName)
 	if err != nil {
-		return 0
+		return nil
 	}
-	return asset.Amount
+	return asset.Amount.Clone()
 }
 
 func (p *TxOutput) AddAsset(asset *AssetInfo) error {
@@ -228,15 +228,15 @@ func (p *TxOutput) AddAsset(asset *AssetInfo) error {
 	}
 	
 	if asset.Name == ASSET_PLAIN_SAT {
-		if p.OutValue.Value + asset.Amount < 0 {
+		if p.OutValue.Value + asset.Amount.Int64() < 0 {
 			return fmt.Errorf("out of bounds")
 		}
-		p.OutValue.Value += asset.Amount
+		p.OutValue.Value += asset.Amount.Int64()
 		return nil
 	}
 
 	if asset.BindingSat > 0 {
-		if p.OutValue.Value + common.GetBindingSatNum(asset.Amount, asset.BindingSat) < 0 {
+		if p.OutValue.Value + common.GetBindingSatNum(&asset.Amount, asset.BindingSat) < 0 {
 			return fmt.Errorf("out of bounds")
 		}
 	}
@@ -247,7 +247,7 @@ func (p *TxOutput) AddAsset(asset *AssetInfo) error {
 	}
 
 	if asset.BindingSat > 0 {
-		p.OutValue.Value += common.GetBindingSatNum(asset.Amount, asset.BindingSat)
+		p.OutValue.Value += common.GetBindingSatNum(&asset.Amount, asset.BindingSat)
 	}
 
 	p.OutPointStr = ""
@@ -261,14 +261,14 @@ func (p *TxOutput) SubAsset(asset *AssetInfo) error {
 		return nil
 	}
 	if asset.Name == ASSET_PLAIN_SAT {
-		if p.OutValue.Value < asset.Amount {
+		if p.OutValue.Value < asset.Amount.Int64() {
 			return fmt.Errorf("no enough sats")
 		}
 		bindingSat := p.OutValue.Assets.GetBindingSatAmout()
-		if p.OutValue.Value - asset.Amount < bindingSat {
+		if p.OutValue.Value - asset.Amount.Int64() < bindingSat {
 			return fmt.Errorf("no enough sats")
 		}
-		p.OutValue.Value -= asset.Amount
+		p.OutValue.Value -= asset.Amount.Int64()
 		p.OutPointStr = ""
 		p.UtxoId = common.INVALID_ID
 		return nil
@@ -281,7 +281,7 @@ func (p *TxOutput) SubAsset(asset *AssetInfo) error {
 			return err
 		}
 		bindingSat := tmpAssets.GetBindingSatAmout()
-		satsNum := common.GetBindingSatNum(asset.Amount, asset.BindingSat)
+		satsNum := common.GetBindingSatNum(&asset.Amount, asset.BindingSat)
 		if p.OutValue.Value - satsNum < bindingSat {
 			return fmt.Errorf("no enough sats")
 		}

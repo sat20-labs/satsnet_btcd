@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sat20-labs/indexer/common"
 	"github.com/sat20-labs/satsnet_btcd/btcjson"
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
@@ -186,7 +187,7 @@ func main() {
 						bindingsSats = uint32(newBindingsSats)
 					}
 				}
-				asset := wire.AssetInfo{Name: wire.AssetName{Protocol: assetProtocol, Type: assetsType, Ticker: assetsTicker}, Amount: assetAmount, BindingSat: bindingsSats}
+				asset := wire.AssetInfo{Name: wire.AssetName{Protocol: assetProtocol, Type: assetsType, Ticker: assetsTicker}, Amount: *common.NewDefaultDecimal(assetAmount), BindingSat: bindingsSats}
 				assets = append(assets, asset)
 			}
 			testAnchorTx(lockedTTxid, address, amount, assets)

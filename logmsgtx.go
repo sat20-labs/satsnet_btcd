@@ -61,7 +61,7 @@ func logTxAssets(desc string, assets wire.TxAssets) {
 		rpcsLog.Debugf("			TxAssets Name Protocol: %s", asset.Name.Protocol)
 		rpcsLog.Debugf("			TxAssets Name Type: %s", asset.Name.Type)
 		rpcsLog.Debugf("			TxAssets Name Ticker: %s", asset.Name.Ticker)
-		rpcsLog.Debugf("			TxAssets Amount: %d", asset.Amount)
+		rpcsLog.Debugf("			TxAssets Amount: %s", asset.Amount.String())
 		rpcsLog.Debugf("			TxAssets BindingSat: %d", asset.BindingSat)
 	}
 

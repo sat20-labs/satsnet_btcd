@@ -170,12 +170,12 @@ func calcHashInputAmounts(tx *wire.MsgTx, inputFetcher PrevOutputFetcher) chainh
 		// Write the count of TxAssets
 		_ = binary.Write(&b, binary.LittleEndian, int64(countAssets))
 
-		// Write the sats ranges
+		// Write the assets
 		for _, asset := range prevOut.Assets {
 			_ = wire.WriteVarBytes(&b, 0, []byte(asset.Name.Protocol))
 			_ = wire.WriteVarBytes(&b, 0, []byte(asset.Name.Type))
 			_ = wire.WriteVarBytes(&b, 0, []byte(asset.Name.Ticker))
-			_ = binary.Write(&b, binary.LittleEndian, asset.Amount)
+			_ = wire.WriteVarBytes(&b, 0, []byte(asset.Amount.ToFormatString()))
 			_ = binary.Write(&b, binary.LittleEndian, asset.BindingSat)
 		}
 	}

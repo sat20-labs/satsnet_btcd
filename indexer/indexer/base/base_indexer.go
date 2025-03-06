@@ -746,7 +746,7 @@ func (b *BaseIndexer) processBlock(block *common.Block) {
 				ctype, data, err := ReadDataFromNullDataScript(tx.Outputs[i].Address.PkScript)
 				if err == nil {
 					switch ctype {
-					case CONTENT_TYPE_DESCENDING:
+					case common.CONTENT_TYPE_DESCENDING:
 						descend, err := GenDescend(tx, i, string(data))
 						if err == nil {
 							descend.Height = block.Height
@@ -762,7 +762,7 @@ func (b *BaseIndexer) processBlock(block *common.Block) {
 							// 	}
 							// }
 						}
-					case CONTENT_TYPE_ASCENDING:
+					case common.CONTENT_TYPE_ASCENDING:
 						tickerInfo, err := GenTickerInfo(data)
 						if err == nil {
 							b.tickInfoMap[tickerInfo.AssetName.String()] = tickerInfo

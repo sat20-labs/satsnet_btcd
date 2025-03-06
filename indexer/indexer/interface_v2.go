@@ -56,10 +56,9 @@ func (b *IndexerMgr) GetTxOutputWithUtxoV3(utxo string) *common.AssetsInUtxo {
 	assetsInUtxo.Value = output.OutValue.Value
 	
 	for _, asset := range output.OutValue.Assets {
-		amt := b.GetDecimalFromAmt(&asset.Name, asset.Amount)
 		asset := common.DisplayAsset{
 			AssetName:  asset.Name,
-			Amount:     amt.String(),
+			Amount:     asset.Amount.String(),
 			BindingSat: b.GetBindingSat(&asset.Name),
 		}
 
@@ -92,12 +91,11 @@ func (b *IndexerMgr) GetAssetSummaryInAddressV3(address string) map[common.Ticke
 		assetAmt := int64(0)
 		if len(info.Assets) != 0 {
 			for _, asset := range info.Assets {
-				amt := b.GetDecimalFromAmt(&asset.Name, asset.Amount)
 				total, ok := result[asset.Name]
 				if ok {
-					total = total.Add(amt)
+					total = total.Add(&asset.Amount)
 				} else {
-					total = amt
+					total = &asset.Amount
 				}
 				result[asset.Name] = total
 			}
@@ -126,12 +124,11 @@ func (b *IndexerMgr) GetAssetsWithUtxoV3(utxo string) map[common.TickerName]*com
 	assetAmt := int64(0)
 	if len(info.Assets) != 0 {
 		for _, asset := range info.Assets {
-			amt := b.GetDecimalFromAmt(&asset.Name, asset.Amount)
 			total, ok := result[asset.Name]
 			if ok {
-				total = total.Add(amt)
+				total = total.Add(&asset.Amount)
 			} else {
-				total = amt
+				total = &asset.Amount
 			}
 			result[asset.Name] = total
 		}

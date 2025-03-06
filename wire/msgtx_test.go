@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/sat20-labs/indexer/common"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/stretchr/testify/require"
 )
@@ -105,7 +106,7 @@ func TestTx(t *testing.T) {
 	satsRanges := []AssetInfo{
 		{
 			Name:       AssetName{Protocol: "ordx", Type: "nft", Ticker: "pizza"},
-			Amount:     5000000000,
+			Amount:     *common.NewDefaultDecimal(5000000000),
 			BindingSat: 1,
 		},
 	}

@@ -353,7 +353,8 @@ func (t *TxOut) SerializeSize() int {
 		lenTxAssets += VarIntSerializeSize(uint64(len(asset.Name.Protocol))) + len(asset.Name.Protocol)
 		lenTxAssets += VarIntSerializeSize(uint64(len(asset.Name.Type))) + len(asset.Name.Type)
 		lenTxAssets += VarIntSerializeSize(uint64(len(asset.Name.Ticker))) + len(asset.Name.Ticker)
-		lenTxAssets += VarIntSerializeSize(uint64(asset.Amount))
+		formatedAmount := asset.Amount.ToFormatString()
+		lenTxAssets += VarIntSerializeSize(uint64(len(formatedAmount))) + len(formatedAmount)
 		lenTxAssets += VarIntSerializeSize(uint64(asset.BindingSat))
 	}
 

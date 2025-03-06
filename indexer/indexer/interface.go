@@ -57,7 +57,7 @@ func (b *IndexerMgr) GetAssetUTXOsInAddressWithTick(address string, ticker *wire
 			}
 		} else {
 			amt := info.GetAsset(ticker)
-			if amt == 0 {
+			if amt.Sign() == 0 {
 				continue
 			}
 			result[utxoId] = info
@@ -68,14 +68,14 @@ func (b *IndexerMgr) GetAssetUTXOsInAddressWithTick(address string, ticker *wire
 }
 
 // return: ticker -> amount
-func (b *IndexerMgr) GetAssetSummaryInAddress(address string) map[wire.AssetName]int64 {
+func (b *IndexerMgr) GetAssetSummaryInAddress(address string) map[wire.AssetName]*indexer.Decimal {
 	utxos, err := b.rpcService.GetUTXOs(address)
 	if err != nil {
 		return nil
 	}
 
 	value := int64(0)
-	result := make(map[wire.AssetName]int64)
+	result := make(map[wire.AssetName]*indexer.Decimal)
 	for utxoId, v := range utxos {
 		utxo, err := b.rpcService.GetUtxoByID(utxoId)
 		if err != nil {
@@ -90,14 +90,20 @@ func (b *IndexerMgr) GetAssetSummaryInAddress(address string) map[wire.AssetName
 		assetAmt := int64(0)
 		if len(info.Assets) != 0 {
 			for _, asset := range info.Assets {
-				result[asset.Name] += asset.Amount
+				amt, ok := result[asset.Name]
+				if ok {
+					amt = amt.Add(&asset.Amount)
+				} else {
+					amt = &asset.Amount
+				}
+				result[asset.Name] = amt
 			}
 			assetAmt = info.Assets.GetBindingSatAmout()
 		}
 
 		value += (v - assetAmt)
 	}
-	result[common.ASSET_PLAIN_SAT] = value
+	result[common.ASSET_PLAIN_SAT] = indexer.NewDecimal(value, 0)
 
 	return result
 }

@@ -20,25 +20,6 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
-// defined in STP module
-
-const (
-	STP_MAGIC_NUMBER        = txscript.OP_16
-	CONTENT_TYPE_ASCENDING  = txscript.OP_1
-	CONTENT_TYPE_DESCENDING = txscript.OP_2
-	CONTENT_TYPE_PAYMENT    = txscript.OP_3
-	CONTENT_TYPE_DESTROY    = txscript.OP_4
-	CONTENT_TYPE_SWAP       = txscript.OP_5
-	CONTENT_TYPE_STAKE      = txscript.OP_6
-	CONTENT_TYPE_UNSTAKE    = txscript.OP_7
-	CONTENT_TYPE_DEPOSIT    = txscript.OP_8
-	CONTENT_TYPE_WITHDRAW   = txscript.OP_9
-	CONTENT_TYPE_CHANNELID  = txscript.OP_10
-	CONTENT_TYPE_LIQUIDPOOL = txscript.OP_11
-
-	MAX_PAYLOAD_LEN = txscript.MaxDataCarrierSize - 2
-)
-
 // 从比特币脚本中提取int64值
 func extractScriptInt64(data []byte) int64 {
 	if len(data) == 0 {
@@ -214,7 +195,7 @@ func ReadDataFromNullDataScript(script []byte) (uint8, []byte, error) {
 		return 0, nil, fmt.Errorf("script is not OP_RETURN")
 	}
 
-	if !tokenizer.Next() || tokenizer.Opcode() != STP_MAGIC_NUMBER {
+	if !tokenizer.Next() || tokenizer.Opcode() != common.SAT20_MAGIC_NUMBER {
 		return 0, nil, fmt.Errorf("script is not STP script")
 	}
 

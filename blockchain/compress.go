@@ -8,6 +8,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/btcec"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/indexer/common"
 )
 
 // -----------------------------------------------------------------------------
@@ -610,7 +611,7 @@ func compressedTxOutSize(amount uint64, assets wire.TxAssets, pkScript []byte) i
 		assetsSize += serializeSizeString(asset.Name.Protocol)
 		assetsSize += serializeSizeString(asset.Name.Type)
 		assetsSize += serializeSizeString(asset.Name.Ticker)
-		assetsSize += serializeSizeVLQ(uint64(asset.Amount))
+		assetsSize += serializeSizeString((asset.Amount.ToFormatString()))
 		assetsSize += serializeSizeVLQ(uint64(asset.BindingSat))
 	}
 	pkScriptSize := compressedScriptSize(pkScript)
@@ -630,7 +631,7 @@ func putCompressedTxOut(target []byte, amount uint64, assets wire.TxAssets, pkSc
 		offset += putString(target[offset:], asset.Name.Protocol)
 		offset += putString(target[offset:], asset.Name.Type)
 		offset += putString(target[offset:], asset.Name.Ticker)
-		offset += putVLQ(target[offset:], uint64(asset.Amount))
+		offset += putString(target[offset:], asset.Amount.ToFormatString())
 		offset += putVLQ(target[offset:], uint64(asset.BindingSat))
 	}
 	offset += putCompressedScript(target[offset:], pkScript)
@@ -679,7 +680,7 @@ func decodeCompressedTxOut(serialized []byte) (uint64, wire.TxAssets, []byte, in
 				"data after asset name ticker")
 		}
 
-		assetAmount, bytesRead := deserializeVLQ(serialized[offset:])
+		assetAmount, bytesRead := deserializeString(serialized[offset:])
 		offset += bytesRead
 		if offset >= len(serialized) {
 			return 0, nil, nil, offset, errDeserialize("unexpected end of " +
@@ -693,13 +694,18 @@ func decodeCompressedTxOut(serialized []byte) (uint64, wire.TxAssets, []byte, in
 				"data after asset bindingsat")
 		}
 
+		amt, err := common.NewDecimalFromFormatString(assetAmount)
+		if err != nil {
+			return 0, nil, nil, offset, err
+		}
+
 		asset := wire.AssetInfo{
 			Name: wire.AssetName{
 				Protocol: assetProtocol,
 				Type:     assetType,
 				Ticker:   assetTicker,
 			},
-			Amount:     int64(assetAmount),
+			Amount:     *amt,
 			BindingSat: uint32(assetBindingSat),
 		}
 		txAssets = append(txAssets, asset)

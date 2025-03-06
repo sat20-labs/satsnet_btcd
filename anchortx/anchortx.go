@@ -473,7 +473,7 @@ func isSameAssets(utxoAssetInfo []*httpclient.UtxoAssetInfo, txAssets *wire.TxAs
 			log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
 			return false
 		}
-		if utxoAssetInfo[i].Asset.Amount != (*txAssets)[i].Amount {
+		if utxoAssetInfo[i].Asset.Amount.Cmp(&(*txAssets)[i].Amount) != 0 {
 			log.Errorf("isSameAssets failed, utxoAssetInfo: %v, txAssets: %v", utxoAssetInfo, txAssets)
 			return false
 		}
@@ -527,7 +527,7 @@ func isEqualAsset(utxoAssetInfo *httpclient.UtxoAssetInfo, assetLocked *wire.Ass
 	if utxoAssetInfo.Asset.Name.Ticker != assetLocked.Name.Ticker {
 		return false
 	}
-	if utxoAssetInfo.Asset.Amount != assetLocked.Amount {
+	if utxoAssetInfo.Asset.Amount.Cmp(&assetLocked.Amount) != 0 {
 		return false
 	}
 	if utxoAssetInfo.Asset.BindingSat != assetLocked.BindingSat {

@@ -269,7 +269,7 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 			wire.WriteVarBytes(w, 0, subScript)
 		}
 
-		// Next, add the input amount, sats ranges and sequence number of the input
+		// Next, add the input amount, assets and sequence number of the input
 		// being signed.
 		binary.LittleEndian.PutUint64(scratch[:], uint64(amt))
 		w.Write(scratch[:])
@@ -283,14 +283,10 @@ func calcWitnessSignatureHashRaw(subScript []byte, sigHashes *TxSigHashes,
 			w.Write([]byte(asset.Name.Protocol))
 			w.Write([]byte(asset.Name.Type))
 			w.Write([]byte(asset.Name.Ticker))
-			binary.LittleEndian.PutUint64(scratch[:], uint64(asset.Amount))
-			w.Write(scratch[:])
+			w.Write([]byte(asset.Amount.ToFormatString()))
 			binary.LittleEndian.PutUint32(scratch[:], asset.BindingSat)
-			w.Write(scratch[:2])
+			w.Write(scratch[:4])
 		}
-
-		binary.LittleEndian.PutUint64(scratch[:], uint64(amt))
-		w.Write(scratch[:])
 
 		binary.LittleEndian.PutUint32(scratch[:], txIn.Sequence)
 		w.Write(scratch[:4])

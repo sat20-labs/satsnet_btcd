@@ -157,13 +157,13 @@ func (s *Model) GetBlockInfo(height int) (*common.BlockInfo, error) {
 }
 
 func (s *Model) GetAssetSummary(address string, start int, limit int) (*indexerwire.AssetSummary, error) {
-	tickerMap := s.indexer.GetAssetSummaryInAddress(address)
+	tickerMap := s.indexer.GetAssetSummaryInAddressV3(address)
 
 	result := indexerwire.AssetSummary{}
-	for tickName, balance := range tickerMap {
+	for tickName, amount := range tickerMap {
 		resp := &swire.AssetInfo{}
 		resp.Name = tickName
-		resp.Amount = balance
+		resp.Amount = *amount.Clone()
 		resp.BindingSat = uint32(s.indexer.GetBindingSat(&tickName))
 		result.Data = append(result.Data, resp)
 	}
@@ -171,7 +171,7 @@ func (s *Model) GetAssetSummary(address string, start int, limit int) (*indexerw
 	result.Total = uint64(len(result.Data))
 
 	sort.Slice(result.Data, func(i, j int) bool {
-		return result.Data[i].Amount > result.Data[j].Amount
+		return result.Data[i].Amount.Cmp(&result.Data[j].Amount) > 0
 	})
 
 	return &result, nil
