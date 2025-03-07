@@ -10,7 +10,7 @@ import (
 )
 
 
-func NewIndexerMgr(dbPath, port, user, ps string, bTestNet bool, interrupt <-chan struct{}) (*indexer.IndexerMgr, error) {
+func NewIndexerMgr(dbPath, port, user, ps string, enableTls, bTestNet bool, interrupt <-chan struct{}) (*indexer.IndexerMgr, error) {
 	
 	p, err := strconv.Atoi(port)
 	if err != nil {
@@ -24,6 +24,7 @@ func NewIndexerMgr(dbPath, port, user, ps string, bTestNet bool, interrupt <-cha
 			Port: p,
 			User: user,
 			Password: ps,
+			EnableTls: enableTls,
 		},
 	}
 

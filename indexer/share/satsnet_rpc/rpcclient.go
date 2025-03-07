@@ -60,8 +60,7 @@ func InitSatsNetClient(host string, port int, user, passwd, dataPath string, ena
 			common.Log.Errorf("ReadFile %s failed, %v", certFile, err)
 			return err
 		}
-	}
-	
+	} 
 
 	connCfg := &rpcclient.ConnConfig{
 		Host:     host + ":" + strconv.Itoa(port),
@@ -70,7 +69,9 @@ func InitSatsNetClient(host string, port int, user, passwd, dataPath string, ena
 		Pass:     passwd,
 		//HTTPPostMode: true,
 		Certificates: certs,
+		DisableTLS: !enableTls,
 	}
+	
 	client, err := rpcclient.New(connCfg, &ntfnHandlers)
 	if err != nil {
 		common.Log.Errorf("rpcclient.New failed. %v", err)
