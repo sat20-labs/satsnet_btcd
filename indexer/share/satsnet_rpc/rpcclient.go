@@ -22,12 +22,13 @@ type BtcdClient struct {
 
 var _client BtcdClient
 
-func GetBtcdClient() *BtcdClient {
-	return &_client
-}
 
 func RegisterOnConnected(cb BlockOnConnected) {
 	_client.OnConnected = cb
+}
+
+func RpcClientReady() bool {
+	return _client.client != nil
 }
 
 func InitSatsNetClient(host string, port int, user, passwd, dataPath string) error {

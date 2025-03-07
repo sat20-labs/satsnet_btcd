@@ -235,6 +235,10 @@ func (b *IndexerMgr) StartDaemon(stopChan <-chan struct{}) {
 		tick()
 	}
 
+	for !satsnet_rpc.RpcClientReady() {
+		time.Sleep(time.Second)
+	}
+	
 	tick()
 	satsnet_rpc.RegisterOnConnected(onConneted) // 主要靠这个
 
