@@ -147,10 +147,10 @@ func (s *Rpc) Start(rpcUrl, rpcProxy, rpcLogFile string) error {
 
 	parts := strings.Split(rpcUrl, ":")
 	var port string
-	if len(parts) < 3 {
+	if len(parts) < 2 {
 		return fmt.Errorf("invalid url")
 	}
-	port = parts[2]
+	port = parts[1]
 	
 	// 先检查端口
 	if err := checkPort(port); err != nil {
