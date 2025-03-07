@@ -20,10 +20,10 @@ type BtcdClient struct {
 	OnDisConnected BlockOnDisconneted
 }
 
-var _client *BtcdClient
+var _client BtcdClient
 
 func GetBtcdClient() *BtcdClient {
-	return _client
+	return &_client
 }
 
 func RegisterOnConnected(cb BlockOnConnected) {
@@ -35,14 +35,14 @@ func InitSatsNetClient(host string, port int, user, passwd, dataPath string) err
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txns []*btcutil.Tx) {
 			common.Log.Infof("Block connected: %v (%d) %v",
 				header.BlockHash(), height, header.Timestamp)
-			if _client != nil && _client.OnConnected != nil {
+			if _client.OnConnected != nil {
 				_client.OnConnected(height, header, txns)
 			}
 		},
 		OnFilteredBlockDisconnected: func(height int32, header *wire.BlockHeader) {
 			common.Log.Infof("Block disconnected: %v (%d) %v",
 				header.BlockHash(), height, header.Timestamp)
-			if _client != nil && _client.OnDisConnected != nil {
+			if _client.OnDisConnected != nil {
 				_client.OnDisConnected(height, header)
 			}
 		},
@@ -87,9 +87,7 @@ func InitSatsNetClient(host string, port int, user, passwd, dataPath string) err
 	common.Log.Infof("Block count: %d", blockCount)
 
 	common.Log.Infof("rpc client connected")
-	_client = &BtcdClient{
-		client: client,
-	}
+	_client.client = client
 
 	return nil
 }
