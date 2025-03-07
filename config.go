@@ -449,33 +449,12 @@ func loadConfig() (*config, []string, error) {
 		}
 		return nil, nil, err
 	}
-	homeDir := commandCfg.HomeDir
-	if homeDir == "" {
-		homeDir = defaultHomeDir
+	homeBtcdDir = defaultHomeDir
+	if commandCfg.HomeDir != "" {
+		homeBtcdDir = commandCfg.HomeDir
 	}
-	fmt.Println("Satsnet directory is ", homeDir)
-	// if !filepath.IsAbs(homeDir) {
-	// 	err := fmt.Errorf("homeDir %s is not an absolute path", homeDir)
-	// 	fmt.Fprintln(os.Stderr, err)
-	// 	return nil, nil, err
-	// }
-
-	//fmt.Println("***********homeDir*********", homeDir)
-	//fmt.Println(homeDir)
-
-	//homeDir = "/data/satsnet/satsnet_btcd/btcddata"
-
-	//homeBtcdDir := filepath.Join(homeDir, "satsnet")
-	homeBtcdDir = homeDir
-	fmt.Println("homeBtcdDir is ", homeBtcdDir)
-	//homeBtcdDir = homeBtcdDir1
-	//fmt.Println(homeBtcdDir)
-	//fmt.Println("****************************")
-	//fmt.Println(homeBtcdDir)
-
-	//homeBtcdDir = "/data/satsnet/satsnet_btcd/btcddata/btcd"
-	//newHomeBtcdDir := filepath.Clean(homeBtcdDir)
-	//fmt.Println("newHomeBtcdDir is ", newHomeBtcdDir)
+	
+	fmt.Println("homeDir is ", homeBtcdDir)
 
 	configFile = filepath.Join("./", defaultConfigFilename)
 	fmt.Println("configFile is ", configFile)
@@ -493,6 +472,7 @@ func loadConfig() (*config, []string, error) {
 	fmt.Println("logDir is ", logDir)
 
 	cfg := config{
+		HomeDir:              homeBtcdDir,
 		ConfigFile:           configFile,
 		DebugLevel:           defaultLogLevel,
 		MaxPeers:             defaultMaxPeers,
