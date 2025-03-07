@@ -6,7 +6,6 @@ package main
 
 import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/wire"
 )
 
 // activeNetParams is a pointer to the parameters specific to the
@@ -80,6 +79,10 @@ var mainSatsNetParams = params{
 	Params:  &chaincfg.SatsMainNetParams,
 	rpcPort: "9527",
 }
+// p2p port: 9526
+// rpc:      9527
+// index   : 9528
+// stp port: 9529
 
 // mainSatsNetParams contains parameters specific to the main network
 // (wire.SatsTestNetParams).  NOTE: The RPC port is intentionally different than the
@@ -102,10 +105,7 @@ var testSatsNetParams = params{
 // "testnet3" is planned for the future, at which point this function can be
 // removed and the network parameter's name used instead.
 func netName(chainParams *params) string {
-	switch chainParams.Net {
-	case wire.SatsTestNet:
-		return "testnet"
-	default:
-		return chainParams.Name
-	}
+	
+	return chainParams.Name
 }
+
