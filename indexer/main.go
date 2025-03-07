@@ -41,10 +41,10 @@ func NewIndexerMgr(dbPath, port, user, ps string, bTestNet bool, interrupt <-cha
 
 func InitRpcService(dbPath string, bTestNet bool, indexerMgr *indexer.IndexerMgr) (*rpcserver.Rpc, error) {
 	
-	addr := "https://0.0.0.0:8005"
+	addr := "https://0.0.0.0:8015"
 	proxy := "mainnet"
 	if bTestNet {
-		addr = "http://0.0.0.0:8009"
+		addr = "http://0.0.0.0:8019"
 		proxy = "testnet"
 	} 
 	
