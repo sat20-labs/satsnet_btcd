@@ -16,7 +16,6 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sat20-labs/satsnet_btcd/indexer/indexer"
 
-	"github.com/sat20-labs/indexer/config"
 	// indexerrpc "github.com/sat20-labs/indexer/rpcserver"
 
 	sindexer "github.com/sat20-labs/satsnet_btcd/indexer/rpcserver/indexer"
@@ -45,14 +44,14 @@ type Rpc struct {
 	satoshinetService *satoshinet.Service
 }
 
-func NewRpc(baseIndexer *indexer.IndexerMgr, chain string) *Rpc {
+func NewRpc(baseIndexer *indexer.IndexerMgr) *Rpc {
 	return &Rpc{
 		indexerService:    sindexer.NewService(baseIndexer),
 		satoshinetService: satoshinet.NewService(),
 	}
 }
 
-func (s *Rpc) Start(rpcUrl, swaggerHost, swaggerSchemes, rpcProxy, rpcLogFile string, apiConf *config.API) error {
+func (s *Rpc) Start(rpcUrl, rpcProxy, rpcLogFile string) error {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	var writers []io.Writer
@@ -148,11 +147,11 @@ func (s *Rpc) Start(rpcUrl, swaggerHost, swaggerSchemes, rpcProxy, rpcLogFile st
 
 	parts := strings.Split(rpcUrl, ":")
 	var port string
-	if len(parts) < 2 {
-		rpcUrl += ":80"
-		port = "80"
+	if len(parts) < 3 {
+		rpcUrl += ":8005"
+		port = "8005"
 	} else {
-		port = parts[1]
+		port = parts[2]
 	}
 
 	// 先检查端口

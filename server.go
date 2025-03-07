@@ -3000,7 +3000,9 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 		srvrLog.Infof("User-agent whitelist %s", agentWhitelist)
 	}
 
-	assetIndexer, err := indexerEntry.NewIndexerMgr(cfg.HomeDir, interrupt)
+	assetIndexer, err := indexerEntry.NewIndexerMgr(cfg.HomeDir, 
+		activeNetParams.rpcPort, cfg.RPCUser, cfg.RPCPass, cfg.SatsTestNet,
+		interrupt)
 	if err != nil {
 		return nil, err
 	}

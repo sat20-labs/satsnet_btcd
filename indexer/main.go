@@ -1,40 +1,37 @@
 package indexer
 
 import (
-	"github.com/sat20-labs/indexer/config"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"strconv"
+
 	"github.com/sat20-labs/satsnet_btcd/indexer/common"
 	"github.com/sat20-labs/satsnet_btcd/indexer/indexer"
 	"github.com/sat20-labs/satsnet_btcd/indexer/rpcserver"
 	shareIndexer "github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
-
 )
 
-type Config struct {
-	DBDir           string
-	ChainParam      *chaincfg.Params
-	MaxIndexHeight  int
-	PeriodFlushToDB int
-}
 
-func NewIndexerMgr(dbPath string, interrupt <-chan struct{}) (*indexer.IndexerMgr, error) {
-	yamlcfg := config.InitConfig("indexer.conf")
-	if dbPath != "" {
-		yamlcfg.DB.Path = dbPath
+func NewIndexerMgr(dbPath, port, user, ps string, bTestNet bool, interrupt <-chan struct{}) (*indexer.IndexerMgr, error) {
+	
+	p, err := strconv.Atoi(port)
+	if err != nil {
+		return nil, err
 	}
 
-	// 需要等rpcserver运行
-	// err := InitRpc(yamlcfg)
-	// if err != nil {
-	// 	common.Log.Error(err)
-	// 	return nil, err
-	// }
+	cfg := indexer.Config{
+		DataPath: dbPath,
+		RPCCfg: &indexer.RPCConfig{
+			Host: "127.0.0.1",
+			Port: p,
+			User: user,
+			Password: ps,
+		},
+	}
 
-	indexerMgr := indexer.NewIndexerMgr(yamlcfg, interrupt)
+	indexerMgr := indexer.NewIndexerMgr(&cfg, bTestNet, interrupt)
 	shareIndexer.InitIndexer(indexerMgr)
 	indexerMgr.Init()
 
-	_, err := InitRpcService(yamlcfg, indexerMgr)
+	_, err = InitRpcService(dbPath, bTestNet, indexerMgr)
 	if err != nil {
 		common.Log.Error(err)
 		return nil, err
@@ -42,33 +39,21 @@ func NewIndexerMgr(dbPath string, interrupt <-chan struct{}) (*indexer.IndexerMg
 	return indexerMgr, nil
 }
 
-func InitRpcService(conf *config.YamlConf, indexerMgr *indexer.IndexerMgr) (*rpcserver.Rpc, error) {
-	maxIndexHeight := int64(0)
-	addr := ""
-	host := ""
-	scheme := ""
-	proxy := ""
-	logPath := ""
-
-	maxIndexHeight = conf.BasicIndex.MaxIndexHeight
-	rpcService := conf.RPCService
-	addr = rpcService.Addr
-	host = rpcService.Swagger.Host
-	for _, v := range rpcService.Swagger.Schemes {
-		scheme += v + ","
+func InitRpcService(dbPath string, bTestNet bool, indexerMgr *indexer.IndexerMgr) (*rpcserver.Rpc, error) {
+	
+	addr := "https://0.0.0.0:8005"
+	proxy := "mainnet"
+	if bTestNet {
+		addr = "http://0.0.0.0:8009"
+		proxy = "testnet"
+	} 
+	
+	rpc := rpcserver.NewRpc(indexerMgr)
+	err := rpc.Start(addr, proxy, dbPath+"/logs/"+indexerMgr.GetChainParam().Name)
+	if err != nil {
+		return rpc, err
 	}
-	proxy = rpcService.Proxy
-	logPath = rpcService.LogPath
+	common.Log.Info("indexer rpc service started")
 
-	chain := conf.Chain
-	rpc := rpcserver.NewRpc(indexerMgr, chain)
-	if maxIndexHeight <= 0 { // default true. set to false when compiling database.
-		err := rpc.Start(addr, host, scheme,
-			proxy, logPath, &rpcService.API)
-		if err != nil {
-			return rpc, err
-		}
-		common.Log.Info("rpc started")
-	}
 	return rpc, nil
 }

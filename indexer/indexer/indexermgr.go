@@ -4,7 +4,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sat20-labs/indexer/config"
 	"github.com/sat20-labs/satsnet_btcd/indexer/common"
 	base_indexer "github.com/sat20-labs/satsnet_btcd/indexer/indexer/base"
 
@@ -19,9 +18,23 @@ import (
 	"github.com/sat20-labs/indexer/indexer/db"
 )
 
+type RPCConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+}
+
+type Config struct {
+	DataPath string
+	RPCCfg   *RPCConfig
+}
+
 type IndexerMgr struct {
-	cfg   *config.YamlConf
+	
+	cfg *Config
 	dbDir string
+
 	// data from blockchain
 	baseDB *badger.DB
 
@@ -53,7 +66,8 @@ func GetIndexerMgr() *IndexerMgr {
 }
 
 func NewIndexerMgr(
-	yamlcfg *config.YamlConf,
+	cfg *Config,
+	bTestNet bool,
 	interrupt <-chan struct{},
 ) *IndexerMgr {
 
@@ -61,26 +75,19 @@ func NewIndexerMgr(
 		return instance
 	}
 
-	if yamlcfg.BasicIndex.PeriodFlushToDB == 0 {
-		yamlcfg.BasicIndex.PeriodFlushToDB = 12
-	}
-
 	chainParam := &chaincfg.SatsMainNetParams
-	switch yamlcfg.Chain {
-	case common.ChainTestnet:
+	if bTestNet {
 		chainParam = &chaincfg.SatsTestNetParams
-	case common.ChainMainnet:
-		chainParam = &chaincfg.SatsMainNetParams
-	default:
+	} else {
 		chainParam = &chaincfg.SatsMainNetParams
 	}
 
 	mgr := &IndexerMgr{
-		cfg:             yamlcfg,
-		dbDir:           yamlcfg.DB.Path+"/db/indexer/"+yamlcfg.Chain+"/",
+		cfg:               cfg,
+		dbDir:             cfg.DataPath+"/db/indexer/"+chainParam.Name+"/",
 		chaincfgParam:     chainParam,
-		maxIndexHeight:    int(yamlcfg.BasicIndex.MaxIndexHeight),
-		periodFlushToDB:    yamlcfg.BasicIndex.PeriodFlushToDB,
+		maxIndexHeight:    0,
+		periodFlushToDB:   12,
 		compilingBackupDB: nil,
 		rpcService:        nil,
 		bRunning:          false,
@@ -117,13 +124,9 @@ func (b *IndexerMgr) GetBaseDB() *badger.DB {
 }
 
 
-func InitRpcClient(conf *config.YamlConf) error {
+func InitRpcClient(dbPath string, cfg *RPCConfig) error {
 	err := satsnet_rpc.InitSatsNetClient(
-		conf.ShareRPC.Bitcoin.Host,
-		conf.ShareRPC.Bitcoin.Port,
-		conf.ShareRPC.Bitcoin.User,
-		conf.ShareRPC.Bitcoin.Password,
-		conf.DB.Path,
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, dbPath,
 	)
 	if err != nil {
 		go func() {
@@ -131,11 +134,7 @@ func InitRpcClient(conf *config.YamlConf) error {
 			var err error
 			for n < 10 {
 				err = satsnet_rpc.InitSatsNetClient(
-					conf.ShareRPC.Bitcoin.Host,
-					conf.ShareRPC.Bitcoin.Port,
-					conf.ShareRPC.Bitcoin.User,
-					conf.ShareRPC.Bitcoin.Password,
-					conf.DB.Path,
+					cfg.Host, cfg.Port, cfg.User, cfg.Password, dbPath,
 				)
 				if err == nil {
 					break
@@ -153,7 +152,7 @@ func InitRpcClient(conf *config.YamlConf) error {
 }
 
 func (b *IndexerMgr) Start() error {
-	err := InitRpcClient(b.cfg)
+	err := InitRpcClient(b.cfg.DataPath, b.cfg.RPCCfg)
 	if err != nil {
 		common.Log.Error(err)
 		return err
