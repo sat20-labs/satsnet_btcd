@@ -85,6 +85,7 @@ var mainSatsNetParams = params{
 // rpc:       9527
 // index   :  9528
 // stp port:  9529
+// stp mgr:   9530
 
 
 // mainSatsNetParams contains parameters specific to the main network
