@@ -60,7 +60,13 @@ func StartSTP() error {
 		return fmt.Errorf("symbol type assertion failed")
 	}
 
-	return f()
+	err = f()
+	if err != nil {
+		log.Printf("StartSTP failed, %v", err)
+		return err
+	}
+	log.Printf("StartSTP completed")
+	return nil
 }
 
 func ReleaseSTP() {

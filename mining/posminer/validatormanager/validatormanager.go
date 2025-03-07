@@ -823,13 +823,13 @@ func (vm *ValidatorManager) GetValidatorPort() int {
 
 	switch vm.Cfg.ChainParams.Net {
 	case wire.SatsNet:
-		return 4829
+		return 9530
 
 	case wire.SatsTestNet:
-		return 15829
+		return 19530
 	}
 
-	return 4829
+	return 9530
 }
 
 func (vm *ValidatorManager) AddActivieValidator(validator *validator.Validator) error {
