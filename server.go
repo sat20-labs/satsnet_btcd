@@ -3001,7 +3001,7 @@ func newServer(listenAddrs, agentBlacklist, agentWhitelist []string,
 	}
 
 	assetIndexer, err := indexerEntry.NewIndexerMgr(cfg.HomeDir, 
-		activeNetParams.rpcPort, cfg.RPCUser, cfg.RPCPass, cfg.SatsTestNet,
+		activeNetParams.rpcPort, cfg.RPCUser, cfg.RPCPass, !cfg.DisableTLS, cfg.SatsTestNet,
 		interrupt)
 	if err != nil {
 		return nil, err

@@ -31,7 +31,7 @@ func RpcClientReady() bool {
 	return _client.client != nil
 }
 
-func InitSatsNetClient(host string, port int, user, passwd, dataPath string) error {
+func InitSatsNetClient(host string, port int, user, passwd, dataPath string, enableTls bool) error {
 	ntfnHandlers := rpcclient.NotificationHandlers{
 		OnFilteredBlockConnected: func(height int32, header *wire.BlockHeader, txns []*btcutil.Tx) {
 			common.Log.Infof("Block connected: %v (%d) %v",
@@ -49,14 +49,19 @@ func InitSatsNetClient(host string, port int, user, passwd, dataPath string) err
 		},
 	}
 
-	// Connect to local btcd RPC server using websockets.
-	certFile := filepath.Join(dataPath, "rpc.cert")
-	common.Log.Infof("cert file: %s", certFile)
-	certs, err := os.ReadFile(certFile)
-	if err != nil {
-		common.Log.Errorf("ReadFile %s failed, %v", certFile, err)
-		return err
+	var certs []byte
+	if enableTls {
+		// Connect to local btcd RPC server using websockets.
+		certFile := filepath.Join(dataPath, "rpc.cert")
+		common.Log.Infof("cert file: %s", certFile)
+		var err error
+		certs, err = os.ReadFile(certFile)
+		if err != nil {
+			common.Log.Errorf("ReadFile %s failed, %v", certFile, err)
+			return err
+		}
 	}
+	
 
 	connCfg := &rpcclient.ConnConfig{
 		Host:     host + ":" + strconv.Itoa(port),

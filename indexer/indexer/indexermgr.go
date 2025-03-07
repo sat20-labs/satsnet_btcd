@@ -19,10 +19,11 @@ import (
 )
 
 type RPCConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
+	Host     string 
+	Port     int    
+	User     string 
+	Password string
+	EnableTls bool
 }
 
 type Config struct {
@@ -126,7 +127,7 @@ func (b *IndexerMgr) GetBaseDB() *badger.DB {
 
 func InitRpcClient(dbPath string, cfg *RPCConfig) error {
 	err := satsnet_rpc.InitSatsNetClient(
-		cfg.Host, cfg.Port, cfg.User, cfg.Password, dbPath,
+		cfg.Host, cfg.Port, cfg.User, cfg.Password, dbPath, cfg.EnableTls,
 	)
 	if err != nil {
 		go func() {
@@ -134,7 +135,7 @@ func InitRpcClient(dbPath string, cfg *RPCConfig) error {
 			var err error
 			for n < 10 {
 				err = satsnet_rpc.InitSatsNetClient(
-					cfg.Host, cfg.Port, cfg.User, cfg.Password, dbPath,
+					cfg.Host, cfg.Port, cfg.User, cfg.Password, dbPath, cfg.EnableTls,
 				)
 				if err == nil {
 					break
