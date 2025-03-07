@@ -79,11 +79,13 @@ var mainSatsNetParams = params{
 	Params:  &chaincfg.SatsMainNetParams,
 	rpcPort: "9527",
 }
+
+// validator: 9525
 // p2p port:  9526
 // rpc:       9527
 // index   :  9528
 // stp port:  9529
-// validator: 9530
+
 
 // mainSatsNetParams contains parameters specific to the main network
 // (wire.SatsTestNetParams).  NOTE: The RPC port is intentionally different than the
