@@ -1148,7 +1148,6 @@ var SatsTestNetParams = Params{
 		//{"39.108.147.241", true},
 		{"192.168.10.104", true},
 		{"192.168.10.103", true},
-		{"192.168.10.102", true},
 	},
 
 	// Chain parameters
