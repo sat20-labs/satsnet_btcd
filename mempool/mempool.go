@@ -1866,7 +1866,7 @@ func (mp *TxPool) Save(dataDir string) error {
 func (mp *TxPool) Load(dataDir string) error {
 	txCacheList, err := LoadMempoolCahce(dataDir)
 	if err != nil {
-		log.Errorf("Failed to save mempool cache: %v", err)
+		log.Errorf("Failed to load mempool cache: %v", err)
 		return err
 	}
 

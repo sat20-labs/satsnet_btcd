@@ -324,7 +324,7 @@ func (v *Validator) IsValidInfo() bool {
 }
 
 func (v *Validator) checkValidatorValid() {
-	utils.Log.Debugf("[Validator]checkValidatorValid done.")
+	utils.Log.Debugf("[Validator]checkValidatorValid started.")
 	tryCount := 0
 	checkInterval := time.Second * 5
 	checkTicker := time.NewTicker(checkInterval)

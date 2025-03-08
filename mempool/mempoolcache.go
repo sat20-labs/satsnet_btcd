@@ -22,7 +22,7 @@ func LoadMempoolCahce(dataDir string) ([]*TxCacheItem, error) {
 
 	data, err := loadCacheData(cachePath)
 	if err != nil {
-		err := fmt.Errorf("Local local mempool cache failed: %s", err.Error())
+		err := fmt.Errorf("load local mempool cache failed: %s", err.Error())
 		return nil, err
 
 	}
@@ -30,7 +30,7 @@ func LoadMempoolCahce(dataDir string) ([]*TxCacheItem, error) {
 	var items []*TxCacheItem
 	err = json.Unmarshal(data, &items)
 	if err != nil {
-		err := fmt.Errorf("Local local mempool cache failed: %s", err.Error())
+		err := fmt.Errorf("load local mempool cache failed: %s", err.Error())
 		return nil, err
 	}
 
@@ -47,7 +47,7 @@ func SaveMempoolCahce(dataDir string, items []*TxCacheItem) error {
 	}
 	err = saveCacheData(cachePath, data)
 	if err != nil {
-		err := fmt.Errorf("Local local mempool cache failed: %s", err.Error())
+		err := fmt.Errorf("save local mempool cache failed: %s", err.Error())
 		return err
 	}
 
@@ -57,7 +57,7 @@ func ClearMempoolCahce(dataDir string) error {
 	cachePath := filepath.Join(dataDir, cacheName)
 	err := os.Remove(cachePath)
 	if err != nil {
-		log.Error("Clear local mempool cache failed: %s", err.Error())
+		log.Errorf("Clear local mempool cache failed: %s", err.Error())
 		return err
 	}
 
