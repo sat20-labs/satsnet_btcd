@@ -1028,6 +1028,7 @@ func loadConfig() (*config, []string, error) {
 	// Ensure there is at least one mining address when the generate flag is
 	// set.
 	if cfg.Generate {
+		cfg.TxIndex = true
 		if cfg.MiningPubKey != "" {
 			if len(cfg.MiningAddrs) == 0 {
 				pubKey, err := hex.DecodeString(cfg.MiningPubKey)

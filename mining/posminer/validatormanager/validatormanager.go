@@ -1353,7 +1353,7 @@ func (vm *ValidatorManager) OnTimeGenerateBlock() (*chainhash.Hash, int32, error
 }
 
 func (vm *ValidatorManager) HandoverToNextGenerator() {
-	utils.Log.Errorf("[ValidatorManager]HandoverToNextGenerator...")
+	utils.Log.Infof("[ValidatorManager]HandoverToNextGenerator...")
 	if vm.CurrentEpoch == nil {
 		err := errors.New("current epoch is nil")
 		utils.Log.Errorf("[ValidatorManager]HandoverToNextGenerator failed: %v", err)
