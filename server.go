@@ -2942,6 +2942,7 @@ func setupRPCListeners() ([]net.Listener, error) {
 		}
 	}
 
+	rpcsLog.Warnf("TLS disabled  %v", cfg.DisableTLS)
 	netAddrs, err := parseListeners(cfg.RPCListeners)
 	if err != nil {
 		return nil, err
