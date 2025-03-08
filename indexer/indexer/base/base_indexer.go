@@ -11,7 +11,6 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/indexer/indexer/stp"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
-	"github.com/sirupsen/logrus"
 
 	indexer "github.com/sat20-labs/indexer/common"
 	db "github.com/sat20-labs/indexer/indexer/db"
@@ -570,7 +569,7 @@ func (b *BaseIndexer) syncToBlock(height int, stopChan chan struct{}) int {
 		return 0
 	}
 
-	common.Log.WithFields(logrus.Fields{"BaseIndexer.SyncToBlock-> currentHeight": b.lastHeight, "targetHeight": height}).Info("starting sync")
+	common.Log.Infof("BaseIndexer.SyncToBlock-> currentHeight %d, targetHeight %d", b.lastHeight, height)
 
 	// if we don't start from precisely this heigh the UTXO index is worthless
 	// we need to start from exactly where we left off
