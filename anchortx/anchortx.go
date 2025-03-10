@@ -17,6 +17,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/httpclient"
+	"github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 
@@ -380,32 +381,32 @@ func CheckAnchorPkScript(anchorPkScript []byte) (*AscendInfo, error) {
 		return nil, err
 	}
 
-	var corePubkey, bootstrapPubkey []byte
 	if len(addresses2) != 2 {
 		return nil, fmt.Errorf("invalid multi-sig addresses")
 	}
 	pubkeyBytes0 := addresses2[0].ScriptAddress()
 	pubkeyBytes1 := addresses2[1].ScriptAddress()
-	if IsBootstrapPubKey(pubkeyBytes0) {
-		bootstrapPubkey = pubkeyBytes0
-		corePubkey = pubkeyBytes1
-	} else if IsBootstrapPubKey(pubkeyBytes1) {
-		bootstrapPubkey = pubkeyBytes1
-		corePubkey = pubkeyBytes0
-	} else {
-		return nil, fmt.Errorf("not signed by bootstrap node")
-	}
 
-	pubkey, err := BytesToPublicKey(bootstrapPubkey)
+	pubkeyA, err := BytesToPublicKey(pubkeyBytes0)
 	if err != nil {
 		return nil, fmt.Errorf("BytesToPublicKey failed. %v", err)
 	}
-	if !VerifyMessage(pubkey, invoice, sig) {
-		return nil, fmt.Errorf("not signed by bootstrap node")
-	}
-	_, err = BytesToPublicKey(corePubkey)
+	pubkeyB, err := BytesToPublicKey(pubkeyBytes1)
 	if err != nil {
 		return nil, fmt.Errorf("BytesToPublicKey failed. %v", err)
+	}
+	if !VerifyMessage(pubkeyA, invoice, sig) {
+		if VerifyMessage(pubkeyB, invoice, sig) {
+			pubkeyA, pubkeyB = pubkeyB, pubkeyA
+			pubkeyBytes0, pubkeyBytes1 = pubkeyBytes1, pubkeyBytes0
+		} else {
+			return nil, fmt.Errorf("VerifyMessage failed")
+		}
+	}
+	// A is server node, sign this invoice
+
+	if IsCoreNode(pubkeyBytes0) {
+		return nil, fmt.Errorf("not signed by core node")
 	}
 
 
@@ -430,18 +431,13 @@ func CheckAnchorPkScript(anchorPkScript []byte) (*AscendInfo, error) {
 
 	if !includeAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) {
 		return nil, fmt.Errorf("invalid assets")
-	}
-
-	// TODO 
-	// 将corePubkey记录下来，这是一个核心节点的pubkey
-	// 或者由索引器记录，随时从索引器查询
-	
+	}	
 
 	return &AscendInfo{
 		AnchorInfo: *lockedTxInfo,
 		Address: addresses[0].EncodeAddress(),
-		PubKeyA: bootstrapPubkey,
-		PubKeyB: corePubkey,
+		PubKeyA: pubkeyBytes0,
+		PubKeyB: pubkeyBytes1,
 	}, nil
 }
 
@@ -638,4 +634,18 @@ func GetCoreNodeChannelAddress(pubkey []byte, chainParams *chaincfg.Params) (str
 	}
 
 	return address, nil
+}
+
+// 包含bootstrap
+func IsCoreNode(pubKey []byte) bool {
+	if IsBootstrapPubKey(pubKey) {
+		return true
+	}
+
+	if hex.EncodeToString(pubKey) == common.CoreNodePubKey {
+		return true
+	}
+
+	// 从索引器查询结果：该节点已经与引导节点建立了通道，并且将资产质押到通道中（通过HasCoreNodeEligibility判断）
+	return indexer.ShareIndexer.IsCoreNode(hex.EncodeToString(pubKey))
 }

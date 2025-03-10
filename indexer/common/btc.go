@@ -6,7 +6,6 @@ import (
 
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/mempool"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -66,15 +65,6 @@ func AddrToPkScript(addr string, chain string) ([]byte, error) {
 		return nil, err
 	}
 	return txscript.PayToAddrScript(address)
-}
-
-func SignalsReplacement(tx *wire.MsgTx) bool {
-	for _, txIn := range tx.TxIn {
-		if txIn.Sequence <= mempool.MaxRBFSequence {
-			return true
-		}
-	}
-	return false
 }
 
 func IsOpReturn(pkScript []byte, param *chaincfg.Params) bool {
