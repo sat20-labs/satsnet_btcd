@@ -405,7 +405,7 @@ func CheckAnchorPkScript(anchorPkScript []byte) (*AscendInfo, error) {
 	}
 	// A is server node, sign this invoice
 
-	if IsCoreNode(pubkeyBytes0) {
+	if !IsCoreNode(pubkeyBytes0) {
 		return nil, fmt.Errorf("not signed by core node")
 	}
 
