@@ -3,7 +3,6 @@ package bootstrapnode
 import (
 	"encoding/hex"
 
-	"github.com/sat20-labs/satsnet_btcd/wire"
 	"github.com/sat20-labs/indexer/common"
 	"github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
 )
@@ -28,13 +27,4 @@ func IsCoreNode(pubKey []byte) bool {
 
 func CheckValidatorID(pubKey []byte) bool {
 	return IsCoreNode(pubKey)
-}
-
-func HasCoreNodeEligibility(assets wire.TxAssets) bool {
-	for _, asset := range assets {
-		if asset.Name.String() == common.CORENODE_STAKING_ASSET_NAME {
-			return asset.Amount.Int64() >= common.CORENODE_STAKING_ASSET_AMOUNT
-		}
-	}
-	return false
 }

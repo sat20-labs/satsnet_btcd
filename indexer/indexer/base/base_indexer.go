@@ -695,7 +695,7 @@ func (b *BaseIndexer) processBlock(block *common.Block) {
 				coreNodeKey := hex.EncodeToString(ascend.PubB)
 				_, ok := b.coreNodeMap[coreNodeKey]
 				if !ok {
-					if IsCoreNodeAscend(ascend) {
+					if b.IsCoreNodeAscend(ascend) {
 						b.coreNodeMap[hex.EncodeToString(ascend.PubB)] = ascend.Height
 						b.coreNodeMapUpdated = true
 					}
@@ -753,7 +753,7 @@ func (b *BaseIndexer) processBlock(block *common.Block) {
 
 							// TODO
 							// 需要检查通道中是否还有足够的资产，才能确定是否是corenode退出，现在不支持corenode退出
-							// if IsCoreNodeDescend(descend) {
+							// if b.IsCoreNodeDescend(descend) {
 							// 	channel, ok := b.channelMap[descend.Address]
 							// 	if ok {
 							// 		delete(b.coreNodeMap, hex.EncodeToString(channel.PubB))
@@ -1290,3 +1290,28 @@ func (p *BaseIndexer) getAddressId(address string) (uint64, int) {
 	}
 	return value.AddressId, value.Op
 }
+
+
+func (p *BaseIndexer) IsCoreNodeAscend(ascend *common.AscendData) bool {
+	return p.HasCoreNodeEligibility(ascend.Assets)
+}
+
+func (p *BaseIndexer) IsCoreNodeDescend(descend *common.DescendData) bool {
+	return p.HasCoreNodeEligibility(descend.Assets)
+}
+
+func (p *BaseIndexer) HasCoreNodeEligibility(assets wire.TxAssets) bool {
+	coreAssetName := indexer.CORENODE_STAKING_ASSET_NAME
+	coreAssetAmount := indexer.CORENODE_STAKING_ASSET_AMOUNT
+	if !p.IsMainnet() {
+		coreAssetName = indexer.TESTNET_CORENODE_STAKING_ASSET_NAME
+		coreAssetAmount = indexer.TESTNET_CORENODE_STAKING_ASSET_AMOUNT
+	}
+	for _, asset := range assets {
+		if asset.Name.String() == coreAssetName {
+			return asset.Amount.Int64() >= coreAssetAmount
+		}
+	}
+	return false
+}
+

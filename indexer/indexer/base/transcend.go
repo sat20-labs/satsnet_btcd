@@ -15,7 +15,6 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/bootstrapnode"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -247,12 +246,4 @@ func GenTickerInfo(data []byte) (*common.TickerInfo, error) {
 	result.N = n
 
 	return &result, nil
-}
-
-func IsCoreNodeAscend(ascend *common.AscendData) bool {
-	return bootstrapnode.HasCoreNodeEligibility(ascend.Assets)
-}
-
-func IsCoreNodeDescend(descend *common.DescendData) bool {
-	return bootstrapnode.HasCoreNodeEligibility(descend.Assets)
 }
