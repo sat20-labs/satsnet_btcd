@@ -51,7 +51,7 @@ func NewValidator(config *validator.Config, addrs []net.Addr) (*LocalValidator, 
 
 	localValidator.UpdateValidatorInfo(&validatorInfo, validatorinfo.MaskValidatorId|validatorinfo.MaskPublicKey|validatorinfo.MaskCreateTime)
 
-	localValidator.isBootStrapNode = bootstrapnode.IsBootStrapNode(validatorInfo.ValidatorId, validatorInfo.PublicKey[:])
+	localValidator.isBootStrapNode = bootstrapnode.IsBootStrapNode(validatorInfo.PublicKey[:])
 
 	utils.Log.Debugf("Local validator ID: %d", localValidator.Cfg.LocalValidatorId)
 	utils.Log.Debugf("Local validator PublicKey: %x", publicKey)

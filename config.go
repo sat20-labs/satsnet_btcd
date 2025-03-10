@@ -1025,8 +1025,6 @@ func loadConfig() (*config, []string, error) {
 		cfg.miningAddrs = append(cfg.miningAddrs, addr)
 	}
 
-	// Ensure there is at least one mining address when the generate flag is
-	// set.
 	if cfg.Generate {
 		cfg.TxIndex = true
 		if cfg.MiningPubKey != "" {
@@ -1068,8 +1066,6 @@ func loadConfig() (*config, []string, error) {
 			}
 		}
 	}
-
-	// Ensure the miner is eligible to mine
 
 	// Add default port to all listener addresses if needed and remove
 	// duplicate addresses.

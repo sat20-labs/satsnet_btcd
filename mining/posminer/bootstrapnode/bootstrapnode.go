@@ -8,13 +8,13 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
 )
 
-func IsBootStrapNode(_ uint64, pubKey []byte) bool {
+func IsBootStrapNode(pubKey []byte) bool {
 	return hex.EncodeToString(pubKey) == common.BootstrapPubKey
 }
 
 // 包含bootstrap
-func IsCoreNode(validatorId uint64, pubKey []byte) bool {
-	if IsBootStrapNode(validatorId, pubKey) {
+func IsCoreNode(pubKey []byte) bool {
+	if IsBootStrapNode(pubKey) {
 		return true
 	}
 
@@ -22,12 +22,12 @@ func IsCoreNode(validatorId uint64, pubKey []byte) bool {
 		return true
 	}
 
-	// 从索引器查询结果
+	// 从索引器查询结果：该节点已经与引导节点建立了通道，并且将资产质押到通道中（通过HasCoreNodeEligibility判断）
 	return indexer.ShareIndexer.IsCoreNode(hex.EncodeToString(pubKey))
 }
 
-func CheckValidatorID(validatorID uint64, pubKey []byte) bool {
-	return IsCoreNode(validatorID, pubKey)
+func CheckValidatorID(pubKey []byte) bool {
+	return IsCoreNode(pubKey)
 }
 
 func HasCoreNodeEligibility(assets wire.TxAssets) bool {

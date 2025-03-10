@@ -449,6 +449,7 @@ func (b *RpcIndexer) GetAllCoreNode() map[string]int {
 }
 
 // only for RPC interface
+// 与引导节点建立通道并且将资产质押到通道中
 func (b *RpcIndexer) IsCoreNode(pubkey string) bool {
 	b.mutex.RLock()
 	_, ok := b.coreNodeMap[pubkey]
