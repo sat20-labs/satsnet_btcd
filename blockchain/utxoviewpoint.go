@@ -715,14 +715,3 @@ func (b *BlockChain) FetchUtxoEntry(outpoint wire.OutPoint) (*UtxoEntry, error) 
 	return entries[0], nil
 }
 
-// FetchUtxoView loads unspent transaction outputs for the inputs referenced by
-// the passed transaction from the point of view of the end of the main chain.
-// It also attempts to fetch the utxos for the outputs of the transaction itself
-// so the returned view can be examined for duplicate transactions.
-//
-// This function is safe for concurrent access however the returned view is NOT.
-func (b *BlockChain) FetchTxAssets(msgTx *wire.MsgTx) (wire.TxAssets, error) {
-	txAssets := wire.TxAssets{}
-
-	return txAssets, nil
-}

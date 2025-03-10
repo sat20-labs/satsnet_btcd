@@ -564,8 +564,6 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 		mtx.AddTxIn(txIn)
 	}
 
-	txAssets, err := s.cfg.Chain.FetchTxAssets(mtx)
-
 	// Add all transaction outputs to the transaction after performing
 	// some validity checks.
 	params := s.cfg.ChainParams
@@ -621,7 +619,8 @@ func handleCreateRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan 
 			return nil, internalRPCError(err.Error(), context)
 		}
 
-		txOut := wire.NewTxOut(int64(satoshi), txAssets, pkScript)
+		// TODO 暂时不支持带有资产
+		txOut := wire.NewTxOut(int64(satoshi), nil, pkScript)
 		mtx.AddTxOut(txOut)
 	}
 
