@@ -449,6 +449,7 @@ type GetTxOutResult struct {
 	BestBlock     string             `json:"bestblock"`
 	Confirmations int64              `json:"confirmations"`
 	Value         float64            `json:"value"`
+	Assets        []*DisplayAsset    `json:"Assets"`
 	ScriptPubKey  ScriptPubKeyResult `json:"scriptPubKey"`
 	Coinbase      bool               `json:"coinbase"`
 }
@@ -599,6 +600,7 @@ func (v *Vin) MarshalJSON() ([]byte, error) {
 type PrevOut struct {
 	Addresses []string `json:"addresses,omitempty"`
 	Value     float64  `json:"value"`
+	Assets    []*DisplayAsset    `json:"Assets"`
 }
 
 // VinPrevOut is like Vin except it includes PrevOut.  It is used by searchrawtransaction
@@ -671,10 +673,31 @@ func (v *VinPrevOut) MarshalJSON() ([]byte, error) {
 	return json.Marshal(txStruct)
 }
 
+type DisplayAsset struct {
+	wire.AssetName        `json:"Name"`
+	Amount  string         `json:"Amount"`
+	BindingSat uint32        `json:"BindingSat"`
+}
+
+func ConvertAssets(assets wire.TxAssets) []*DisplayAsset {
+	result := make([]*DisplayAsset, 0)
+	for _, v := range assets {
+		asset := DisplayAsset{
+			AssetName:  v.Name,
+			Amount:     v.Amount.String(),
+			BindingSat: v.BindingSat,
+		}
+
+		result = append(result, &asset)
+	}
+	return result
+}
+
 // Vout models parts of the tx data.  It is defined separately since both
 // getrawtransaction and decoderawtransaction use the same structure.
 type Vout struct {
 	Value        float64            `json:"value"`
+	Assets       []*DisplayAsset    `json:"Assets"`
 	N            uint32             `json:"n"`
 	ScriptPubKey ScriptPubKeyResult `json:"scriptPubKey"`
 }

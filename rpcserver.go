@@ -738,6 +738,7 @@ func createVoutList(mtx *wire.MsgTx, chainParams *chaincfg.Params, filterAddrMap
 		var vout btcjson.Vout
 		vout.N = uint32(i)
 		vout.Value = btcutil.Amount(v.Value).ToBTC()
+		vout.Assets = btcjson.ConvertAssets(v.Assets)
 		vout.ScriptPubKey.Addresses = encodedAddrs
 		vout.ScriptPubKey.Asm = disbuf
 		vout.ScriptPubKey.Hex = hex.EncodeToString(v.PkScript)
@@ -2869,6 +2870,7 @@ func handleGetTxOut(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 	var bestBlockHash string
 	var confirmations int32
 	var value int64
+	var assets wire.TxAssets
 	var pkScript []byte
 	var isCoinbase bool
 	var address string
@@ -2904,6 +2906,7 @@ func handleGetTxOut(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		bestBlockHash = best.Hash.String()
 		confirmations = 0
 		value = txOut.Value
+		assets = txOut.Assets
 		pkScript = txOut.PkScript
 		isCoinbase = blockchain.IsCoinBaseTx(mtx)
 	} else {
@@ -2926,6 +2929,7 @@ func handleGetTxOut(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		bestBlockHash = best.Hash.String()
 		confirmations = 1 + best.Height - entry.BlockHeight()
 		value = entry.Amount()
+		assets = entry.TxAssets()
 		pkScript = entry.PkScript()
 		isCoinbase = entry.IsCoinBase()
 	}
@@ -2956,6 +2960,7 @@ func handleGetTxOut(s *rpcServer, cmd interface{}, closeChan <-chan struct{}) (i
 		BestBlock:     bestBlockHash,
 		Confirmations: int64(confirmations),
 		Value:         btcutil.Amount(value).ToBTC(),
+		Assets:        btcjson.ConvertAssets(assets),
 		ScriptPubKey: btcjson.ScriptPubKeyResult{
 			Asm:       disbuf,
 			Hex:       hex.EncodeToString(pkScript),
@@ -3232,6 +3237,7 @@ func createVinListPrevOut(s *rpcServer, mtx *wire.MsgTx, chainParams *chaincfg.P
 			vinListEntry.PrevOut = &btcjson.PrevOut{
 				Addresses: encodedAddrs,
 				Value:     btcutil.Amount(originTxOut.Value).ToBTC(),
+				Assets:    btcjson.ConvertAssets(originTxOut.Assets),
 			}
 		}
 	}
