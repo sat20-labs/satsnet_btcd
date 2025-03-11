@@ -3,6 +3,7 @@ package stp
 import (
 	"github.com/dgraph-io/badger/v4"
 	db "github.com/sat20-labs/indexer/indexer/db"
+	indexer "github.com/sat20-labs/indexer/common"
 	"github.com/sat20-labs/satsnet_btcd/indexer/common"
 )
 
@@ -163,6 +164,11 @@ func GetAllCoreNodeFromDB(ldb *badger.DB) map[string]int {
 			return db.DecodeBytes(v, &result)
 		})
 	})
+
+	if len(result) == 0 {
+		result[indexer.BootstrapPubKey] = 0
+		result[indexer.CoreNodePubKey] = 0
+	}
 
 	return result
 }
