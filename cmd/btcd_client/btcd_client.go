@@ -50,7 +50,7 @@ var (
 	// or data races and/or nil pointer dereferences will occur.
 	backendLog = logrus.New()
 
-	log = backendLog.WithField("module","CMD")
+	log = backendLog.WithField("module", "CMD")
 )
 
 // commandUsage display the usage for a specific command.
@@ -108,7 +108,7 @@ func main() {
 	// rpcpass := "nnlkAZn58bqsyYwVtHIajZ16cj8="
 	// certFileDir := "D:\\Work\\Tinyverse\\develop\\satsnet\\satsnet_btcd\\cmd\\btcd_client\\btcd104"
 	rpchost := "127.0.0.1"
-	rpcPost := 15827
+	rpcPost := 19527
 	rpcuser := cfg.RPCUser
 	rpcpass := cfg.RPCPassword
 	certFileDir := filepath.Join(cfg.HomeDir, "btcd")

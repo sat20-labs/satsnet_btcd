@@ -45,7 +45,7 @@ func InitSatsNetClient(host string, port int, user, passwd string, certFileDir s
 		Pass:     passwd,
 		//HTTPPostMode: true,
 		Certificates: certs,
-		//DisableTLS:   true,
+		DisableTLS:   true,
 	}
 	client, err = rpcclient.New(connCfg, &ntfnHandlers)
 	if err != nil {
