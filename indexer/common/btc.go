@@ -67,14 +67,20 @@ func AddrToPkScript(addr string, chain string) ([]byte, error) {
 	return txscript.PayToAddrScript(address)
 }
 
-func IsOpReturn(pkScript []byte, param *chaincfg.Params) bool {
-	// 解析输出脚本
-	scriptClass, _, _, err := txscript.ExtractPkScriptAddrs(pkScript, param)
-	if err != nil {
+func IsOpReturn(pkScript []byte) bool {
+	if len(pkScript) < 1 || pkScript[0] != txscript.OP_RETURN {
 		return false
 	}
 
-	return scriptClass == txscript.NullDataTy
+	// Single OP_RETURN.
+	if len(pkScript) == 1 {
+		return true
+	}
+	if len(pkScript) > txscript.MaxDataCarrierSize {
+		return false
+	}
+
+	return true
 }
 
 func IsCoinbaseTx(tx *wire.MsgTx) bool {

@@ -16,6 +16,7 @@ import (
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satsnet_btcd/indexer/common"
 	"github.com/sat20-labs/satsnet_btcd/txscript"
 	"github.com/sat20-labs/satsnet_btcd/wire"
 )
@@ -131,6 +132,37 @@ func IsAnchorTx(msgTx *wire.MsgTx) bool {
 	}
 
 	return true
+}
+
+
+// IsDeAnchorTx determines whether or not a transaction is a deAnchor tx.  A deAnchorTx
+// is a special transaction created by lnd that freeze some assets in op_return output
+func IsDeAnchorTx(msgTx *wire.MsgTx) bool {
+	// 目前限制deanchor的输出，最多三个输出
+	if len(msgTx.TxIn) > 3 {
+		return false
+	}
+
+	for _, txOut := range msgTx.TxOut {
+		tokenizer := txscript.MakeScriptTokenizer(0, txOut.PkScript)
+		// 检查第一个操作码是否为 OP_RETURN
+		if !tokenizer.Next() || tokenizer.Opcode() != txscript.OP_RETURN {
+			continue
+		}
+		if !tokenizer.Next() || tokenizer.Opcode() != common.SAT20_MAGIC_NUMBER {
+			continue
+		}
+		// content type
+		if !tokenizer.Next() || tokenizer.Err() != nil {
+			continue
+		}
+		ctype := tokenizer.Opcode()
+		if ctype == common.CONTENT_TYPE_DESCENDING {
+			return true
+		}
+	}
+
+	return false
 }
 
 // IsCoinBase determines whether or not a transaction is a coinbase.  A coinbase

@@ -741,8 +741,8 @@ func (b *BaseIndexer) processBlock(block *common.Block) {
 		}
 
 		for i, output := range tx.Outputs {
-			if common.IsOpReturn(output.Address.PkScript, b.chaincfgParam) {
-				ctype, data, err := ReadDataFromNullDataScript(tx.Outputs[i].Address.PkScript)
+			if common.IsOpReturn(output.Address.PkScript) {
+				ctype, data, err := ReadDataFromNullDataScript(output.Address.PkScript)
 				if err == nil {
 					switch ctype {
 					case common.CONTENT_TYPE_DESCENDING:

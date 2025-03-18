@@ -1294,7 +1294,7 @@ type MempoolAcceptResult struct {
 	// TxFee is the fees paid in satoshi.
 	TxFee btcutil.Amount
 
-	// The sats ranges for the fee
+	// The assets in the fee
 	FeeAssets wire.TxAssets
 
 	// TxSize is the virtual size(vb) of the tx.
@@ -1405,7 +1405,7 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 	bestHeight := mp.cfg.BestHeight()
 	nextBlockHeight := bestHeight + 1
 
-	// Anchor tx is verify from BTC Network.
+	// Anchor verify tx from BTC Network.
 	if blockchain.IsAnchorTx(tx.MsgTx()) {
 		fmt.Printf("current tx is an anchor tx\n")
 		err := mp.CheckAnchorTxValid(tx.MsgTx(), nextBlockHeight)
@@ -1585,13 +1585,15 @@ func (mp *TxPool) checkMempoolAcceptance(tx *btcutil.Tx,
 	// Don't allow transactions with fees too low to get into a mined
 	// block.
 	// In satsnet, the min relay fee is 0, not to validate relay Fee Met
-	err = mp.validateRelayFeeMet(
-		tx, txFee, txSize, utxoView, nextBlockHeight, isNew, rateLimit,
-	)
-	if err != nil {
-		return nil, err
+	if !blockchain.IsDeAnchorTx(tx.MsgTx()) {
+		err = mp.validateRelayFeeMet(
+			tx, txFee, txSize, utxoView, nextBlockHeight, isNew, rateLimit,
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
-
+	
 	// If the transaction has any conflicts, and we've made it this far,
 	// then we're processing a potential replacement.
 	var conflicts map[chainhash.Hash]*btcutil.Tx
