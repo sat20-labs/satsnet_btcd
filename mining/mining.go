@@ -529,6 +529,11 @@ mempoolLoop:
 			blockTxns = append(blockTxns, tx)
 			continue
 		}
+		if blockchain.IsDeAnchorTx(tx.MsgTx()) {
+			log.Debugf("Add deAnchor tx %s directly", tx.Hash())
+			blockTxns = append(blockTxns, tx)
+			continue
+		}
 		if !blockchain.IsFinalizedTransaction(tx, nextBlockHeight,
 			g.timeSource.AdjustedTime()) {
 
