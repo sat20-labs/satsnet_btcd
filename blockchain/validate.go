@@ -158,7 +158,9 @@ func IsDeAnchorTx(msgTx *wire.MsgTx) bool {
 		}
 		ctype := tokenizer.Opcode()
 		if ctype == common.CONTENT_TYPE_DESCENDING {
-			return true
+			if txOut.Value >= 330 || (len(txOut.Assets) > 0 && txOut.Assets[0].Amount.Sign() > 0) {
+				return true
+			}
 		}
 	}
 
