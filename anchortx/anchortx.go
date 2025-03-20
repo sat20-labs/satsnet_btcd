@@ -58,18 +58,18 @@ var anchorManager AnchorManager
 // txscript.NewScriptBuilder().AddData(txid).AddData(WitnessScript).
 // AddInt64(int64(amount)).AddInt64(int64(extraNonce)).Script()
 type AnchorInfo struct {
-	Utxo          string         // the utxo with locked in lnd
-	WitnessScript []byte         // WitnessScript for locked in lnd
-	Value         int64          // the amount with locked in lnd
-	TxAssets      *wire.TxAssets // The assets locked
-	Sig           []byte
+	Utxo          string         `json:"utxo"`          // the utxo with locked in lnd
+	WitnessScript []byte         `json:"witnessScript"` // WitnessScript for locked in lnd
+	Value         int64          `json:"value"`         // the amount with locked in lnd
+	TxAssets      *wire.TxAssets `json:"txAssets"`      // The assets locked
+	Sig           []byte         `json:"sig"`
 }
 
 type AscendInfo struct {
 	AnchorInfo
-	Address       string
-	PubKeyA       []byte // server node
-	PubKeyB       []byte
+	Address string `json:"address"`
+	PubKeyA []byte `json:"pubKeyA"` // server node
+	PubKeyB []byte `json:"pubKeyB"` // client node
 }
 
 func StartAnchorManager(config *AnchorConfig) bool {
@@ -409,7 +409,6 @@ func CheckAnchorPkScript(anchorPkScript []byte) (*AscendInfo, error) {
 		return nil, fmt.Errorf("not signed by core node")
 	}
 
-
 	//utxoLocked := fmt.Sprintf("%s:%d", lockedTxInfo.TxId, lockedTxInfo.Index)
 	lockedInfoInBTC, err := GetLockedUtxoInfo(lockedTxInfo.Utxo)
 	if err != nil {
@@ -431,13 +430,13 @@ func CheckAnchorPkScript(anchorPkScript []byte) (*AscendInfo, error) {
 
 	if !includeAssets(lockedInfoInBTC.AssetInfo, lockedTxInfo.TxAssets) {
 		return nil, fmt.Errorf("invalid assets")
-	}	
+	}
 
 	return &AscendInfo{
 		AnchorInfo: *lockedTxInfo,
-		Address: addresses[0].EncodeAddress(),
-		PubKeyA: pubkeyBytes0,
-		PubKeyB: pubkeyBytes1,
+		Address:    addresses[0].EncodeAddress(),
+		PubKeyA:    pubkeyBytes0,
+		PubKeyB:    pubkeyBytes1,
 	}, nil
 }
 

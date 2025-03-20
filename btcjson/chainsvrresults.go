@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
 
 	"github.com/sat20-labs/satsnet_btcd/btcutil"
@@ -598,9 +599,9 @@ func (v *Vin) MarshalJSON() ([]byte, error) {
 
 // PrevOut represents previous output for an input Vin.
 type PrevOut struct {
-	Addresses []string `json:"addresses,omitempty"`
-	Value     float64  `json:"value"`
-	Assets    []*DisplayAsset    `json:"Assets"`
+	Addresses []string        `json:"addresses,omitempty"`
+	Value     float64         `json:"value"`
+	Assets    []*DisplayAsset `json:"Assets"`
 }
 
 // VinPrevOut is like Vin except it includes PrevOut.  It is used by searchrawtransaction
@@ -674,9 +675,9 @@ func (v *VinPrevOut) MarshalJSON() ([]byte, error) {
 }
 
 type DisplayAsset struct {
-	wire.AssetName        `json:"Name"`
-	Amount  string         `json:"Amount"`
-	BindingSat uint32        `json:"BindingSat"`
+	wire.AssetName `json:"Name"`
+	Amount         string `json:"Amount"`
+	BindingSat     uint32 `json:"BindingSat"`
 }
 
 func ConvertAssets(assets wire.TxAssets) []*DisplayAsset {
@@ -740,22 +741,29 @@ type InfoChainResult struct {
 	Errors          string  `json:"errors"`
 }
 
+type AnthorInfo struct {
+	Utxo       string `json:"utxo"`
+	Value      string `json:"value"`
+	BindingSat uint32 `json:"BindingSat"`
+}
+
 // TxRawResult models the data from the getrawtransaction command.
 type TxRawResult struct {
-	Hex           string `json:"hex"`
-	Txid          string `json:"txid"`
-	Hash          string `json:"hash,omitempty"`
-	Size          int32  `json:"size,omitempty"`
-	Vsize         int32  `json:"vsize,omitempty"`
-	Weight        int32  `json:"weight,omitempty"`
-	Version       uint32 `json:"version"`
-	LockTime      uint32 `json:"locktime"`
-	Vin           []Vin  `json:"vin"`
-	Vout          []Vout `json:"vout"`
-	BlockHash     string `json:"blockhash,omitempty"`
-	Confirmations uint64 `json:"confirmations,omitempty"`
-	Time          int64  `json:"time,omitempty"`
-	Blocktime     int64  `json:"blocktime,omitempty"`
+	Hex           string               `json:"hex"`
+	Txid          string               `json:"txid"`
+	Hash          string               `json:"hash,omitempty"`
+	Size          int32                `json:"size,omitempty"`
+	Vsize         int32                `json:"vsize,omitempty"`
+	Weight        int32                `json:"weight,omitempty"`
+	Version       uint32               `json:"version"`
+	LockTime      uint32               `json:"locktime"`
+	Vin           []Vin                `json:"vin"`
+	Vout          []Vout               `json:"vout"`
+	BlockHash     string               `json:"blockhash,omitempty"`
+	Confirmations uint64               `json:"confirmations,omitempty"`
+	Time          int64                `json:"time,omitempty"`
+	Blocktime     int64                `json:"blocktime,omitempty"`
+	AscendInfo    *anchortx.AscendInfo `json:"ascendInfo,omitempty"`
 }
 
 // SearchRawTransactionsResult models the data from the searchrawtransaction

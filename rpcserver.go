@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/websocket"
+	"github.com/sat20-labs/satsnet_btcd/anchortx"
 	"github.com/sat20-labs/satsnet_btcd/blockchain"
 	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
 	"github.com/sat20-labs/satsnet_btcd/btcec/ecdsa"
@@ -779,6 +780,15 @@ func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
 		Vout:     createVoutList(mtx, chainParams, nil),
 		Version:  uint32(mtx.Version),
 		LockTime: mtx.LockTime,
+	}
+
+	if blockchain.IsAnchorTx(mtx) {
+		// Check anchor input
+		ascendInfo, err := anchortx.CheckAnchorPkScript(mtx.TxIn[0].SignatureScript)
+		if err != nil {
+			return nil, err
+		}
+		txReply.AscendInfo = ascendInfo
 	}
 
 	if blkHeader != nil {
@@ -4970,7 +4980,7 @@ type rpcserverConfig struct {
 	// doing regression or simulation testing.
 	Generator *mining.BlkTmplGenerator
 	//CPUMiner  *cpuminer.CPUMiner
-	PosMiner  *posminer.POSMiner
+	PosMiner *posminer.POSMiner
 
 	// These fields define any optional indexes the RPC server can make use
 	// of to provide additional data when queried.
