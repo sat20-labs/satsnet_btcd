@@ -2854,11 +2854,7 @@ func handleGetRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan str
 	}
 	if blockchain.IsAnchorTx(mtx) {
 		// Check anchor input
-		ascendInfo, err := anchortx.CheckAnchorPkScript(mtx.TxIn[0].SignatureScript)
-		if err != nil {
-			return nil, err
-		}
-		rawTxn.AscendInfo = ascendInfo
+		rawTxn.AscendInfo, _ = anchortx.CheckAnchorPkScript(mtx.TxIn[0].SignatureScript)
 	}
 	return *rawTxn, nil
 }
