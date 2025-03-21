@@ -782,15 +782,6 @@ func createTxRawResult(chainParams *chaincfg.Params, mtx *wire.MsgTx,
 		LockTime: mtx.LockTime,
 	}
 
-	if blockchain.IsAnchorTx(mtx) {
-		// Check anchor input
-		ascendInfo, err := anchortx.CheckAnchorPkScript(mtx.TxIn[0].SignatureScript)
-		if err != nil {
-			return nil, err
-		}
-		txReply.AscendInfo = ascendInfo
-	}
-
 	if blkHeader != nil {
 		// This is not a typo, they are identical in bitcoind as well.
 		txReply.Time = blkHeader.Timestamp.Unix()
@@ -2860,6 +2851,14 @@ func handleGetRawTransaction(s *rpcServer, cmd interface{}, closeChan <-chan str
 		blkHeader, blkHashStr, blkHeight, chainHeight)
 	if err != nil {
 		return nil, err
+	}
+	if blockchain.IsAnchorTx(mtx) {
+		// Check anchor input
+		ascendInfo, err := anchortx.CheckAnchorPkScript(mtx.TxIn[0].SignatureScript)
+		if err != nil {
+			return nil, err
+		}
+		rawTxn.AscendInfo = ascendInfo
 	}
 	return *rawTxn, nil
 }
