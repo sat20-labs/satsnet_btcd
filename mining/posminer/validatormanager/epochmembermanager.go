@@ -5,12 +5,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/btcec"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcec"
+	"github.com/sat20-labs/satoshinet/mining/posminer/epoch"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validator"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorcommand"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 const (

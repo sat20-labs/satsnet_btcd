@@ -3,10 +3,10 @@ package indexer
 import (
 	"strconv"
 
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/indexer/indexer"
-	"github.com/sat20-labs/satsnet_btcd/indexer/rpcserver"
-	shareIndexer "github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	"github.com/sat20-labs/satoshinet/indexer/indexer"
+	"github.com/sat20-labs/satoshinet/indexer/rpcserver"
+	shareIndexer "github.com/sat20-labs/satoshinet/indexer/share/indexer"
 )
 
 

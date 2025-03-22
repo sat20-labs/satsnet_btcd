@@ -8,12 +8,12 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/sat20-labs/satsnet_btcd/btcjson"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcjson"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/btcwallet"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/satsnet_rpc"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // messageToHex serializes a message to the wire protocol encoding using the

@@ -9,10 +9,10 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/btcutil/bloom"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/btcutil/bloom"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 func TestMerkleBlock3(t *testing.T) {

@@ -9,11 +9,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/sat20-labs/satsnet_btcd/anchortx"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/anchortx"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // GetBlockHeaderVerboseResult models the data from the getblockheader command when

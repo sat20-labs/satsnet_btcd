@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/sat20-labs/satsnet_btcd/btcec"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/btcutil/base58"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/btcec"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/btcutil/base58"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
 )
 
 const (

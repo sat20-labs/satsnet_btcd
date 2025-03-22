@@ -10,9 +10,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/peer"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/peer"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // mockRemotePeer creates a basic inbound peer listening on the simnet port for

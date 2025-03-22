@@ -7,8 +7,8 @@ import (
 
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
 	ecdsa_schnorr "github.com/decred/dcrd/dcrec/secp256k1/v4/schnorr"
-	"github.com/sat20-labs/satsnet_btcd/btcec"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/btcec"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
 )
 
 const (

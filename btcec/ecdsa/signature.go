@@ -11,7 +11,7 @@ import (
 	"math/big"
 
 	secp_ecdsa "github.com/decred/dcrd/dcrec/secp256k1/v4/ecdsa"
-	"github.com/sat20-labs/satsnet_btcd/btcec"
+	"github.com/sat20-labs/satoshinet/btcec"
 )
 
 // Errors returned by canonicalPadding.

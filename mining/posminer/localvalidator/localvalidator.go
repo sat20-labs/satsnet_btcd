@@ -6,15 +6,15 @@ import (
 	"net"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/bootstrapnode"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorpeer"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/mining/posminer/bootstrapnode"
+	"github.com/sat20-labs/satoshinet/mining/posminer/epoch"
+	"github.com/sat20-labs/satoshinet/mining/posminer/generator"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validator"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorcommand"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorinfo"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorpeer"
 )
 
 type LocalValidator struct {

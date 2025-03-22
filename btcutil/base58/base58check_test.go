@@ -7,7 +7,7 @@ package base58_test
 import (
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil/base58"
+	"github.com/sat20-labs/satoshinet/btcutil/base58"
 )
 
 var checkEncodingStringTests = []struct {

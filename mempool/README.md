@@ -1,9 +1,9 @@
 mempool
 =======
 
-[![Build Status](https://github.com/sat20-labs/satsnet_btcd/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satsnet_btcd/actions)
+[![Build Status](https://github.com/sat20-labs/satoshinet/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satoshinet/actions)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd/mempool)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/sat20-labs/satoshinet/mempool)
 
 Package mempool provides a policy-enforced pool of unmined bitcoin transactions.
 
@@ -74,7 +74,7 @@ be an exhaustive list.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/sat20-labs/satsnet_btcd/mempool
+$ go get -u github.com/sat20-labs/satoshinet/mempool
 ```
 
 ## License

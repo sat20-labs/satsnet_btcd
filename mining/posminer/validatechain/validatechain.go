@@ -1,8 +1,8 @@
 package validatechain
 
 import (
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechaindb"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatechaindb"
 )
 
 const (

@@ -10,9 +10,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/sat20-labs/satsnet_btcd/btcjson"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcjson"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // FutureGetBestBlockHashResult is a future promise to deliver the result of a

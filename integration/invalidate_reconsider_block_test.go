@@ -3,8 +3,8 @@ package integration
 import (
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/integration/rpctest"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/integration/rpctest"
 )
 
 func TestInvalidateAndReconsiderBlock(t *testing.T) {

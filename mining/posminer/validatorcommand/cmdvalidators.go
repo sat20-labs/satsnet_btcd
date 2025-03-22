@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorinfo"
 )
 
 const (

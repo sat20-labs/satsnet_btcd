@@ -1,11 +1,11 @@
 data/*
-satsnet.conf
 stpd.so
 nohup.log
 findcheckpoint
 gencerts
-satsnet_btcd
+satoshinet
 db/*
 log/*
 addblock
 btcctl
+satsnet.conf

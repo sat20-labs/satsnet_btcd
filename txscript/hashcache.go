@@ -10,8 +10,8 @@ import (
 	"math"
 	"sync"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // calcHashPrevOuts calculates a single hash of all the previous outputs

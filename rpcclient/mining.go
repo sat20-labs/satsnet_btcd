@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/sat20-labs/satsnet_btcd/btcjson"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/btcjson"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
 )
 
 // FutureGenerateResult is a future promise to deliver the result of a

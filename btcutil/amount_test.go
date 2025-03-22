@@ -8,7 +8,7 @@ import (
 	"math"
 	"testing"
 
-	. "github.com/sat20-labs/satsnet_btcd/btcutil"
+	. "github.com/sat20-labs/satoshinet/btcutil"
 )
 
 func TestAmountCreation(t *testing.T) {

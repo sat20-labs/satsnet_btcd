@@ -7,7 +7,7 @@ package bloom_test
 import (
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil/bloom"
+	"github.com/sat20-labs/satoshinet/btcutil/bloom"
 )
 
 // TestMurmurHash3 ensure the MurmurHash3 function produces the correct hash

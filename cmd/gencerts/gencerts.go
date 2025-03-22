@@ -12,7 +12,7 @@ import (
 	"time"
 
 	flags "github.com/jessevdk/go-flags"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satoshinet/btcutil"
 )
 
 type config struct {

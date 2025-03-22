@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/indexer/indexer/stp"
-	"github.com/sat20-labs/satsnet_btcd/txscript"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	"github.com/sat20-labs/satoshinet/indexer/indexer/stp"
+	"github.com/sat20-labs/satoshinet/txscript"
+	"github.com/sat20-labs/satoshinet/wire"
 
 	indexer "github.com/sat20-labs/indexer/common"
 	db "github.com/sat20-labs/indexer/indexer/db"

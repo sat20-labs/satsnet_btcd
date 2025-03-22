@@ -2,8 +2,8 @@ package indexer
 
 import (
 	indexer "github.com/sat20-labs/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/indexer/common"
 )
 
 type Indexer interface {

@@ -6,7 +6,7 @@ package integration
 import (
 	"os"
 
-	"github.com/sat20-labs/satsnet_btcd/rpcclient"
+	"github.com/sat20-labs/satoshinet/rpcclient"
 )
 
 type logWriter struct{}

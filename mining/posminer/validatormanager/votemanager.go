@@ -1,6 +1,6 @@
 package validatormanager
 
-import "github.com/sat20-labs/satsnet_btcd/mining/posminer/validator"
+import "github.com/sat20-labs/satoshinet/mining/posminer/validator"
 
 const (
 	// Vote type

@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // OutOfRangeError describes an error due to accessing an element that is out

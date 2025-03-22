@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/sat20-labs/satsnet_btcd/anchortx"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
-	"github.com/sat20-labs/satsnet_btcd/txscript"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/anchortx"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/btcwallet"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/satsnet_rpc"
+	"github.com/sat20-labs/satoshinet/txscript"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // CreateCoinbaseTx returns a coinbase transaction paying an appropriate

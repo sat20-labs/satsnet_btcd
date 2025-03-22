@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/sat20-labs/satsnet_btcd/btcec"
-	"github.com/sat20-labs/satsnet_btcd/btcec/ecdsa"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
+	"github.com/sat20-labs/satoshinet/btcec"
+	"github.com/sat20-labs/satoshinet/btcec/ecdsa"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/mining/posminer/generator"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorinfo"
 )
 
 const (

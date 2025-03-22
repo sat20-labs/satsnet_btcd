@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/addrmgr"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/addrmgr"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 func TestChance(t *testing.T) {

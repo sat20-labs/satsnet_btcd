@@ -4,7 +4,7 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	db "github.com/sat20-labs/indexer/indexer/db"
 	indexer "github.com/sat20-labs/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
+	"github.com/sat20-labs/satoshinet/indexer/common"
 )
 
 const (

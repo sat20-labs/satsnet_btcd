@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/indexer/indexer/stp"
-	"github.com/sat20-labs/satsnet_btcd/txscript"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	"github.com/sat20-labs/satoshinet/indexer/indexer/stp"
+	"github.com/sat20-labs/satoshinet/txscript"
+	"github.com/sat20-labs/satoshinet/wire"
 
 	"github.com/dgraph-io/badger/v4"
 	indexer "github.com/sat20-labs/indexer/common"

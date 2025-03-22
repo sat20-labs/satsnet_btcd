@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/btcjson"
+	"github.com/sat20-labs/satoshinet/btcjson"
 )
 
 // TestIsValidIDType ensures the IsValidIDType function behaves as expected.

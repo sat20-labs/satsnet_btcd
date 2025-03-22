@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/rpcclient"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	"github.com/sat20-labs/satoshinet/rpcclient"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 type BlockOnConnected func(height int32, header *wire.BlockHeader, txns []*btcutil.Tx)

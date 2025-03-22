@@ -2,8 +2,8 @@ package indexer
 
 import (
 	"github.com/sat20-labs/indexer/common"
-	shareIndexer "github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
-	"github.com/sat20-labs/satsnet_btcd/indexer/share/satsnet_rpc"
+	shareIndexer "github.com/sat20-labs/satoshinet/indexer/share/indexer"
+	"github.com/sat20-labs/satoshinet/indexer/share/satsnet_rpc"
 )
 
 func IsExistUtxoInMemPool(utxo string) bool {

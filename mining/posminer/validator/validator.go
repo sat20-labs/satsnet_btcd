@@ -7,14 +7,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorinfo"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorpeer"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/mining/posminer/epoch"
+	"github.com/sat20-labs/satoshinet/mining/posminer/generator"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorcommand"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorinfo"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorpeer"
 )
 
 type ValidatorListener interface {

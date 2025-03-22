@@ -3,10 +3,10 @@
 rm -f stpd.so
 
 cd ../transcend/plugin
-go build -buildmode=plugin -o ../../satsnet_btcd/stpd.so main.go
-cd ../../satsnet_btcd
+go build -buildmode=plugin -o ../../satoshinet/stpd.so main.go
+cd ../../satoshinet
 
-rm -f satsnet_btcd
-go build -o satsnet_btcd
+rm -f satoshinet
+go build -o satoshinet
 
 echo build completed.

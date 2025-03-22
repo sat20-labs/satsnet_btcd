@@ -11,15 +11,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/blockchain"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/mining"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechaindb"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatormanager"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/blockchain"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/mining"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatechaindb"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatormanager"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 const (

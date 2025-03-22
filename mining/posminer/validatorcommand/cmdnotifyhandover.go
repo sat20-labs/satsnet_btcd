@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
 )
 
 // MsgNotifyHandover implements the Message interface and get current generator

@@ -9,7 +9,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/sat20-labs/satsnet_btcd/httpclient"
+	"github.com/sat20-labs/satoshinet/httpclient"
 )
 
 type LockedInfoInBTCChain struct {

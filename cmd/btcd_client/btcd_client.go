@@ -13,12 +13,12 @@ import (
 	"strings"
 
 	"github.com/sat20-labs/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/btcjson"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcjson"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/btcwallet"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/satsnet_rpc"
+	"github.com/sat20-labs/satoshinet/wire"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	defaultHomeDir = btcutil.AppDataDir("satsnet_btcd", false)
+	defaultHomeDir = btcutil.AppDataDir("satoshinet", false)
 	currentNetwork = &chaincfg.SatsMainNetParams
 	currentCfg     = &config{}
 )
@@ -106,7 +106,7 @@ func main() {
 	// rpcPost := 15827
 	// rpcuser := "q17AIoqBJSEhW7djqjn0nTsZcz4="
 	// rpcpass := "nnlkAZn58bqsyYwVtHIajZ16cj8="
-	// certFileDir := "D:\\Work\\Tinyverse\\develop\\satsnet\\satsnet_btcd\\cmd\\btcd_client\\btcd104"
+	// certFileDir := "D:\\Work\\Tinyverse\\develop\\satsnet\\satoshinet\\cmd\\btcd_client\\btcd104"
 	rpchost := "127.0.0.1"
 	rpcPost := 19527
 	rpcuser := cfg.RPCUser

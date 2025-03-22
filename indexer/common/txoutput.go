@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/sat20-labs/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 type AssetInfo = wire.AssetInfo

@@ -3,8 +3,8 @@ package localvalidator
 import (
 	"errors"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/stp"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/stp"
 )
 
 type ValidatorKey struct {

@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	secp "github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/sat20-labs/satsnet_btcd/btcec"
+	"github.com/sat20-labs/satoshinet/btcec"
 	"github.com/stretchr/testify/require"
 )
 

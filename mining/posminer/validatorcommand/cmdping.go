@@ -7,7 +7,7 @@ package validatorcommand
 import (
 	"io"
 
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
 )
 
 // MsgPing implements the Message interface and represents a bitcoin ping

@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/btcjson"
+	"github.com/sat20-labs/satoshinet/btcjson"
 )
 
 // TestAssignField tests the assignField function handles supported combinations

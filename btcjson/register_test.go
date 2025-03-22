@@ -9,7 +9,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/btcjson"
+	"github.com/sat20-labs/satoshinet/btcjson"
 )
 
 // TestUsageFlagStringer tests the stringized output for the UsageFlag type.

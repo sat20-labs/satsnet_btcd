@@ -1,11 +1,11 @@
 integration
 ===========
 
-[![Build Status](https://github.com/sat20-labs/satsnet_btcd/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satsnet_btcd/actions)
+[![Build Status](https://github.com/sat20-labs/satoshinet/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satoshinet/actions)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
 
 This contains integration tests which make use of the
-[rpctest](https://github.com/sat20-labs/satsnet_btcd/tree/master/integration/rpctest)
+[rpctest](https://github.com/sat20-labs/satoshinet/tree/master/integration/rpctest)
 package to programmatically drive nodes via RPC.
 
 ## License

@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/rpcclient"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/rpcclient"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 var client *rpcclient.Client
@@ -27,7 +27,7 @@ func InitSatsNetClient(host string, port int, user, passwd string, certFileDir s
 
 	// Connect to local btcd RPC server using websockets.
 	//btcdHomeDir := btcutil.AppDataDir("btcd", false)
-	//btcdHomeDir := "D:\\data\\satsnet_btcd\\btcd" // TODO
+	//btcdHomeDir := "D:\\data\\satoshinet\\btcd" // TODO
 	//btcdHomeDir := filepath.Join(homedir, "btcd")
 	certs, err := os.ReadFile(filepath.Join(certFileDir, "rpc.cert"))
 	if err != nil {

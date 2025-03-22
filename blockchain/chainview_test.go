@@ -10,7 +10,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // testNoncePrng provides a deterministic prng for the nonce in generated fake

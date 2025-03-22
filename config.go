@@ -23,19 +23,19 @@ import (
 
 	"github.com/btcsuite/go-socks/socks"
 	flags "github.com/jessevdk/go-flags"
-	"github.com/sat20-labs/satsnet_btcd/blockchain"
-	"github.com/sat20-labs/satsnet_btcd/btcec"
-	"github.com/sat20-labs/satsnet_btcd/btcec/schnorr"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/connmgr"
-	"github.com/sat20-labs/satsnet_btcd/database"
-	_ "github.com/sat20-labs/satsnet_btcd/database/ffldb"
-	"github.com/sat20-labs/satsnet_btcd/mempool"
-	"github.com/sat20-labs/satsnet_btcd/peer"
-	"github.com/sat20-labs/satsnet_btcd/txscript"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/blockchain"
+	"github.com/sat20-labs/satoshinet/btcec"
+	"github.com/sat20-labs/satoshinet/btcec/schnorr"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/connmgr"
+	"github.com/sat20-labs/satoshinet/database"
+	_ "github.com/sat20-labs/satoshinet/database/ffldb"
+	"github.com/sat20-labs/satoshinet/mempool"
+	"github.com/sat20-labs/satoshinet/peer"
+	"github.com/sat20-labs/satoshinet/txscript"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 const (
@@ -106,7 +106,7 @@ func minUint32(a, b uint32) uint32 {
 //
 // See loadConfig for details on the configuration load process.
 type config struct {
-	HomeDir              string        `long:"homedir" description:"Directory to run satsnet_btcd"`
+	HomeDir              string        `long:"homedir" description:"Directory to run satoshinet"`
 	AddCheckpoints       []string      `long:"addcheckpoint" description:"Add a custom checkpoint.  Format: '<height>:<hash>'"`
 	AddPeers             []string      `short:"a" long:"addpeer" description:"Add a peer to connect with at startup"`
 	AddrIndex            bool          `long:"addrindex" description:"Maintain a full address-based transaction index which makes the searchrawtransactions RPC available"`

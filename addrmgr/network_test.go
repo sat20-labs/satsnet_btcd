@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/addrmgr"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/addrmgr"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // TestIPTypes ensures the various functions which determine the type of an IP

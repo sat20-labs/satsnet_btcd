@@ -10,10 +10,10 @@ import (
 	"io"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/generator"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/mining/posminer/epoch"
+	"github.com/sat20-labs/satoshinet/mining/posminer/generator"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
 )
 
 const (

@@ -9,9 +9,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil/bloom"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcutil/bloom"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // This example demonstrates how to create a new bloom filter, add a transaction

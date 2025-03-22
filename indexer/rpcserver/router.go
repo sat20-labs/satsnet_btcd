@@ -14,12 +14,12 @@ import (
 	"github.com/gin-gonic/gin"
 	rotatelogs "github.com/lestrrat-go/file-rotatelogs"
 	"github.com/rs/zerolog"
-	"github.com/sat20-labs/satsnet_btcd/indexer/indexer"
+	"github.com/sat20-labs/satoshinet/indexer/indexer"
 
 	// indexerrpc "github.com/sat20-labs/indexer/rpcserver"
 
-	sindexer "github.com/sat20-labs/satsnet_btcd/indexer/rpcserver/indexer"
-	"github.com/sat20-labs/satsnet_btcd/indexer/rpcserver/satoshinet"
+	sindexer "github.com/sat20-labs/satoshinet/indexer/rpcserver/indexer"
+	"github.com/sat20-labs/satoshinet/indexer/rpcserver/satoshinet"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )

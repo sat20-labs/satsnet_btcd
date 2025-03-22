@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/addrmgr"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/addrmgr"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // naTest is used to describe a test to be performed against the NetAddressKey

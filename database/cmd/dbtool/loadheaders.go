@@ -7,8 +7,8 @@ package main
 import (
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/database"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/database"
 )
 
 // headersCmd defines the configuration options for the loadheaders command.

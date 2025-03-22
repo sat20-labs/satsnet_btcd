@@ -9,7 +9,7 @@ Package rpcclient implements a websocket-enabled Bitcoin JSON-RPC client.
 
 This client provides a robust and easy to use client for interfacing with a
 Bitcoin RPC server that uses a btcd/bitcoin core compatible Bitcoin JSON-RPC
-API.  This client has been tested with btcd (https://github.com/sat20-labs/satsnet_btcd),
+API.  This client has been tested with btcd (https://github.com/sat20-labs/satoshinet),
 btcwallet (https://github.com/sat20-labs/satsnet_btcwallet), and
 bitcoin core (https://github.com/bitcoin).
 

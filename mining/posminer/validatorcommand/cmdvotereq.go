@@ -10,7 +10,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
 )
 
 const (

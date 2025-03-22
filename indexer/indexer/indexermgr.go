@@ -4,14 +4,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	base_indexer "github.com/sat20-labs/satsnet_btcd/indexer/indexer/base"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	base_indexer "github.com/sat20-labs/satoshinet/indexer/indexer/base"
 
-	"github.com/sat20-labs/satsnet_btcd/indexer/share/satsnet_rpc"
+	"github.com/sat20-labs/satoshinet/indexer/share/satsnet_rpc"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/wire"
 
 	"github.com/dgraph-io/badger/v4"
 

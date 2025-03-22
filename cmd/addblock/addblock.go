@@ -10,11 +10,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sat20-labs/satsnet_btcd/blockchain"
-	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/database"
-	"github.com/sat20-labs/satsnet_btcd/limits"
+	"github.com/sat20-labs/satoshinet/blockchain"
+	"github.com/sat20-labs/satoshinet/blockchain/indexers"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/database"
+	"github.com/sat20-labs/satoshinet/limits"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,7 +29,7 @@ var (
 )
 
 var (
-	defaultHomeDir = btcutil.AppDataDir("satsnet_btcd", false)
+	defaultHomeDir = btcutil.AppDataDir("satoshinet", false)
 )
 
 // loadBlockDB opens the block database and returns a handle to it.

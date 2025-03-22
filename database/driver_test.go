@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/database"
-	_ "github.com/sat20-labs/satsnet_btcd/database/ffldb"
+	"github.com/sat20-labs/satoshinet/database"
+	_ "github.com/sat20-labs/satoshinet/database/ffldb"
 )
 
 var (

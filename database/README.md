@@ -1,9 +1,9 @@
 database
 ========
 
-[![Build Status](https://github.com/sat20-labs/satsnet_btcd/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satsnet_btcd/actions)
+[![Build Status](https://github.com/sat20-labs/satoshinet/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satoshinet/actions)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd/database)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/sat20-labs/satoshinet/database)
 
 Package database provides a block and metadata storage database.
 
@@ -13,8 +13,8 @@ one entity can have the database open at a time (for most database backends),
 and that entity will be btcd.
 
 When a client wants programmatic access to the data provided by btcd, they'll
-likely want to use the [rpcclient](https://github.com/sat20-labs/satsnet_btcd/tree/master/rpcclient)
-package which makes use of the [JSON-RPC API](https://github.com/sat20-labs/satsnet_btcd/tree/master/docs/json_rpc_api.md).
+likely want to use the [rpcclient](https://github.com/sat20-labs/satoshinet/tree/master/rpcclient)
+package which makes use of the [JSON-RPC API](https://github.com/sat20-labs/satoshinet/tree/master/docs/json_rpc_api.md).
 
 However, this package could be extremely useful for any applications requiring
 Bitcoin block storage capabilities.
@@ -37,16 +37,16 @@ storage, and strict checksums in key areas to ensure data integrity.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/sat20-labs/satsnet_btcd/database
+$ go get -u github.com/sat20-labs/satoshinet/database
 ```
 
 ## Examples
 
-* [Basic Usage Example](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd/database#example-package--BasicUsage)  
+* [Basic Usage Example](https://pkg.go.dev/github.com/sat20-labs/satoshinet/database#example-package--BasicUsage)  
   Demonstrates creating a new database and using a managed read-write
   transaction to store and retrieve metadata.
 
-* [Block Storage and Retrieval Example](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd/database#example-package--BlockStorageAndRetrieval)  
+* [Block Storage and Retrieval Example](https://pkg.go.dev/github.com/sat20-labs/satoshinet/database#example-package--BlockStorageAndRetrieval)  
   Demonstrates creating a new database, using a managed read-write transaction
   to store a block, and then using a managed read-only transaction to fetch the
   block.

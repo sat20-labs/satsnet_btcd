@@ -2,7 +2,7 @@ package indexer
 
 import (
 	"github.com/gin-gonic/gin"
-	shareIndexer "github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
+	shareIndexer "github.com/sat20-labs/satoshinet/indexer/share/indexer"
 )
 
 type Service struct {

@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "satsnet_btcd",
+            "name": "satoshinet",
             "type": "go",
             "request": "launch",
             "mode": "debug",

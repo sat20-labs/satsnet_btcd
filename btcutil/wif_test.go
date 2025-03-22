@@ -9,9 +9,9 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/btcec"
-	. "github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satoshinet/btcec"
+	. "github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg"
 )
 
 func TestEncodeDecodeWIF(t *testing.T) {

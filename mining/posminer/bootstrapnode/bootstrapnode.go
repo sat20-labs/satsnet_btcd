@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 
 	"github.com/sat20-labs/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
+	"github.com/sat20-labs/satoshinet/indexer/share/indexer"
 )
 
 func IsBootStrapNode(pubKey []byte) bool {

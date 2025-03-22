@@ -2,7 +2,7 @@ package indexer
 
 import (
 	"github.com/dgraph-io/badger/v4"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
+	"github.com/sat20-labs/satoshinet/indexer/common"
 
 	db "github.com/sat20-labs/indexer/indexer/db"
 )

@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	indexerwire "github.com/sat20-labs/indexer/rpcserver/wire"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	localwire "github.com/sat20-labs/satsnet_btcd/indexer/rpcserver/wire"
-	shareIndexer "github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	localwire "github.com/sat20-labs/satoshinet/indexer/rpcserver/wire"
+	shareIndexer "github.com/sat20-labs/satoshinet/indexer/share/indexer"
 )
 
 const QueryParamDefaultLimit = "100"

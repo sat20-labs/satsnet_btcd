@@ -7,8 +7,8 @@ package blockchain
 import (
 	"fmt"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/database"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/database"
 )
 
 // maybeAcceptBlock potentially accepts a block into the block chain and, if

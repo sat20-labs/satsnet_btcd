@@ -14,7 +14,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/sat20-labs/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
 	"github.com/stretchr/testify/require"
 )
 

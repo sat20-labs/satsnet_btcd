@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
 )
 
 // MsgVCState implements the Message interface and get current generator

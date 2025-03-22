@@ -1,9 +1,9 @@
 indexers
 ========
 
-[![Build Status](https://github.com/sat20-labs/satsnet_btcd/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satsnet_btcd/actions)
+[![Build Status](https://github.com/sat20-labs/satoshinet/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satoshinet/actions)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![GoDoc](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd/blockchain/indexers?status.png)](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd/blockchain/indexers)
+[![GoDoc](https://pkg.go.dev/github.com/sat20-labs/satoshinet/blockchain/indexers?status.png)](https://pkg.go.dev/github.com/sat20-labs/satoshinet/blockchain/indexers)
 
 Package indexers implements optional block chain indexes.
 
@@ -23,7 +23,7 @@ via an RPC interface.
 ## Installation
 
 ```bash
-$ go get -u github.com/sat20-labs/satsnet_btcd/blockchain/indexers
+$ go get -u github.com/sat20-labs/satoshinet/blockchain/indexers
 ```
 
 ## License

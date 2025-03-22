@@ -3,7 +3,7 @@ package blockchain
 import (
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
 	"github.com/stretchr/testify/require"
 )
 

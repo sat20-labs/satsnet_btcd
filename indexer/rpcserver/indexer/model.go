@@ -6,9 +6,9 @@ import (
 
 	"github.com/btcsuite/btcd/wire"
 	indexerwire "github.com/sat20-labs/indexer/rpcserver/wire"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	shareIndexer "github.com/sat20-labs/satsnet_btcd/indexer/share/indexer"
-	swire "github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	shareIndexer "github.com/sat20-labs/satoshinet/indexer/share/indexer"
+	swire "github.com/sat20-labs/satoshinet/wire"
 
 	indexer "github.com/sat20-labs/indexer/common"
 )

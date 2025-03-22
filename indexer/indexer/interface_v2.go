@@ -3,8 +3,8 @@ package indexer
 import (
 	"github.com/sat20-labs/indexer/common"
 
-	"github.com/sat20-labs/satsnet_btcd/wire"
-	swire "github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/wire"
+	swire "github.com/sat20-labs/satoshinet/wire"
 	indexer "github.com/sat20-labs/indexer/common"
 )
 

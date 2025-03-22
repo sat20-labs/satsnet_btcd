@@ -11,7 +11,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil/gcs"
+	"github.com/sat20-labs/satoshinet/btcutil/gcs"
 )
 
 var (

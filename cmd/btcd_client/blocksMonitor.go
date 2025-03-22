@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechain"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/btcwallet"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/satsnet_rpc"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatechain"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 const (

@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	flags "github.com/jessevdk/go-flags"
-	"github.com/sat20-labs/satsnet_btcd/btcjson"
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satoshinet/btcjson"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg"
 )
 
 const (
@@ -96,7 +96,7 @@ func listCommands() {
 //
 // See loadConfig for details on the configuration load process.
 type config struct {
-	HomeDir        string `long:"homedir" description:"Directory to run satsnet_btcd root"`
+	HomeDir        string `long:"homedir" description:"Directory to run satoshinet root"`
 	ConfigFile     string `short:"C" long:"configfile" description:"Path to configuration file"`
 	ListCommands   bool   `short:"l" long:"listcommands" description:"List all of the supported commands and exit"`
 	NoTLS          bool   `long:"notls" description:"Disable TLS"`

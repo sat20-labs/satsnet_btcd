@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satoshinet/txscript"
 )
 
 // TestGetAddressInfoResult ensures that custom unmarshalling of

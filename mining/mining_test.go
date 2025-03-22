@@ -9,7 +9,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satoshinet/btcutil"
 )
 
 // TestTxFeePrioHeap ensures the priority queue for transaction fees and

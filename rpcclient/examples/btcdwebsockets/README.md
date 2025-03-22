@@ -13,7 +13,7 @@ demonstrate clean shutdown.
 The first step is to use `go get` to download and install the rpcclient package:
 
 ```bash
-$ go get github.com/sat20-labs/satsnet_btcd/rpcclient
+$ go get github.com/sat20-labs/satoshinet/rpcclient
 ```
 
 Next, modify the `main.go` source to specify the correct RPC username and
@@ -27,7 +27,7 @@ password for the RPC server:
 Finally, navigate to the example's directory and run it with:
 
 ```bash
-$ cd $GOPATH/src/github.com/sat20-labs/satsnet_btcd/rpcclient/examples/btcdwebsockets
+$ cd $GOPATH/src/github.com/sat20-labs/satoshinet/rpcclient/examples/btcdwebsockets
 $ go run *.go
 ```
 

@@ -7,8 +7,8 @@ package validatormanager
 import (
 	"net"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
 )
 
 const (

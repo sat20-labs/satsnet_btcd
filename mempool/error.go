@@ -5,8 +5,8 @@
 package mempool
 
 import (
-	"github.com/sat20-labs/satsnet_btcd/blockchain"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/blockchain"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // RuleError identifies a rule violation.  It is used to indicate that

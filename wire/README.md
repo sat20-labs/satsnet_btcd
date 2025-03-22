@@ -1,9 +1,9 @@
 wire
 ====
 
-[![Build Status](https://github.com/sat20-labs/satsnet_btcd/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satsnet_btcd/actions)
+[![Build Status](https://github.com/sat20-labs/satoshinet/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satoshinet/actions)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd/wire)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/sat20-labs/satoshinet/wire)
 =======
 
 Package wire implements the bitcoin wire protocol.  A comprehensive suite of
@@ -19,7 +19,7 @@ protocol level.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/sat20-labs/satsnet_btcd/wire
+$ go get -u github.com/sat20-labs/satoshinet/wire
 ```
 
 ## Bitcoin Message Overview

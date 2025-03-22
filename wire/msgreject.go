@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
 )
 
 // RejectCode represents a numeric value by which a remote peer indicates

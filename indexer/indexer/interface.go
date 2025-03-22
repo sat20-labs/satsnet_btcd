@@ -1,11 +1,11 @@
 package indexer
 
 import (
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/chaincfg"
+	"github.com/sat20-labs/satoshinet/wire"
 
 	indexer "github.com/sat20-labs/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
+	"github.com/sat20-labs/satoshinet/indexer/common"
 )
 
 // interface for RPC

@@ -3,7 +3,7 @@ hdkeychain
 
 [![Build Status](http://img.shields.io/travis/btcsuite/btcutil.svg)](https://travis-ci.org/btcsuite/btcutil)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![GoDoc](http://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/sat20-labs/satsnet_btcd/btcutil/hdkeychain)
+[![GoDoc](http://img.shields.io/badge/godoc-reference-blue.svg)](http://godoc.org/github.com/sat20-labs/satoshinet/btcutil/hdkeychain)
 
 Package hdkeychain provides an API for bitcoin hierarchical deterministic
 extended keys (BIP0032).
@@ -39,18 +39,18 @@ report.
 ## Installation and Updating
 
 ```bash
-$ go get -u github.com/sat20-labs/satsnet_btcd/btcutil/hdkeychain
+$ go get -u github.com/sat20-labs/satoshinet/btcutil/hdkeychain
 ```
 
 ## Examples
 
-* [NewMaster Example](http://godoc.org/github.com/sat20-labs/satsnet_btcd/btcutil/hdkeychain#example-NewMaster)  
+* [NewMaster Example](http://godoc.org/github.com/sat20-labs/satoshinet/btcutil/hdkeychain#example-NewMaster)  
   Demonstrates how to generate a cryptographically random seed then use it to
   create a new master node (extended key).
-* [Default Wallet Layout Example](http://godoc.org/github.com/sat20-labs/satsnet_btcd/btcutil/hdkeychain#example-package--DefaultWalletLayout)  
+* [Default Wallet Layout Example](http://godoc.org/github.com/sat20-labs/satoshinet/btcutil/hdkeychain#example-package--DefaultWalletLayout)  
   Demonstrates the default hierarchical deterministic wallet layout as described
   in BIP0032.
-* [Audits Use Case Example](http://godoc.org/github.com/sat20-labs/satsnet_btcd/btcutil/hdkeychain#example-package--Audits)  
+* [Audits Use Case Example](http://godoc.org/github.com/sat20-labs/satoshinet/btcutil/hdkeychain#example-package--Audits)  
   Demonstrates the audits use case in BIP0032.
 
 ## License

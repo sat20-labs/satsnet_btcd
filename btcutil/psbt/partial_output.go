@@ -5,7 +5,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // POutput is a struct encapsulating all the data that can be attached

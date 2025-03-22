@@ -1,4 +1,4 @@
-module github.com/sat20-labs/satsnet_btcd
+module github.com/sat20-labs/satoshinet
 
 replace github.com/btcsuite/btcd => github.com/sat20-labs/btcd v0.24.3-beta-rc1
 

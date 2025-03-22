@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/sat20-labs/satsnet_btcd/btcec/ecdsa"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/btcec/ecdsa"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
 )
 
 type HandOverEpoch struct {

@@ -3,10 +3,10 @@ package base
 import (
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/indexer/share/satsnet_rpc"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	"github.com/sat20-labs/satoshinet/indexer/share/satsnet_rpc"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // 带了延时，仅用于跑数据

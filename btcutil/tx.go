@@ -8,8 +8,8 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // TxIndexUnknown is the value returned for a transaction index that is unknown.

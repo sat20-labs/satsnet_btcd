@@ -3,9 +3,9 @@ package psbt
 import (
 	"bytes"
 
-	"github.com/sat20-labs/satsnet_btcd/btcec/schnorr"
-	"github.com/sat20-labs/satsnet_btcd/txscript"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/btcec/schnorr"
+	"github.com/sat20-labs/satoshinet/txscript"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 const (

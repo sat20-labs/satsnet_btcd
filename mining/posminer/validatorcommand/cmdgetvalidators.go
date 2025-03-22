@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
 )
 
 // MsgGetValidators implements the Message interface try to get all validators

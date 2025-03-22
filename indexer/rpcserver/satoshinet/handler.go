@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	indexerwire "github.com/sat20-labs/indexer/rpcserver/wire"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/indexer/share/satsnet_rpc"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/indexer/share/satsnet_rpc"
 )
 
 // @Summary send Raw Transaction

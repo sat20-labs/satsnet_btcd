@@ -8,8 +8,8 @@ package txscript
 import (
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 // TestBadPC sets the pc to a deliberately bad result then confirms that Step

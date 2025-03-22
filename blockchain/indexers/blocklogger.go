@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
+	"github.com/sat20-labs/satoshinet/btcutil"
 	"github.com/sirupsen/logrus"
 )
 

@@ -1,9 +1,9 @@
 ffldb
 =====
 
-[![Build Status](https://github.com/sat20-labs/satsnet_btcd/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satsnet_btcd/actions)
+[![Build Status](https://github.com/sat20-labs/satoshinet/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satoshinet/actions)
 [![ISC License](http://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![GoDoc](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd/database/ffldb?status.png)](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd/database/ffldb)
+[![GoDoc](https://pkg.go.dev/github.com/sat20-labs/satoshinet/database/ffldb?status.png)](https://pkg.go.dev/github.com/sat20-labs/satoshinet/database/ffldb)
 =======
 
 Package ffldb implements a driver for the database package that uses leveldb for

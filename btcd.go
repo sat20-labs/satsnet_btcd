@@ -18,12 +18,12 @@ import (
 	"runtime/pprof"
 	"strings"
 
-	"github.com/sat20-labs/satsnet_btcd/anchortx"
-	"github.com/sat20-labs/satsnet_btcd/blockchain/indexers"
-	"github.com/sat20-labs/satsnet_btcd/database"
-	"github.com/sat20-labs/satsnet_btcd/limits"
-	"github.com/sat20-labs/satsnet_btcd/ossec"
-	"github.com/sat20-labs/satsnet_btcd/stp"
+	"github.com/sat20-labs/satoshinet/anchortx"
+	"github.com/sat20-labs/satoshinet/blockchain/indexers"
+	"github.com/sat20-labs/satoshinet/database"
+	"github.com/sat20-labs/satoshinet/limits"
+	"github.com/sat20-labs/satoshinet/ossec"
+	"github.com/sat20-labs/satoshinet/stp"
 )
 
 const (

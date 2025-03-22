@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
 	bolt "go.etcd.io/bbolt"
 )
 

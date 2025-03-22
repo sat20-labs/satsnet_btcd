@@ -3,8 +3,8 @@ package base
 import (
 	"encoding/hex"
 
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/txscript"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	"github.com/sat20-labs/satoshinet/txscript"
 )
 
 // 不要panic，可能会影响写数据库

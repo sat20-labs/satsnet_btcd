@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/sat20-labs/satsnet_btcd/httpclient"
+	"github.com/sat20-labs/satoshinet/httpclient"
 )
 
 

@@ -2,7 +2,7 @@ package wire
 
 import (
 	indexerwire "github.com/sat20-labs/indexer/rpcserver/wire"
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
+	"github.com/sat20-labs/satoshinet/indexer/common"
 )
 
 type BlockInfoData struct {

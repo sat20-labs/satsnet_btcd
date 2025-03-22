@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/epoch"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/utils"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatechain"
-	"github.com/sat20-labs/satsnet_btcd/mining/posminer/validatorcommand"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/mining/posminer/epoch"
+	"github.com/sat20-labs/satoshinet/mining/posminer/utils"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatechain"
+	"github.com/sat20-labs/satoshinet/mining/posminer/validatorcommand"
 )
 
 // NewEpochManager是一个处理NewEpoch事件的管理器

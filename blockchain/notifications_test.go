@@ -7,7 +7,7 @@ package blockchain
 import (
 	"testing"
 
-	"github.com/sat20-labs/satsnet_btcd/chaincfg"
+	"github.com/sat20-labs/satoshinet/chaincfg"
 )
 
 // TestNotifications ensures that notification callbacks are fired on events.

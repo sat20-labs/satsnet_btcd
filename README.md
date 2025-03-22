@@ -1,10 +1,10 @@
 btcd
 ====
 
-[![Build Status](https://github.com/sat20-labs/satsnet_btcd/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satsnet_btcd/actions)
+[![Build Status](https://github.com/sat20-labs/satoshinet/workflows/Build%20and%20Test/badge.svg)](https://github.com/sat20-labs/satoshinet/actions)
 [![Coverage Status](https://coveralls.io/repos/github/btcsuite/btcd/badge.svg?branch=master)](https://coveralls.io/github/btcsuite/btcd?branch=master)
 [![ISC License](https://img.shields.io/badge/license-ISC-blue.svg)](http://copyfree.org)
-[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/sat20-labs/satsnet_btcd)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/sat20-labs/satoshinet)
 
 btcd is an alternative full node bitcoin implementation written in Go (golang).
 
@@ -40,7 +40,7 @@ which are both under active development.
 
 ## Installation
 
-https://github.com/sat20-labs/satsnet_btcd/releases
+https://github.com/sat20-labs/satoshinet/releases
 
 #### Linux/BSD/MacOSX/POSIX - Build from Source
 
@@ -62,7 +62,7 @@ recommended that `GOPATH` is set to a directory in your home directory such as
 - Run the following commands to obtain btcd, all dependencies, and install it:
 
 ```bash
-$ cd $GOPATH/src/github.com/sat20-labs/satsnet_btcd
+$ cd $GOPATH/src/github.com/sat20-labs/satoshinet
 $ go install -v . ./cmd/...
 ```
 
@@ -77,7 +77,7 @@ $ go install -v . ./cmd/...
 - Run the following commands to update btcd, all dependencies, and install it:
 
 ```bash
-$ cd $GOPATH/src/github.com/sat20-labs/satsnet_btcd
+$ cd $GOPATH/src/github.com/sat20-labs/satoshinet
 $ git pull
 $ go install -v . ./cmd/...
 ```
@@ -102,17 +102,17 @@ $ ./btcd
 
 ## Issue Tracker
 
-The [integrated github issue tracker](https://github.com/sat20-labs/satsnet_btcd/issues)
+The [integrated github issue tracker](https://github.com/sat20-labs/satoshinet/issues)
 is used for this project.
 
 ## Documentation
 
-The documentation is a work-in-progress.  It is located in the [docs](https://github.com/sat20-labs/satsnet_btcd/tree/master/docs) folder.
+The documentation is a work-in-progress.  It is located in the [docs](https://github.com/sat20-labs/satoshinet/tree/master/docs) folder.
 
 ## Release Verification
 
 Please see our [documentation on the current build/verification
-process](https://github.com/sat20-labs/satsnet_btcd/tree/master/release) for all our
+process](https://github.com/sat20-labs/satoshinet/tree/master/release) for all our
 releases for information on how to verify the integrity of published releases
 using our reproducible build system.
 

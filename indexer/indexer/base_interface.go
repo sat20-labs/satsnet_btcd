@@ -1,8 +1,8 @@
 package indexer
 
 import (
-	"github.com/sat20-labs/satsnet_btcd/indexer/common"
-	"github.com/sat20-labs/satsnet_btcd/wire"
+	"github.com/sat20-labs/satoshinet/indexer/common"
+	"github.com/sat20-labs/satoshinet/wire"
 )
 
 ///// rpc interface, run in mul-thread

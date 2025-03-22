@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sat20-labs/satsnet_btcd/anchortx"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/btcwallet"
-	"github.com/sat20-labs/satsnet_btcd/cmd/btcd_client/satsnet_rpc"
+	"github.com/sat20-labs/satoshinet/anchortx"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/btcwallet"
+	"github.com/sat20-labs/satoshinet/cmd/btcd_client/satsnet_rpc"
 )
 
 func testGetBlockStats(height int, stats []string) {

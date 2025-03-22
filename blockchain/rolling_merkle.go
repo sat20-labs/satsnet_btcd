@@ -3,8 +3,8 @@ package blockchain
 import (
 	"math/bits"
 
-	"github.com/sat20-labs/satsnet_btcd/btcutil"
-	"github.com/sat20-labs/satsnet_btcd/chaincfg/chainhash"
+	"github.com/sat20-labs/satoshinet/btcutil"
+	"github.com/sat20-labs/satoshinet/chaincfg/chainhash"
 )
 
 // rollingMerkleTreeStore calculates the merkle root by only allocating O(logN)
