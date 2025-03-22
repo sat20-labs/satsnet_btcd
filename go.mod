@@ -107,36 +107,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-// The retract statements below fixes an accidental push of the tags of a btcd
-// fork.
-retract (
-	v0.18.1
-	v0.18.0
-	v0.17.1
-	v0.17.0
-	v0.16.5
-	v0.16.4
-	v0.16.3
-	v0.16.2
-	v0.16.1
-	v0.16.0
-
-	v0.15.2
-	v0.15.1
-	v0.15.0
-
-	v0.14.7
-	v0.14.6
-	v0.14.6
-	v0.14.5
-	v0.14.4
-	v0.14.3
-	v0.14.2
-	v0.14.1
-
-	v0.14.0
-	v0.13.0-beta2
-	v0.13.0-beta
-)
-
 go 1.22.1
